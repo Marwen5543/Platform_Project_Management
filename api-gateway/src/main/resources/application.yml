@@ -1,0 +1,89 @@
+server:
+  port: ${SERVER_PORT:8081}
+
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      globalfilters:
+        - name: RequestHeaderToRequestUri
+          args:
+            name: X-Forwarded-Uri
+      routes:
+        - id: departments
+          uri: lb://department-service
+          predicates:
+            - Path=/api/departments/**
+          filters:
+            - StripPrefix=1  # 🔥 FIXED: Correcting the StripPrefix to 1
+        - id: employees
+          uri: lb://employee-service
+          predicates:
+            - Path=/api/employees/**
+          filters:
+            - StripPrefix=1
+        - id: users
+          uri: lb://user-management-service
+          predicates:
+            - Path=/api/users/**
+          filters:
+            - StripPrefix=1
+        - id: leave-requests
+          uri: lb://leave-management-service
+          predicates:
+            - Path=/api/leave-requests/**
+          filters:
+            - StripPrefix=1
+        - id: objectives
+          uri: lb://performance-service
+          predicates:
+            - Path=/api/objectives/**
+          filters:
+            - StripPrefix=1
+        - id: reviews
+          uri: lb://performance-service
+          predicates:
+            - Path=/api/reviews/**
+          filters:
+            - StripPrefix=1
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/demo}  # 🔥 FIXED: Using `localhost` instead of `keycloak`
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}  # ✅ Use localhost
+    fetch-registry: true
+    register-with-eureka: true
+  instance:
+    prefer-ip-address: false  # ✅ Ensure it uses hostname instead of IP
+    hostname: localhost  # ✅ Explicitly set hostname
+    instance-id: ${spring.application.name}:localhost:${server.port}  # ✅ Make instance ID predictable
+    statusPageUrl: http://localhost:${server.port}/actuator/info
+    healthCheckUrl: http://localhost:${server.port}/actuator/health
+    homePageUrl: http://localhost:${server.port}/
+
+
+
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.cloud.netflix.eureka: DEBUG
+    reactor.netty: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true

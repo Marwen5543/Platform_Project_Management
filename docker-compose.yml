@@ -1,0 +1,165 @@
+# version: '3.8'  # Optional in newer Docker Compose versions, can be omitted
+services:
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8081:8081"
+    environment:
+      - EUREKA_URL=http://eureka-server:8761/eureka/
+      - KEYCLOAK_ISSUER_URI=http://keycloak:8080/realms/demo
+      - SERVER_PORT=8081
+    depends_on:
+      - eureka-server
+      - keycloak
+    networks:
+      - app-network
+
+  user-management-service:
+    build: ./user-management-service
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/management_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=admin
+      - KEYCLOAK_AUTH_SERVER_URL=http://keycloak:8080
+      - KEYCLOAK_REALM=demo
+      - KEYCLOAK_RESOURCE=myclient
+      - KEYCLOAK_CREDENTIALS_SECRET=myclientsecret
+      - KEYCLOAK_ADMIN_USERNAME=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+      - EUREKA_URL=http://eureka-server:8761/eureka/
+      - SERVER_PORT=8085
+    command: >
+      sh -c "echo 'Container Environment Variables:';
+             echo 'SPRING_DATASOURCE_URL=$SPRING_DATASOURCE_URL';
+             echo 'SPRING_DATASOURCE_USERNAME=$SPRING_DATASOURCE_USERNAME';
+             echo 'SPRING_DATASOURCE_PASSWORD=$SPRING_DATASOURCE_PASSWORD';
+             java -jar /app/app.jar"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      eureka-server:
+        condition: service_started
+    networks:
+      - app-network
+
+  department-management-service:
+    build: ./department-management-service
+    ports:
+      - "8087:8087"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/management_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=admin
+      - EUREKA_URL=http://eureka-server:8761/eureka/
+      - SERVER_PORT=8087
+    depends_on:
+      - postgres
+      - eureka-server
+    networks:
+      - app-network
+
+  employee-management-service:
+    build: ./employee-management-service
+    ports:
+      - "8086:8086"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/management_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=admin
+      - EUREKA_URL=http://eureka-server:8761/eureka/
+      - SERVER_PORT=8086
+    depends_on:
+      - postgres
+      - eureka-server
+    networks:
+      - app-network
+
+  performance-management-service:
+    build: ./performance-management-service
+    ports:
+      - "8089:8089"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/management_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=admin
+      - EUREKA_URL=http://eureka-server:8761/eureka/
+      - SERVER_PORT=8089
+    depends_on:
+      - postgres
+      - eureka-server
+    networks:
+      - app-network
+
+  leave-management-service:
+    build: ./leave-management-service
+    ports:
+      - "8088:8088"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/management_db
+      - SPRING_DATASOURCE_USERNAME=admin
+      - SPRING_DATASOURCE_PASSWORD=admin
+      - EUREKA_URL=http://eureka-server:8761/eureka/
+      - SERVER_PORT=8088
+    depends_on:
+      - postgres
+      - eureka-server
+    networks:
+      - app-network
+
+  eureka-server:
+    build: ./eureka-server
+    ports:
+      - "8761:8761"
+    environment:
+      - SERVER_PORT=8761
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:17
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=management_db
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d management_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app-network
+
+  keycloak:
+    image: quay.io/keycloak/keycloak@sha256:09a381c715ab0b111835b70f2905955274843a219c6f27efb348e4d9f4086858
+    command: start-dev
+    ports:
+      - "8080:8080"
+    environment:
+      - KEYCLOAK_ADMIN=admin
+      - KEYCLOAK_ADMIN_PASSWORD=admin
+    volumes:
+      - keycloak-data:/opt/keycloak/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  keycloak-data:
