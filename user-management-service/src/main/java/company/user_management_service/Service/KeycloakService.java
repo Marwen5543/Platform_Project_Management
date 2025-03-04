@@ -1,19 +1,19 @@
 package company.user_management_service.Service;
 
 import jakarta.annotation.PostConstruct;
-import lombok.extern.slf4j.Slf4j;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
-import org.keycloak.OAuth2Constants;
+import org.keycloak.admin.client.resource.RealmResource;
+import org.keycloak.representations.idm.ClientRepresentation;
 import org.keycloak.representations.idm.CredentialRepresentation;
+import org.keycloak.representations.idm.RealmRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
+import java.util.Collections;
 
 @Service
-@Slf4j
 public class KeycloakService {
     @Value("${keycloak.auth-server-url}")
     private String authServerUrl;
@@ -27,82 +27,67 @@ public class KeycloakService {
     @Value("${keycloak.credentials.secret}")
     private String clientSecret;
 
-    // Keep the admin credentials separate - we need them for creating users
-    private static final String ADMIN_CLIENT_ID = "admin-cli";
-    private static final String ADMIN_USERNAME = "admin";
-    private static final String ADMIN_PASSWORD = "admin";
-    private static final String ADMIN_REALM = "master";
+    private Keycloak keycloak;
 
-    public String getToken(String username, String password) {
-        log.info("Starting token request for user: {}", username);
+    @PostConstruct
+    public void init() {
+        keycloak = KeycloakBuilder.builder()
+                .serverUrl(authServerUrl)
+                .realm("master")
+                .username("admin")
+                .password("admin")
+                .clientId("admin-cli")
+                .build();
 
-        try {
-            Keycloak keycloak = KeycloakBuilder.builder()
-                    .serverUrl(authServerUrl)
-                    .realm(realm)
-                    .grantType(OAuth2Constants.PASSWORD)
-                    .clientId(clientId)
-                    .clientSecret(clientSecret)
-                    .username(username)
-                    .password(password)
-                    .build();
+        // Create realm if it doesn’t exist
+        if (keycloak.realms().findAll().stream().noneMatch(r -> r.getRealm().equals(realm))) {
+            RealmRepresentation realmRep = new RealmRepresentation();
+            realmRep.setRealm(realm);
+            realmRep.setEnabled(true);
+            keycloak.realms().create(realmRep);
+        }
 
-            log.info("Attempting to get token from Keycloak...");
-            String token = keycloak.tokenManager().getAccessToken().getToken();
-            log.info("Successfully obtained token");
-            return token;
-        } catch (Exception e) {
-            log.error("Token request failed. Error: {}", e.getMessage());
-            throw new RuntimeException("Authentication failed: " + e.getMessage());
+        // Create client if it doesn’t exist
+        RealmResource realmResource = keycloak.realm(realm);
+        if (realmResource.clients().findByClientId(clientId).isEmpty()) {
+            ClientRepresentation client = new ClientRepresentation();
+            client.setClientId(clientId);
+            client.setSecret(clientSecret);
+            client.setDirectAccessGrantsEnabled(true);
+            client.setPublicClient(false);
+            client.setProtocol("openid-connect");
+            client.setEnabled(true);
+            realmResource.clients().create(client);
         }
     }
 
     public void createUser(String username, String email, String password) {
-        try {
-            // Use admin credentials to create users
-            Keycloak adminKeycloak = KeycloakBuilder.builder()
-                    .serverUrl(authServerUrl)
-                    .realm(ADMIN_REALM)
-                    .clientId(ADMIN_CLIENT_ID)
-                    .username(ADMIN_USERNAME)
-                    .password(ADMIN_PASSWORD)
-                    .build();
+        UserRepresentation user = new UserRepresentation();
+        user.setUsername(username);
+        user.setEmail(email);
+        user.setEnabled(true);
 
-            UserRepresentation user = new UserRepresentation();
-            user.setEnabled(true);
-            user.setUsername(username);
-            user.setEmail(email);
+        CredentialRepresentation creds = new CredentialRepresentation();
+        creds.setType(CredentialRepresentation.PASSWORD);
+        creds.setValue(password);
+        creds.setTemporary(false);
+        user.setCredentials(Collections.singletonList(creds));
 
-            // Create the user
-            jakarta.ws.rs.core.Response response = adminKeycloak.realm(realm).users().create(user);
-
-            if (response.getStatus() == 201) {
-                String userId = response.getLocation().getPath().replaceAll(".*/([^/]+)$", "$1");
-
-                // Set password
-                CredentialRepresentation credential = new CredentialRepresentation();
-                credential.setType(CredentialRepresentation.PASSWORD);
-                credential.setValue(password);
-                credential.setTemporary(false);
-
-                adminKeycloak.realm(realm).users().get(userId).resetPassword(credential);
-                log.info("Successfully created user in Keycloak: {}", username);
-            } else {
-                log.error("Failed to create user in Keycloak. Status: {}", response.getStatus());
-                throw new RuntimeException("Failed to create user in Keycloak. Status: " + response.getStatus());
-            }
-        } catch (Exception e) {
-            log.error("Failed to create user in Keycloak: {}", e.getMessage());
-            throw e;
-        }
+        keycloak.realm(realm).users().create(user);
     }
 
-    @PostConstruct
-    public void init() {
-        log.info("Initializing KeycloakService with configuration:");
-        log.info("Auth Server URL: {}", authServerUrl);
-        log.info("Realm: {}", realm);
-        log.info("Client ID: {}", clientId);
-        log.info("Client Secret exists: {}", clientSecret != null && !clientSecret.isEmpty());
+    public String getToken(String username, String password) {
+        return KeycloakBuilder.builder()
+                .serverUrl(authServerUrl)
+                .realm(realm)
+                .username(username)
+                .password(password)
+                .clientId(clientId)
+                .clientSecret(clientSecret)
+                .grantType("password")
+                .build()
+                .tokenManager()
+                .getAccessToken()
+                .getToken();
     }
 }

@@ -1,20 +1,13 @@
--- Create the database if it doesn’t exist
--- DO $$ 
--- BEGIN 
---    IF NOT EXISTS (SELECT FROM pg_database WHERE datname = 'management_db') THEN
---       CREATE DATABASE management_db;
---    END IF;
--- END $$;
-
--- -- Switch to the management_db database
--- \c management_db
-
--- Create the users table
-CREATE TABLE IF NOT EXISTS users (
-    user_id SERIAL PRIMARY KEY,
-    username VARCHAR(255) UNIQUE,
-    email VARCHAR(255) UNIQUE,
-    password VARCHAR(255),
-    role VARCHAR(50),
-    status VARCHAR(50)
+CREATE DATABASE keycloak;
+\c management_db
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    username VARCHAR(50) UNIQUE NOT NULL,
+    email VARCHAR(100) NOT NULL,
+    password VARCHAR(100) NOT NULL,
+    role VARCHAR(20) NOT NULL,
+    status VARCHAR(20) NOT NULL
 );
+-- Optional: Add a default user
+INSERT INTO users (username, email, password, role, status)
+VALUES ('admin', 'admin@example.com', '$2a$10$dXJ1aW5nLmV4YW1wbGUkMOhM8Zg8s8X8X8X8X8X8X8', 'ADMIN', 'ACTIVE');
