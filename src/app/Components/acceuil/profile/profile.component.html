@@ -1,0 +1,115 @@
+<br><br>
+<br>
+<app-header [user]="user"></app-header>
+
+<div class="profile-section" [class.sidebar-adjusted]="!(sidebarService.collapsed$ | async)">
+  <ng-container *ngIf="user; else loading">
+      <div class="profile-header">
+        <h1 class="profile-title">
+          <i class="fas fa-user-shield profile-icon"></i>
+          Profil {{user.username}}
+        </h1>
+        <div class="user-avatar" [ngClass]="{'online': user.isOnline}">
+          {{ getInitials(user.username) }}
+          <div class="status-indicator"></div>
+        </div>
+      </div>
+  
+      <div class="profile-grid">
+        <!-- Information Card -->
+        <div class="profile-card elevated">
+          <div class="card-header">
+            <h2 class="card-title">
+              <i class="fas fa-id-card"></i>
+              Informations Personnelles
+            </h2>
+          </div>
+          <div class="card-body">
+            <div class="info-item">
+              <div class="info-label">
+                <i class="fas fa-user-tag"></i>
+                <span>Nom complet</span>
+              </div>
+              <div class="info-value">
+                {{ user.username || 'Non spécifié' }}
+              </div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">
+                <i class="fas fa-envelope"></i>
+                <span>Adresse email</span>
+              </div>
+              <div class="info-value">
+                {{ user.email }}
+                <span class="verification-badge" *ngIf="user.emailVerified">
+                  <i class="fas fa-check-circle"></i> Vérifié
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+  
+        <!-- Role Card -->
+        <div class="profile-card elevated">
+          <div class="card-header">
+            <h2 class="card-title">
+              <i class="fas fa-user-lock"></i>
+              Rôle et Permissions
+            </h2>
+          </div>
+          <div class="card-body">
+            <div class="info-item">
+              <div class="info-label">
+                <i class="fas fa-shield-alt"></i>
+                <span>Rôle système</span>
+              </div>
+              <div class="info-value">
+                <span class="role-pill">{{ databaseRole }}</span>
+              </div>
+            </div>
+            <div class="info-item">
+              <div class="info-label">
+                <i class="fas fa-calendar-check"></i>
+                <span>Membre depuis</span>
+              </div>
+              <div class="info-value">
+                {{ user.joinDate ? (user.joinDate | date:'longDate') : 'N/A' }}
+              </div>
+            </div>
+          </div>
+        </div>
+  
+        <!-- Security Card -->
+        <div class="profile-card elevated">
+          <div class="card-header">
+            <h2 class="card-title">
+              <i class="fas fa-lock"></i>
+              Sécurité
+            </h2>
+          </div>
+          <div class="card-body">
+            <div class="security-status">
+              <div class="two-factor">
+                <i class="fas fa-mobile-alt"></i>
+                <span>Authentification à deux facteurs</span>
+                <span class="status-indicator" [ngClass]="{'active': user.twoFactorEnabled}">
+                  {{ user.twoFactorEnabled ? 'Activé' : 'Désactivé' }}
+                </span>
+              </div>
+              <button class="security-action">
+                <i class="fas fa-cog"></i>
+                Gérer la sécurité
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+  
+    <ng-template #loading>
+      <div class="loading-state">
+        <i class="fas fa-spinner fa-spin"></i>
+        <p>Chargement du profil...</p>
+      </div>
+    </ng-template>
+  </div>

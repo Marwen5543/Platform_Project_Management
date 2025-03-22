@@ -1,0 +1,124 @@
+
+.header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 64px;
+  background: var(--primary-red);
+  color: var(--pure-white);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  padding: 0 1.5rem;
+  transition: left var(--transition-timing);
+
+  &[class*='sidebar-collapsed'] {
+    left: var(--sidebar-collapsed-width);
+  }
+
+  .header-content {
+    flex: 1;
+    margin-left: 1rem;
+    
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--primary-color);
+      margin: 0;
+      @include truncate-text;
+    }
+  }
+
+  .profile-dropdown {
+    position: relative;
+    
+    .dropdown-toggle {
+      @include flex-center;
+      gap: 0.75rem;
+      padding: 0.75rem 1.25rem;
+      border-radius: 8px;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.2);
+        transform: translateY(-1px);
+      }
+      
+      i:first-child {
+        font-size: 1.5rem;
+        color: var(--pure-white);
+      }
+
+      .fa-chevron-down {
+        font-size: 0.9rem;
+        transition: transform 0.3s ease;
+      }
+    }
+
+    .dropdown-menu {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 0.75rem);
+      min-width: 220px;
+      background: var(--pure-white);
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(206, 0, 0, 0.15);
+      overflow: hidden;
+      animation: slideDown 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid rgba(206, 0, 0, 0.1);
+      z-index: 1001;
+      
+      .dropdown-item {
+        padding: 0.875rem 1.5rem;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        color: var(--text-color);
+        display: flex;
+        align-items: center;
+        gap: 0.75rem;
+        position: relative;
+        
+        &:hover {
+          background: rgba(206, 0, 0, 0.05);
+          padding-left: 1.75rem;
+          color: var(--primary-red);
+        }
+
+        &:active {
+          background: rgba(206, 0, 0, 0.08);
+        }
+
+        &::before {
+          content: '';
+          position: absolute;
+          left: 0;
+          top: 0;
+          bottom: 0;
+          width: 3px;
+          background: var(--primary-red);
+          opacity: 0;
+          transition: opacity 0.3s ease;
+        }
+
+        &:hover::before {
+          opacity: 1;
+        }
+      }
+    }
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

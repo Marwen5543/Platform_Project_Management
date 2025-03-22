@@ -1,0 +1,21 @@
+:root {
+    --header-height: 64px;
+    --sidebar-width: 260px;
+  }
+  
+  .app-container {
+    display: grid;
+    grid-template-areas:
+      "header header"
+      "sidebar main";
+    grid-template-columns: var(--sidebar-width) auto;
+    grid-template-rows: var(--header-height) auto;
+    height: 100vh;
+  }
+  
+  main.main-wrapper {
+    grid-area: main;
+    padding: 1.5rem;
+    background-color: #f7fafc; /* Light background for content */
+  }
+  
