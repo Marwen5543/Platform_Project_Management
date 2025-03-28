@@ -8,7 +8,27 @@
       <i class="fas" [ngClass]="(sidebarService.collapsed$ | async) ? 'fa-angle-right' : 'fa-angle-left'"></i>
     </div>
   </div>
-    
+      <!-- Admin Section - Only for SUPER_ADMIN -->
+  <ng-container *ngIf="isSuperAdmin">
+    <div class="dropdown-header" (click)="sidebarService.toggleAdmin()">
+      <i class="fas fa-user-shield"></i>
+      <span *ngIf="!(sidebarService.collapsed$ | async)">Admin</span>
+      <i class="fas fa-chevron-down dropdown-icon" 
+         [ngClass]="{'rotate': (sidebarService.showAdmin$ | async)}"></i>
+    </div>
+    <div class="dropdown-content" *ngIf="sidebarService.showAdmin$ | async" [@slideDown]>
+      <div class="dropdown-item" 
+           (click)="navigateAndSelect('manage-users', '/admin/manage-users')">
+        <i class="fas fa-users-cog"></i>
+        <span>Manage Users</span>
+      </div>
+      <div class="dropdown-item" 
+           (click)="navigateAndSelect('system-settings', '/admin/system-settings')">
+        <i class="fas fa-cogs"></i>
+        <span>System Settings</span>
+      </div>
+    </div>
+  </ng-container>
   <!-- Navigation Items -->
   <div class="sidebar-item" 
   (click)="navigateAndSelect('acceuil', '/acceuil')" 

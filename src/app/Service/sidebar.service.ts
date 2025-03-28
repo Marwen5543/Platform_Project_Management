@@ -22,8 +22,17 @@ export class SidebarService {
   constructor(private router: Router) {
     this.initState();
     this.setupMobileCheck();
+    
   }
+  private showAdmin = new BehaviorSubject<boolean>(false);
+  showAdmin$ = this.showAdmin.asObservable();
 
+  toggleAdmin() {
+    this.showAdmin.next(!this.showAdmin.value);
+    // Close other dropdowns when opening this one
+    this.showGestionConge.next(false);
+    this.showDocuments.next(false);
+  }
   private initState() {
     const savedState = localStorage.getItem('sidebarCollapsed');
     if (savedState) this.collapsedState.next(JSON.parse(savedState));

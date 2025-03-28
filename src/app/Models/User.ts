@@ -1,21 +1,30 @@
 export interface User {
-    userId?: number;  // '?' signifie que c'est optionnel (comme un champ auto-généré)
-    username: string;
-    email: string;
-    password: string;
-    role: UserRole;
-    status: UserStatus;
-  }
-  
-  export enum UserRole {
-    ADMIN = 'ADMIN',
-    EMPLOYEE = 'EMPLOYEE',
-    MANAGER = 'MANAGER',
-    HR = 'HR'
-  }
-  
-  export enum UserStatus {
-    ACTIVE = 'ACTIVE',
-    INACTIVE = 'INACTIVE'
-  }
-  
+  userId: string;
+  username: string;
+  email: string;
+  role: string;
+  status: string;
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  address?: string;
+  hireDate?: string | Date;
+  departmentId?: number;
+  managerId?: number;
+  position?: string;
+  imageUrl?: string;
+  forcePasswordReset?: boolean;
+}
+
+export enum UserRole {
+  SUPER_ADMIN = 'SUPER_ADMIN',
+  ADMIN = 'ADMIN',
+  EMPLOYEE = 'EMPLOYEE',
+  MANAGER = 'MANAGER',
+  HR = 'HR'
+}
+
+export enum UserStatus {
+  ACTIVE = 'ACTIVE',
+  INACTIVE = 'INACTIVE'
+}

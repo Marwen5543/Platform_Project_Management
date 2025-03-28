@@ -1,6 +1,7 @@
 import { Component, ViewEncapsulation } from '@angular/core';
 import { SidebarService } from 'src/app/Service/sidebar.service';
 import { trigger, transition, style, animate } from '@angular/animations';
+import { KeycloakService } from 'src/app/Service/KeycloakService';
 
 @Component({
   selector: 'app-sidebar',
@@ -23,8 +24,14 @@ import { trigger, transition, style, animate } from '@angular/animations';
 })
 
 export class SidebarComponent {
-  constructor(public sidebarService: SidebarService) {}
+  isSuperAdmin = false;
 
+  constructor(public sidebarService: SidebarService, private keycloakService: KeycloakService) {
+    this.checkAdminRole();
+  }
+  async checkAdminRole() {
+    this.isSuperAdmin = this.keycloakService.getRoles().includes('SUPER_ADMIN');
+  }
   navigateAndSelect(section: string, route: string) {
     this.sidebarService.setSelectedSection(section);
     this.sidebarService.navigateTo(route);

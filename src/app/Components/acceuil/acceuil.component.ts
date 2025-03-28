@@ -12,7 +12,7 @@ export class AcceuilComponent implements OnInit {
   profileDropdownOpen = false;
   roles: string[] = ['Admin', 'User', 'Employee','HR'];
   user: UserDTO = {
-    userId: 0,
+    userId: '',
     username: '',
     email: '',
     role: 'EMPLOYEE',
@@ -31,7 +31,7 @@ export class AcceuilComponent implements OnInit {
   private loadUserData(): void {
     if (this.keycloakService.isAuthenticated()) {
       this.user = {
-        userId: parseInt(this.keycloakService.getUserId()) || 0,
+        userId: this.keycloakService.getUserId() || '0',
         username: this.keycloakService.getUsername(),
         email: this.keycloakService.getEmail(),
         role: this.keycloakService.getRole(),

@@ -42,7 +42,11 @@ export class UserService {
   }
 
   // Change user role (admin-only)
-  changeUserRole(userId: number, newRole: string): Observable<void> {
+  changeUserRole(userId: string, newRole: string): Observable<void> {
     return this.http.put<void>(`${this.apiUrl}/${userId}/role`, { role: newRole });
+  }
+
+  getUserDetails(username: string): Observable<UserDTO> {
+    return this.http.get<UserDTO>(`${this.apiUrl}/details/${username}`);
   }
 }

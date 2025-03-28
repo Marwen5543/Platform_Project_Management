@@ -4,7 +4,7 @@ import Keycloak from 'keycloak-js';
 import { keycloakConfig } from '../Config/keycloak-config';
 import { BehaviorSubject, Observable, from } from 'rxjs';
 import { jwtDecode } from 'jwt-decode';
-import { CanActivate, Router, UrlTree } from '@angular/router';
+import { Router, UrlTree } from '@angular/router';
 
 interface DecodedToken {
   preferred_username?: string;
@@ -16,7 +16,7 @@ interface DecodedToken {
 }
 
 @Injectable({ providedIn: 'root' })
-export class KeycloakService implements CanActivate {
+export class KeycloakService  {
   private keycloak: any;
   private authSubject = new BehaviorSubject<boolean>(false);
   private initializedSubject = new BehaviorSubject<boolean>(false);
@@ -110,6 +110,7 @@ export class KeycloakService implements CanActivate {
   private updateUserProfile(): void {
     try {
       const decoded = jwtDecode<DecodedToken>(this.keycloak.token);
+      console.log("Decoded token:", decoded); // Log the token content
       this.userProfile.next(decoded);
     } catch (error) {
       console.error('Error decoding token:', error);
