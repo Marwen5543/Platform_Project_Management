@@ -18,7 +18,7 @@
     </div>
     <div class="dropdown-content" *ngIf="sidebarService.showAdmin$ | async" [@slideDown]>
       <div class="dropdown-item" 
-           (click)="navigateAndSelect('manage-users', '/admin/manage-users')">
+      (click)="navigateAndSelect('manage-users', '/manage-users')">
         <i class="fas fa-users-cog"></i>
         <span>Manage Users</span>
       </div>

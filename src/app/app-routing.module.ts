@@ -4,6 +4,7 @@ import { AcceuilComponent } from './Components/acceuil/acceuil.component';
 import { ProfileComponent } from './Components/acceuil/profile/profile.component';
 import { KeycloakService } from './Service/KeycloakService';
 import { MainLayoutComponent } from './Components/acceuil/main-layout/main-layout.component';
+import { ManageUsersComponent } from './Components/acceuil/Admin/manage-users/manage-users.component';
 
 const routes: Routes = [
   {
@@ -13,6 +14,7 @@ const routes: Routes = [
     children: [
       { path: 'acceuil', component: AcceuilComponent },
       { path: 'profile', component: ProfileComponent },
+      { path: 'manage-users', component: ManageUsersComponent },
       { path: '', redirectTo: 'acceuil', pathMatch: 'full' }
     ]
   },

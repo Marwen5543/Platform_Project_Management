@@ -43,7 +43,13 @@ export class UserService {
 
   // Change user role (admin-only)
   changeUserRole(userId: string, newRole: string): Observable<void> {
-    return this.http.put<void>(`${this.apiUrl}/${userId}/role`, { role: newRole });
+    const headers = new HttpHeaders({
+      'Content-Type': 'application/json'
+      // Add Authorization header if using Keycloak/JWT
+      // 'Authorization': `Bearer ${yourTokenHere}`
+    });
+    const body = { role: newRole };
+    return this.http.put<void>(`${this.apiUrl}/${userId}/role`, body, { headers });
   }
 
   getUserDetails(username: string): Observable<UserDTO> {

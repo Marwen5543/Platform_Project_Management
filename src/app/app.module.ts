@@ -15,6 +15,8 @@ import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { MainLayoutComponent } from './Components/acceuil/main-layout/main-layout.component';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { AuthInterceptor } from './interceptors/auth.interceptor';
+import { CommonModule } from '@angular/common';
+import { ManageUsersComponent } from './Components/acceuil/Admin/manage-users/manage-users.component';
 
 @NgModule({
   declarations: [
@@ -24,7 +26,6 @@ import { AuthInterceptor } from './interceptors/auth.interceptor';
     HeaderComponent,
     ProfileComponent,
     MainLayoutComponent,
-    
   ],
   imports: [
     BrowserModule,
@@ -34,7 +35,9 @@ import { AuthInterceptor } from './interceptors/auth.interceptor';
     RouterModule,
     AppRoutingModule,
     BrowserAnimationsModule,
-    MatSnackBarModule
+    MatSnackBarModule,
+    ManageUsersComponent,
+    CommonModule
 
   ],
   providers: [ {

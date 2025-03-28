@@ -1,0 +1,158 @@
+/* Container */
+.manage-users-container {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+    background-color: #fff;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
+  h2 {
+    color: #d32f2f;
+    font-size: 28px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  /* Table Wrapper for Scrolling */
+  .table-wrapper {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Table */
+  .users-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: 'Arial', sans-serif;
+  }
+  
+  .users-table thead th {
+    background-color: #d32f2f;
+    color: #fff;
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 14px;
+    text-transform: uppercase;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    border-bottom: 2px solid #b71c1c;
+  }
+  
+  .users-table tbody .main-row {
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+  
+  .users-table tbody .main-row:hover {
+    background-color: #ffebee;
+  }
+  
+  .users-table td {
+    padding: 12px 15px;
+    font-size: 14px;
+    color: #333;
+    vertical-align: middle;
+  }
+  
+  .toggle-icon i {
+    transition: transform 0.3s ease;
+  }
+  
+  .toggle-icon i.rotate {
+    transform: rotate(90deg);
+  }
+  
+  /* Details Row */
+  .details-row {
+    background-color: #fafafa;
+  }
+  
+  .details-content {
+    padding: 15px;
+    border-top: 1px solid #e0e0e0;
+  }
+  
+  .details-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 10px;
+    font-size: 13px;
+  }
+  
+  .details-grid div {
+    padding: 5px 0;
+  }
+  
+  .details-grid strong {
+    color: #d32f2f;
+  }
+  
+  /* Select */
+  select {
+    padding: 6px 10px;
+    border: 1px solid #d32f2f;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #d32f2f;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  
+  select:hover, select:focus {
+    border-color: #b71c1c;
+    outline: none;
+  }
+  
+  /* Image */
+  .user-image {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid #d32f2f;
+    vertical-align: middle;
+    margin-left: 5px;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .manage-users-container {
+      padding: 10px;
+    }
+  
+    h2 {
+      font-size: 24px;
+    }
+  
+    .users-table th, .users-table td {
+      font-size: 12px;
+      padding: 8px 10px;
+    }
+  
+    .details-grid {
+      grid-template-columns: 1fr; /* Stack details on small screens */
+    }
+  
+    .user-image {
+      width: 30px;
+      height: 30px;
+    }
+
+    .profile-title {
+        font-size: 24px;
+        font-weight: 600;
+        color: #333;
+        margin-left: 15px;
+        display: flex;
+        align-items: center;
+      }
+      .profile-icon {
+        font-size: 30px;
+        color: #ff0000; /* Adjust color to fit your theme */
+      }
+  }
