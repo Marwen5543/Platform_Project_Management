@@ -1,0 +1,66 @@
+<!-- leave-request.component.html -->
+<div class="leave-request-container">
+  <mat-card class="form-card">
+    <mat-card-header>
+      <mat-card-title>New Leave Request</mat-card-title>
+      <mat-card-subtitle>Select your leave dates and type</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <form [formGroup]="leaveForm" (ngSubmit)="onSubmit()">
+        <div class="form-grid">
+          <!-- Date Range Picker -->
+          <mat-form-field appearance="fill" class="date-picker">
+            <mat-label>Leave Dates</mat-label>
+            <mat-date-range-input [rangePicker]="rangePicker" [formGroup]="rangeForm">
+              <input matStartDate formControlName="start" placeholder="Start date">
+              <input matEndDate formControlName="end" placeholder="End date">
+            </mat-date-range-input>
+            <mat-datepicker-toggle matSuffix [for]="rangePicker"></mat-datepicker-toggle>
+            <mat-date-range-picker #rangePicker></mat-date-range-picker>
+          </mat-form-field>
+
+          <!-- Leave Type Selection -->
+          <mat-form-field appearance="fill">
+            <mat-label>Leave Type</mat-label>
+            <mat-select formControlName="type">
+              <mat-option *ngFor="let type of leaveTypes" [value]="type">
+                {{ type }}
+              </mat-option>
+            </mat-select>
+            <mat-icon matSuffix>event_available</mat-icon>
+          </mat-form-field>
+
+          <!-- Reason Textarea -->
+          <mat-form-field appearance="fill" class="full-width">
+            <mat-label>Reason for Leave</mat-label>
+            <textarea matInput formControlName="reason" rows="4"></textarea>
+            <mat-icon matSuffix>description</mat-icon>
+          </mat-form-field>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="summary" *ngIf="leaveForm.value.start && leaveForm.value.end">
+          <h3>Leave Summary:</h3>
+          <p>
+            <mat-icon>date_range</mat-icon>
+            {{ calculateTotalDays() }} days ({{ leaveForm.value.start | date:'mediumDate' }} - {{ leaveForm.value.end | date:'mediumDate' }})
+          </p>
+          <p *ngIf="leaveForm.value.type">
+            <mat-icon>category</mat-icon>
+            {{ leaveForm.value.type }}
+          </p>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="button-row">
+          <button mat-raised-button color="primary" type="submit" [disabled]="!leaveForm.valid || isLoading">
+            <mat-icon>send</mat-icon>
+            {{ isLoading ? 'Submitting...' : 'Submit Request' }}
+            <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
+          </button>
+        </div>
+      </form>
+    </mat-card-content>
+  </mat-card>
+</div>

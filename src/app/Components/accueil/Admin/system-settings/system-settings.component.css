@@ -1,0 +1,154 @@
+/* system-settings.component.css */
+
+/* Define CSS Variables for Theming */
+:root {
+  --primary-color: #d32f2f; /* Default red theme */
+  --background-color: #fff;
+  --text-color: #333;
+  --card-background: #fff;
+  --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --font-size: 14px;
+}
+
+/* Dark Mode */
+.dark-mode {
+  --background-color: #1a1d24;
+  --text-color: #e0e0e0;
+  --card-background: #2a2d34;
+  --card-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* Container */
+.system-settings-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 20px auto;
+  background-color: var(--background-color);
+  color: var(--text-color);
+  font-size: var(--font-size);
+}
+
+.system-settings-container h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-color);
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+}
+
+/* Section */
+.settings-section {
+  margin-bottom: 30px;
+  background-color: var(--card-background);
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: var(--card-shadow);
+}
+
+.settings-section h3 {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-bottom: 15px;
+  display: flex;
+  align-items: center;
+}
+
+.settings-section h3 mat-icon {
+  margin-right: 10px;
+}
+
+/* Setting Item */
+.setting-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+}
+
+.setting-item mat-slide-toggle,
+.setting-item mat-form-field {
+  margin-right: 20px;
+}
+
+.setting-description {
+  font-size: 13px;
+  color: #777;
+  flex: 1;
+}
+
+/* Theme Preview */
+.theme-option {
+  display: flex;
+  align-items: center;
+}
+
+.theme-preview {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  margin-right: 8px;
+  display: inline-block;
+}
+
+/* Action Buttons */
+.action-buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.action-buttons button {
+  border-radius: 4px;
+}
+
+.action-buttons mat-raised-button {
+  background-color: var(--primary-color);
+  color: #fff;
+}
+
+.action-buttons mat-raised-button:hover {
+  background-color: #b71c1c;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .system-settings-container {
+    padding: 10px;
+    margin: 10px auto;
+  }
+
+  .system-settings-container h2 {
+    font-size: 22px;
+  }
+
+  .settings-section {
+    padding: 15px;
+  }
+
+  .settings-section h3 {
+    font-size: 16px;
+  }
+
+  .setting-item {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .setting-item mat-slide-toggle,
+  .setting-item mat-form-field {
+    margin-right: 0;
+    margin-bottom: 10px;
+  }
+
+  .setting-description {
+    margin-top: 5px;
+  }
+
+  .action-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+}

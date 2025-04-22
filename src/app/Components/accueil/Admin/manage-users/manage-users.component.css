@@ -1,0 +1,239 @@
+/* manage-users.component.css - Simpler Styling */
+
+/* Container */
+.manage-users-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 20px auto;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.profile-header {
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+}
+
+.profile-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  display: flex;
+  align-items: center;
+}
+
+.profile-icon {
+  font-size: 30px;
+  color: #d32f2f;
+  margin-right: 10px;
+}
+
+/* Table Wrapper for Scrolling */
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Table */
+.users-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Arial', sans-serif;
+}
+
+.users-table thead th {
+  background-color: #d32f2f;
+  color: #fff;
+  padding: 10px 15px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  border-bottom: 2px solid #b71c1c;
+}
+
+/* Center the "Actions" column header and cells */
+.users-table th:last-child,
+.users-table td:last-child {
+  text-align: center;
+}
+
+.users-table tbody .main-row {
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.users-table tbody .main-row:hover {
+  background-color: #ffebee;
+}
+
+.users-table td {
+  padding: 10px 15px;
+  font-size: 14px;
+  color: #333;
+  vertical-align: middle;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.toggle-icon i {
+  transition: transform 0.3s ease;
+}
+
+.toggle-icon i.rotate {
+  transform: rotate(90deg);
+}
+
+/* Details Row */
+.details-row {
+  background-color: #fafafa;
+}
+
+.details-content {
+  padding: 15px;
+  border-top: 1px solid #e0e0e0;
+}
+
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+  font-size: 13px;
+}
+
+.details-grid div {
+  padding: 5px 0;
+}
+
+.details-grid strong {
+  color: #d32f2f;
+}
+
+/* Select */
+.role-change-container {
+  display: flex;
+  align-items: center;
+}
+
+.role-select {
+  padding: 6px 10px;
+  border: 1px solid #d32f2f;
+  border-radius: 4px;
+  background-color: #fff;
+  color: #d32f2f;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.role-select:hover,
+.role-select:focus {
+  border-color: #b71c1c;
+  outline: none;
+}
+
+.role-select:disabled {
+  background-color: #f0f0f0;
+  color: #999;
+  border-color: #ccc;
+  cursor: not-allowed;
+}
+
+/* Spinner Container */
+.spinner-container {
+  margin-left: 10px;
+  display: flex;
+  align-items: center;
+}
+
+/* Image */
+.user-image {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid #d32f2f;
+  vertical-align: middle;
+  margin-left: 5px;
+}
+
+/* No Users Message */
+.no-users {
+  padding: 20px;
+  text-align: center;
+  font-size: 16px;
+  color: #777;
+}
+
+/* Delete Button Styling */
+.delete-button {
+  background-color: #d32f2f; /* Red background to match theme */
+  border: none; /* Remove border for a cleaner look */
+  border-radius: 4px;
+  padding: 8px; /* Square padding for a compact button */
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px; /* Fixed width to ensure consistency */
+  height: 32px; /* Fixed height to make it square */
+}
+
+.delete-button:hover {
+  background-color: #b71c1c; /* Darker red on hover */
+  transform: scale(1.1); /* Slight scale effect on hover */
+}
+
+.delete-button i {
+  color: #fff; /* White icon color to contrast with red background */
+  font-size: 14px; /* Smaller icon size to fit the button */
+}
+
+.delete-button:hover i {
+  color: #fff; /* Ensure icon stays white on hover */
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .manage-users-container {
+    padding: 10px;
+    margin: 10px auto;
+  }
+
+  .profile-title {
+    font-size: 22px;
+    margin-left: 0;
+  }
+
+  .profile-icon {
+    font-size: 26px;
+  }
+
+  .users-table th,
+  .users-table td {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+
+  .details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .user-image {
+    width: 30px;
+    height: 30px;
+  }
+
+  .delete-button {
+    width: 28px; /* Slightly smaller on mobile */
+    height: 28px;
+    padding: 6px;
+  }
+
+  .delete-button i {
+    font-size: 12px; /* Smaller icon on mobile */
+  }
+}

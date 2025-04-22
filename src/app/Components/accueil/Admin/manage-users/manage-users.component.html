@@ -1,0 +1,94 @@
+<!-- manage-users.component.html -->
+<div class="manage-users-container">
+  <app-header [user]="user"></app-header>
+
+  <div class="profile-header">
+    <h1 class="profile-title">
+      <i class="fas fa-user-shield profile-icon"></i>
+      Manage Users
+    </h1>
+  </div>
+
+  <div class="loading" *ngIf="isLoading">
+    <p>Loading users...</p>
+  </div>
+
+  <div class="error-message" *ngIf="errorMessage && !isLoading">
+    <p>{{ errorMessage }}</p>
+  </div>
+
+  <div class="table-wrapper" *ngIf="!isLoading && users.length > 0">
+    <table class="users-table">
+      <thead>
+        <tr>
+          <th></th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Change Role</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <ng-container *ngFor="let user of users; let i = index">
+          <tr class="main-row" (click)="toggleDetails(i)" [ngClass]="{'expanded': expandedRows[i]}">
+            <td class="toggle-icon">
+              <i class="fas fa-chevron-right" [ngClass]="{'rotate': expandedRows[i]}"></i>
+            </td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.email }}</td>
+            <td>{{ user.role }}</td>
+            <td>
+              <div class="role-change-container">
+                <select
+  [ngModel]="user.role"
+  (ngModelChange)="changeUserRole(user.userId, $event)"
+  (click)="$event.stopPropagation()"
+  [disabled]="!canChangeRole(user) || isRoleBeingChanged(user.userId)"
+  class="role-select">
+  <option *ngFor="let role of userRoles" 
+          [value]="role"
+          [disabled]="!isRoleAssignable(role) || 
+                     (isCurrentUser(user) && currentUserRole === UserRole.SUPER_ADMIN)">
+    {{ getRoleDisplayName(role) }}
+  </option>
+</select>
+                <div class="spinner-container" *ngIf="isRoleBeingChanged(user.userId)">
+                  <mat-spinner diameter="16"></mat-spinner>
+                </div>
+              </div>
+            </td>
+            <td>
+              <button *ngIf="(currentUserRole === UserRole.ADMIN || currentUserRole === UserRole.SUPER_ADMIN) && !isCurrentUser(user)"
+        class="delete-button"
+        (click)="deleteUser(user.userId); $event.stopPropagation()">
+  <i class="fas fa-trash-alt"></i>
+</button>
+            </td>
+          </tr>
+          <tr class="details-row" *ngIf="expandedRows[i]" [@slideDown]>
+            <td colspan="6">
+              <div class="details-content">
+                <div class="details-grid">
+                  <div><strong>User ID:</strong> {{ user.userId }}</div>
+                  <div><strong>Full Name:</strong> {{ (user.firstName + ' ' + user.lastName) || 'N/A' }}</div>
+                  <div><strong>Status:</strong> {{ user.status }}</div>
+                  <div><strong>Phone:</strong> {{ user.phone || 'N/A' }}</div>
+                  <div><strong>Address:</strong> {{ user.address || 'N/A' }}</div>
+                  <div><strong>Hire Date:</strong> {{ user.hireDate ? (user.hireDate | date: 'yyyy-MM-dd') : 'N/A' }}</div>
+                  <div><strong>Department ID:</strong> {{ user.departmentId ?? 'N/A' }}</div>
+                  <div><strong>Manager ID:</strong> {{ user.managerId ?? 'N/A' }}</div>
+                  <div><strong>Position:</strong> {{ user.position || 'N/A' }}</div>
+                </div>
+              </div>
+            </td>
+          </tr>
+        </ng-container>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="no-users" *ngIf="!isLoading && users.length === 0 && !errorMessage">
+    <p>No users available.</p>
+  </div>
+</div>

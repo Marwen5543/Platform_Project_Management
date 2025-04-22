@@ -1,6 +1,5 @@
-// keycloak.service.ts
 import { Injectable } from '@angular/core';
-import Keycloak from 'keycloak-js';
+import Keycloak, { KeycloakProfile } from 'keycloak-js';
 import { keycloakConfig } from '../Config/keycloak-config';
 import { BehaviorSubject, Observable, from } from 'rxjs';
 import { jwtDecode } from 'jwt-decode';
@@ -16,19 +15,21 @@ interface DecodedToken {
 }
 
 @Injectable({ providedIn: 'root' })
-export class KeycloakService  {
-  private keycloak: any;
+export class KeycloakService {
+  private keycloak: Keycloak.KeycloakInstance;
   private authSubject = new BehaviorSubject<boolean>(false);
   private initializedSubject = new BehaviorSubject<boolean>(false);
   private userProfile = new BehaviorSubject<DecodedToken>({});
   private refreshInterval?: number;
 
   constructor(private router: Router) {
-    this.keycloak = new (Keycloak as any)(keycloakConfig);
+    console.log('Keycloak config:', keycloakConfig); // Log config at construction
+    this.keycloak = new Keycloak(keycloakConfig);
     this.initializeAuth();
   }
 
-  // Public API Methods
+
+  
   getUsername(): string {
     return this.userProfile.value.preferred_username || 'Utilisateur';
   }
@@ -41,21 +42,40 @@ export class KeycloakService  {
     return this.userProfile.value.email || '';
   }
 
+  // In keycloak.service.ts
   getRole(): string {
-    const roles = this.userProfile.value.realm_access?.roles || ['EMPLOYEE'];
-    return roles[0];
+    if (!this.keycloak.authenticated) {
+      console.warn('Keycloak not authenticated');
+      return '';
+    }
+    
+    const roles = this.keycloak.realmAccess?.roles || [];
+    console.log('All roles from token:', roles);
+    
+    // Check for SUPER_ADMIN first
+    if (roles.includes('SUPER_ADMIN')) {
+      console.log('Found SUPER_ADMIN role');
+      return 'SUPER_ADMIN';
+    }
+    
+    // Rest of role hierarchy
+    if (roles.includes('ADMIN')) return 'ADMIN';
+    if (roles.includes('MANAGER')) return 'MANAGER';
+    if (roles.includes('HR')) return 'HR';
+    
+    return 'EMPLOYEE';
   }
 
-  getRoles(): string[] {
-    return this.userProfile.value.realm_access?.roles || ['EMPLOYEE'];
-  }
+getRoles(): string[] {
+  return this.keycloak.realmAccess?.roles || [];
+}
 
   isAuthenticated(): boolean {
-    return this.keycloak?.authenticated || false;
+    return this.keycloak.authenticated || false;
   }
 
-  getToken(): string {
-    return this.keycloak?.token || '';
+  getToken(): Promise<string> {
+    return this.keycloak.updateToken(5).then(() => this.keycloak.token || '');
   }
 
   isInitialized(): Observable<boolean> {
@@ -66,7 +86,6 @@ export class KeycloakService  {
     return this.authSubject.asObservable();
   }
 
-  // Authentication Flow Methods
   async canActivate(): Promise<boolean | UrlTree> {
     if (!this.initializedSubject.value) {
       await this.initializedSubject.toPromise();
@@ -74,43 +93,49 @@ export class KeycloakService  {
     return this.isAuthenticated() || this.router.parseUrl('/login');
   }
 
-  login(): void {
-    this.keycloak.login();
+  login(): Promise<void> {
+    return this.keycloak.login();
   }
 
-  logout(): void {
+  logout(): Promise<void> {
     if (this.refreshInterval) {
       window.clearInterval(this.refreshInterval);
     }
-    this.keycloak.logout({ redirectUri: window.location.origin });
+    return this.keycloak.logout({ redirectUri: window.location.origin });
   }
 
-  // Private Implementation
   private async initializeAuth(): Promise<void> {
     try {
+      console.log('Attempting Keycloak initialization with config:', keycloakConfig);
       const authenticated = await this.keycloak.init({
         onLoad: 'login-required',
         checkLoginIframe: false,
         pkceMethod: 'S256'
       });
-
+      console.log('Keycloak initialized successfully, authenticated:', authenticated);
       this.initializedSubject.next(true);
       this.authSubject.next(authenticated);
 
       if (authenticated) {
+        console.log('Token after init:', this.keycloak.token);
         this.updateUserProfile();
         this.setupTokenRefresh();
       }
     } catch (error) {
-      console.error('Keycloak initialization failed:', error);
+      console.error('Keycloak initialization failed:', error || 'No additional error details available');
+      console.error('Keycloak instance state:', this.keycloak);
       this.handleInitializationError();
     }
   }
 
   private updateUserProfile(): void {
     try {
+      if (!this.keycloak.token) {
+        console.warn('No token available to decode');
+        return;
+      }
       const decoded = jwtDecode<DecodedToken>(this.keycloak.token);
-      console.log("Decoded token:", decoded); // Log the token content
+      console.log('Decoded token:', decoded);
       this.userProfile.next(decoded);
     } catch (error) {
       console.error('Error decoding token:', error);
@@ -123,30 +148,27 @@ export class KeycloakService  {
       this.keycloak.updateToken(30)
         .then((refreshed: boolean) => {
           if (refreshed) {
+            console.log('Token refreshed, new token:', this.keycloak.token);
             this.updateUserProfile();
-            console.log('Token refreshed');
+          } else {
+            console.log('Token still valid, no refresh needed');
           }
         })
-        .catch(() => this.logout());
+        .catch((error) => {
+          console.error('Token refresh failed:', error);
+          this.logout();
+        });
     }, 30000);
   }
 
   private handleInitializationError(): void {
+    console.log('Handling initialization error, redirecting to /error');
     this.initializedSubject.next(true);
     this.authSubject.next(false);
     this.router.navigate(['/error']);
   }
 
-  loadUserProfile(forceReload: boolean = false): Promise<Keycloak.KeycloakProfile> {
-    return new Promise((resolve, reject) => {
-      if (this.keycloak && this.keycloak.authenticated) {
-        this.keycloak.loadUserProfile()
-          .then((profile: Keycloak.KeycloakProfile) => resolve(profile))
-          .catch((error: any) => reject(error));
-      } else {
-        reject('User not authenticated');
-      }
-    });
+  loadUserProfile(forceReload: boolean = false): Promise<KeycloakProfile> {
+    return this.keycloak.loadUserProfile();
   }
-  
 }

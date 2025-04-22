@@ -1,0 +1,25 @@
+.document-request-container {
+    max-width: 500px;
+    margin: 2rem auto;
+    padding: 1rem;
+  }
+  
+  h2 {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+  
+  .document-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  mat-form-field {
+    width: 100%;
+  }
+  
+  button {
+    align-self: center;
+    padding: 0.5rem 2rem;
+  }

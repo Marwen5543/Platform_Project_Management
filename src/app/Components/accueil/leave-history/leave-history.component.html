@@ -1,0 +1,65 @@
+<!-- src/app/components/leave-history/leave-history.component.html -->
+<div class="leave-history-container">
+    <h2>Leave History</h2>
+    <mat-table [dataSource]="dataSource" class="mat-elevation-z8">
+      <!-- Start Date Column -->
+      <ng-container matColumnDef="startDate">
+        <mat-header-cell *matHeaderCellDef>Start Date</mat-header-cell>
+        <mat-cell *matCellDef="let leave">{{ formatDate(leave.startDate) }}</mat-cell>
+      </ng-container>
+  
+      <!-- End Date Column -->
+      <ng-container matColumnDef="endDate">
+        <mat-header-cell *matHeaderCellDef>End Date</mat-header-cell>
+        <mat-cell *matCellDef="let leave">{{ formatDate(leave.endDate) }}</mat-cell>
+      </ng-container>
+  
+      <!-- Type Column -->
+      <ng-container matColumnDef="type">
+        <mat-header-cell *matHeaderCellDef>Type</mat-header-cell>
+        <mat-cell *matCellDef="let leave">{{ leave.type }}</mat-cell>
+      </ng-container>
+  
+      <!-- Status Column -->
+      <ng-container matColumnDef="status">
+        <mat-header-cell *matHeaderCellDef>Status</mat-header-cell>
+        <mat-cell *matCellDef="let leave">
+          <span [ngClass]="getStatusClass(leave.status)">{{ leave.status }}</span>
+        </mat-cell>
+      </ng-container>
+  
+      <!-- Reason Column -->
+      <ng-container matColumnDef="reason">
+        <mat-header-cell *matHeaderCellDef>Reason</mat-header-cell>
+        <mat-cell *matCellDef="let leave">{{ leave.reason }}</mat-cell>
+      </ng-container>
+  
+      <!-- Actions Column -->
+      <ng-container matColumnDef="actions">
+        <mat-header-cell *matHeaderCellDef>Actions</mat-header-cell>
+        <mat-cell *matCellDef="let leave">
+          <div *ngIf="isHR && leave.status === 'PENDING'" class="action-buttons">
+            <button mat-icon-button class="approve-button" (click)="approveLeave(leave.id)" matTooltip="Approve">
+              <mat-icon>check_circle</mat-icon>
+            </button>
+            <button mat-icon-button class="reject-button" (click)="openRejectDialog(leave)" matTooltip="Reject">
+              <mat-icon>cancel</mat-icon>
+            </button>
+          </div>
+          <div *ngIf="leave.status !== 'PENDING' || !isHR" class="status-display">
+            <mat-icon *ngIf="leave.status === 'APPROVED'" class="status-icon approved">check_circle</mat-icon>
+            <mat-icon *ngIf="leave.status === 'REJECTED'" class="status-icon rejected">cancel</mat-icon>
+            <mat-icon *ngIf="leave.status === 'PENDING'" class="status-icon pending">hourglass_empty</mat-icon>
+            <mat-icon *ngIf="leave.status === 'CANCELLED'" class="status-icon cancelled">block</mat-icon>
+          </div>
+        </mat-cell>
+      </ng-container>
+  
+      <mat-header-row *matHeaderRowDef="displayedColumns"></mat-header-row>
+      <mat-row *matRowDef="let row; columns: displayedColumns;"></mat-row>
+    </mat-table>
+  
+    <div *ngIf="dataSource.data.length === 0" class="no-data">
+      No leave history available.
+    </div>
+  </div>

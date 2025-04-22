@@ -1,0 +1,264 @@
+/* src/app/document-history/document-history.component.css */
+
+/* Container */
+.document-history-container {
+  padding: 20px;
+  max-width: 1200px;
+  margin: 20px auto;
+  background: linear-gradient(180deg, #ffffff, #f9f9f9);
+  border-radius: 12px;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
+  transition: transform 0.3s ease;
+}
+
+.document-history-container:hover {
+  transform: translateY(-2px);
+}
+
+/* Header */
+h2 {
+  font-size: 26px;
+  font-weight: 700;
+  color: #333;
+  text-align: center;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+h2::before {
+  content: '\f1c1'; /* Font Awesome file icon */
+  font-family: 'Font Awesome 5 Free';
+  font-weight: 900;
+  font-size: 32px;
+  color: #d32f2f;
+  margin-right: 12px;
+  animation: pulse 2s infinite;
+}
+
+/* Table Wrapper for Scrolling */
+.table-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  background: #fff;
+  border-radius: 8px;
+}
+
+/* Table */
+table.mat-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Arial', sans-serif;
+  background: #fff;
+}
+
+/* Table Headers */
+th.mat-header-cell {
+  background: linear-gradient(45deg, #d32f2f, #e53935);
+  color: #fff;
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  font-size: 14px;
+  text-transform: uppercase;
+  border-bottom: 3px solid #b71c1c;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* Center the "Actions" column header and cells */
+th.mat-header-cell:last-child,
+td.mat-cell:last-child {
+  text-align: center;
+}
+
+/* Table Cells */
+td.mat-cell {
+  padding: 12px 16px;
+  font-size: 14px;
+  color: #333;
+  vertical-align: middle;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+/* Table Rows */
+tr.mat-row {
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+tr.mat-row:hover {
+  background-color: #ffebee; /* Light red hover effect */
+  transform: translateX(2px);
+}
+
+/* Status Badges */
+.status-approved,
+.status-generated {
+  color: #2e7d32; /* Green for approved/generated */
+  background: #e8f5e9;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-pending {
+  color: #f57c00; /* Orange for pending */
+  background: #fff3e0;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-requested {
+  color: #0288d1; /* Blue for requested */
+  background: #e3f2fd;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-failed {
+  color: #d32f2f; /* Red for failed */
+  background: #ffebee;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+/* Download Button */
+button.mat-raised-button[color="primary"] {
+  background: #d32f2f;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 20px;
+  font-size: 14px;
+  font-weight: 500;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
+}
+
+button.mat-raised-button[color="primary"]:hover {
+  background: #b71c1c; /* Darker red on hover */
+  transform: scale(1.05);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+button.mat-raised-button[color="primary"]:disabled {
+  background: #f0f0f0;
+  color: #999;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Pending Text */
+.pending-text {
+  color: #f57c00; /* Orange to match pending status */
+  font-size: 13px;
+  font-weight: 500;
+  background: #fff3e0;
+  padding: 4px 8px;
+  border-radius: 12px;
+}
+
+/* Loading Spinner */
+mat-spinner {
+  margin: 20px auto;
+  color: #d32f2f;
+}
+
+/* No Requests Message */
+.no-requests {
+  padding: 24px;
+  text-align: center;
+  font-size: 16px;
+  color: #777;
+  background: #fafafa;
+  border-radius: 8px;
+  margin-top: 16px;
+}
+
+/* Animations */
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+  100% { transform: scale(1); }
+}
+
+/* Accessibility */
+th.mat-header-cell:focus,
+td.mat-cell:focus,
+button.mat-raised-button:focus {
+  outline: 2px solid #d32f2f;
+  outline-offset: 2px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .document-history-container {
+    padding: 12px;
+    margin: 12px auto;
+  }
+
+  h2 {
+    font-size: 22px;
+  }
+
+  h2::before {
+    font-size: 28px;
+  }
+
+  th.mat-header-cell,
+  td.mat-cell {
+    font-size: 12px;
+    padding: 8px 10px;
+  }
+
+  button.mat-raised-button {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+
+  .pending-text {
+    font-size: 12px;
+    padding: 3px 6px;
+  }
+
+  .no-requests {
+    font-size: 14px;
+    padding: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .table-wrapper {
+    font-size: 10px;
+  }
+
+  th.mat-header-cell,
+  td.mat-cell {
+    padding: 6px 8px;
+  }
+
+  button.mat-raised-button {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  .status-approved,
+  .status-pending,
+  .status-requested,
+  .status-failed {
+    font-size: 10px;
+    padding: 3px 6px;
+  }
+}

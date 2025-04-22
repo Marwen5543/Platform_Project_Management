@@ -1,0 +1,191 @@
+<div class="system-settings-container" [class.dark-mode]="isDarkMode">
+  <!-- Add the header component -->
+  <app-header [user]="user"></app-header>
+
+  <h2>System Settings</h2>
+
+  <!-- Display Settings -->
+  <section class="settings-section">
+    <h3><mat-icon>display_settings</mat-icon> Display</h3>
+    <div class="setting-item">
+      <mat-slide-toggle [(ngModel)]="isDarkMode" (ngModelChange)="applyTheme()">Dark Mode</mat-slide-toggle>
+      <span class="setting-description">Switch to a darker theme for better visibility in low-light environments.</span>
+    </div>
+    <div class="setting-item">
+      <mat-form-field>
+        <mat-label>Theme Color</mat-label>
+        <mat-select [(ngModel)]="selectedTheme" (ngModelChange)="applyTheme()">
+          <mat-option *ngFor="let theme of availableThemes" [value]="theme.value">
+            <div class="theme-option">
+              <span class="theme-preview" [style.background]="theme.color"></span>
+              {{theme.name}}
+            </div>
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+      <span class="setting-description">Choose a color theme for the application.</span>
+    </div>
+    <div class="setting-item">
+      <mat-form-field>
+        <mat-label>Font Size</mat-label>
+        <mat-select [(ngModel)]="fontSize" (ngModelChange)="applyTheme()">
+          <mat-option *ngFor="let size of fontSizes" [value]="size">{{size}}px</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <span class="setting-description">Adjust the text size for better readability.</span>
+    </div>
+    <div class="setting-item">
+      <mat-slide-toggle [(ngModel)]="animationsEnabled">Enable Animations</mat-slide-toggle>
+      <span class="setting-description">Turn on/off animations for a smoother or faster experience.</span>
+    </div>
+  </section>
+
+  <!-- Accessibility Settings -->
+  <section class="settings-section">
+    <h3><mat-icon>accessibility</mat-icon> Accessibility</h3>
+    <div class="setting-item">
+      <mat-slide-toggle [(ngModel)]="highContrastMode">High Contrast Mode</mat-slide-toggle>
+      <span class="setting-description">Increase contrast for better visibility.</span>
+    </div>
+    <div class="setting-item">
+      <mat-slide-toggle [(ngModel)]="screenReaderSupport">Screen Reader Support</mat-slide-toggle>
+      <span class="setting-description">Optimize the app for screen readers.</span>
+    </div>
+  </section>
+
+  <!-- Language & Regional -->
+  <section class="settings-section">
+    <h3><mat-icon>language</mat-icon> Language & Region</h3>
+    <div class="setting-item">
+      <mat-form-field>
+        <mat-label>Language</mat-label>
+        <mat-select [(ngModel)]="selectedLanguage">
+          <mat-option *ngFor="let lang of availableLanguages" [value]="lang.code">
+            {{lang.name}} ({{lang.nativeName}})
+          </mat-option>
+        </mat-select>
+      </mat-form-field>
+      <span class="setting-description">Select your preferred language.</span>
+    </div>
+    <div class="setting-item">
+      <mat-form-field>
+        <mat-label>Date Format</mat-label>
+        <mat-select [(ngModel)]="dateFormat">
+          <mat-option value="MM/dd/yyyy">MM/DD/YYYY (12/31/2023)</mat-option>
+          <mat-option value="dd/MM/yyyy">DD/MM/YYYY (31/12/2023)</mat-option>
+          <mat-option value="yyyy-MM-dd">YYYY-MM-DD (2023-12-31)</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <span class="setting-description">Choose how dates are displayed.</span>
+    </div>
+    <div class="setting-item">
+      <mat-form-field>
+        <mat-label>Time Format</mat-label>
+        <mat-select [(ngModel)]="timeFormat">
+          <mat-option value="12">12-hour (3:45 PM)</mat-option>
+          <mat-option value="24">24-hour (15:45)</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <span class="setting-description">Choose how time is displayed.</span>
+    </div>
+    <div class="setting-item">
+      <mat-form-field>
+        <mat-label>Time Zone</mat-label>
+        <mat-select [(ngModel)]="timeZone">
+          <mat-option *ngFor="let tz of timeZones" [value]="tz.value">{{tz.label}}</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <span class="setting-description">Set your local time zone.</span>
+    </div>
+  </section>
+
+  <!-- Notification Settings -->
+  <section class="settings-section">
+    <h3><mat-icon>notifications</mat-icon> Notifications</h3>
+    <div class="setting-item">
+      <mat-slide-toggle [(ngModel)]="emailNotifications">Email Notifications</mat-slide-toggle>
+      <span class="setting-description">Receive notifications via email.</span>
+    </div>
+    <div class="setting-item">
+      <mat-slide-toggle [(ngModel)]="pushNotifications">Push Notifications</mat-slide-toggle>
+      <span class="setting-description">Receive notifications on your device.</span>
+    </div>
+    <div class="setting-item">
+      <mat-slide-toggle [(ngModel)]="soundEnabled">Notification Sounds</mat-slide-toggle>
+      <span class="setting-description">Play a sound when a notification is received.</span>
+    </div>
+    <div class="setting-item">
+      <mat-form-field>
+        <mat-label>Notification Frequency</mat-label>
+        <mat-select [(ngModel)]="notificationFrequency">
+          <mat-option value="instant">Instant</mat-option>
+          <mat-option value="hourly">Hourly Digest</mat-option>
+          <mat-option value="daily">Daily Digest</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <span class="setting-description">How often to receive notifications.</span>
+    </div>
+  </section>
+
+  <!-- Performance Settings -->
+  <section class="settings-section">
+    <h3><mat-icon>speed</mat-icon> Performance</h3>
+    <div class="setting-item">
+      <mat-slide-toggle [(ngModel)]="lowDataMode">Low Data Mode</mat-slide-toggle>
+      <span class="setting-description">Reduce data usage for slower networks.</span>
+    </div>
+    <div class="setting-item">
+      <mat-slide-toggle [(ngModel)]="backgroundSync">Background Sync</mat-slide-toggle>
+      <span class="setting-description">Allow the app to sync data in the background.</span>
+    </div>
+  </section>
+
+  <!-- Privacy & Security -->
+  <section class="settings-section">
+    <h3><mat-icon>security</mat-icon> Privacy & Security</h3>
+    <div class="setting-item">
+      <mat-slide-toggle [(ngModel)]="analyticsEnabled">Allow Analytics</mat-slide-toggle>
+      <span class="setting-description">Share usage data to improve the app.</span>
+    </div>
+    <div class="setting-item">
+      <mat-slide-toggle [(ngModel)]="personalizedAds">Personalized Ads</mat-slide-toggle>
+      <span class="setting-description">Allow ads tailored to your interests.</span>
+    </div>
+    <div class="setting-item">
+      <mat-slide-toggle [(ngModel)]="locationServices">Location Services</mat-slide-toggle>
+      <span class="setting-description">Allow the app to access your location.</span>
+    </div>
+    <div class="setting-item">
+      <mat-slide-toggle [(ngModel)]="twoFactorAuth">Two-Factor Authentication</mat-slide-toggle>
+      <span class="setting-description">Add an extra layer of security to your account.</span>
+    </div>
+    <div class="setting-item">
+      <mat-form-field>
+        <mat-label>Session Timeout</mat-label>
+        <mat-select [(ngModel)]="sessionTimeout">
+          <mat-option *ngFor="let timeout of sessionTimeouts" [value]="timeout">{{timeout}} minutes</mat-option>
+        </mat-select>
+      </mat-form-field>
+      <span class="setting-description">Automatically log out after inactivity.</span>
+    </div>
+  </section>
+
+  <!-- Backup & Sync -->
+  <section class="settings-section">
+    <h3><mat-icon>cloud_sync</mat-icon> Backup & Sync</h3>
+    <div class="setting-item">
+      <mat-slide-toggle [(ngModel)]="autoBackup">Auto Backup</mat-slide-toggle>
+      <span class="setting-description">Automatically back up your data.</span>
+    </div>
+    <div class="setting-item">
+      <mat-slide-toggle [(ngModel)]="syncAcrossDevices">Sync Across Devices</mat-slide-toggle>
+      <span class="setting-description">Sync your settings and data across all devices.</span>
+    </div>
+  </section>
+
+  <!-- Action Buttons -->
+  <div class="action-buttons">
+    <button mat-button (click)="resetDefaults()">Reset Defaults</button>
+    <button mat-raised-button color="primary" (click)="saveSettings()">Save Settings</button>
+  </div>
+</div>

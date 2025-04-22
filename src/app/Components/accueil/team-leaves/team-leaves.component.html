@@ -1,0 +1,71 @@
+<div class="team-leaves-container">
+    <h2>Team Leave Requests</h2>
+    
+    <div *ngIf="loading" class="loading-spinner">
+        Loading team leave requests...
+    </div>
+    
+    <div *ngIf="error" class="error-message mat-elevation-z2">
+        <p>{{ error }}</p>
+        <button mat-raised-button color="primary" (click)="retry()">Retry</button>
+    </div>
+
+    <table mat-table [dataSource]="leaves" class="mat-elevation-z8" *ngIf="!loading && !error && leaves.length > 0">
+        <!-- Employee ID Column -->
+        <ng-container matColumnDef="employeeId">
+            <th mat-header-cell *matHeaderCellDef>Employee ID</th>
+            <td mat-cell *matCellDef="let leave">{{ leave.employeeId }}</td>
+        </ng-container>
+
+        <!-- Start Date Column -->
+        <ng-container matColumnDef="startDate">
+            <th mat-header-cell *matHeaderCellDef>Start Date</th>
+            <td mat-cell *matCellDef="let leave">{{ leave.startDate | date:'dd/MM/yyyy' }}</td>
+        </ng-container>
+
+        <!-- End Date Column -->
+        <ng-container matColumnDef="endDate">
+            <th mat-header-cell *matHeaderCellDef>End Date</th>
+            <td mat-cell *matCellDef="let leave">{{ leave.endDate | date:'dd/MM/yyyy' }}</td>
+        </ng-container>
+
+        <!-- Type Column -->
+        <ng-container matColumnDef="type">
+            <th mat-header-cell *matHeaderCellDef>Type</th>
+            <td mat-cell *matCellDef="let leave">{{ leave.type }}</td>
+        </ng-container>
+
+        <!-- Status Column -->
+        <ng-container matColumnDef="status">
+            <th mat-header-cell *matHeaderCellDef>Status</th>
+            <td mat-cell *matCellDef="let leave">{{ leave.status }}</td>
+        </ng-container>
+
+        <!-- Reason Column -->
+        <ng-container matColumnDef="reason">
+            <th mat-header-cell *matHeaderCellDef>Reason</th>
+            <td mat-cell *matCellDef="let leave">{{ leave.reason }}</td>
+        </ng-container>
+
+        <!-- Action Column -->
+        <ng-container matColumnDef="action">
+            <th mat-header-cell *matHeaderCellDef>Action</th>
+            <td mat-cell *matCellDef="let leave">
+                <mat-form-field>
+                    <mat-select [(ngModel)]="leave.status" (selectionChange)="updateStatus(leave, $event.value)">
+                        <mat-option *ngFor="let status of leaveStatuses" [value]="status">
+                            {{ status }}
+                        </mat-option>
+                    </mat-select>
+                </mat-form-field>
+            </td>
+        </ng-container>
+
+        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+    </table>
+
+    <div *ngIf="!loading && !error && leaves.length === 0" class="no-data mat-elevation-z2">
+        <p>No team leave requests available.</p>
+    </div>
+</div>

@@ -1,0 +1,31 @@
+<div class="document-request-container">
+    <h2>Request a Document</h2>
+    <form [formGroup]="documentForm" (ngSubmit)="submitRequest()" class="document-form">
+      <mat-form-field appearance="outline">
+        <mat-label>Document Type</mat-label>
+        <mat-select formControlName="documentType" required>
+          <mat-option *ngFor="let type of documentTypes" [value]="type">
+            {{ type | titlecase }}
+          </mat-option>
+        </mat-select>
+        <mat-error *ngIf="documentForm.get('documentType')?.hasError('required')">
+          Document type is required
+        </mat-error>
+      </mat-form-field>
+  
+      <mat-form-field appearance="outline" *ngIf="selectedType === 'PAYSLIP'">
+        <mat-label>Month/Year (YYYY-MM)</mat-label>
+        <input matInput formControlName="monthYear" placeholder="2025-04">
+        <mat-error *ngIf="documentForm.get('monthYear')?.hasError('required')">
+          Month/Year is required
+        </mat-error>
+        <mat-error *ngIf="documentForm.get('monthYear')?.hasError('pattern')">
+          Format must be YYYY-MM (e.g., 2025-04)
+        </mat-error>
+      </mat-form-field>
+  
+      <button mat-raised-button color="primary" type="submit" [disabled]="documentForm.invalid">
+        Submit Request
+      </button>
+    </form>
+  </div>

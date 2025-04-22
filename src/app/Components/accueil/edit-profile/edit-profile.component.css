@@ -1,0 +1,153 @@
+.edit-profile-section {
+  max-width: 800px;
+  margin: 2rem auto;
+  padding: 1rem;
+}
+
+.edit-profile-title {
+  color: var(--primary-red);
+  font-size: 2rem;
+  margin-bottom: 2rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.edit-profile-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-separator {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  color: #666;
+}
+
+.form-separator fa-icon {
+  font-size: 8px; /* Match the screenshot */
+}
+
+label {
+  font-weight: 500;
+  color: #333;
+}
+
+input, select {
+  padding: 0.75rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+
+input:disabled {
+  background: #f5f5f5;
+  color: #666;
+}
+
+select {
+  background: #fff;
+  cursor: pointer;
+  appearance: none;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24"><path fill="%23333" d="M7 10l5 5 5-5z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 12px;
+}
+
+input.ng-invalid.ng-touched, select.ng-invalid.ng-touched {
+  border-color: #e63946;
+}
+
+.error {
+  color: #e63946;
+  font-size: 0.85rem;
+  margin-top: 0.25rem;
+}
+
+select:focus, input:focus {
+  outline: none;
+  border-color: var(--primary-red);
+  box-shadow: 0 0 0 2px rgba(206, 0, 0, 0.2);
+}
+
+.form-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+}
+
+.save-btn, .cancel-btn {
+  padding: 0.75rem 1.5rem;
+  border: none;
+  border-radius: 8px;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  transition: background 0.3s ease;
+}
+
+.save-btn {
+  background: var(--primary-red);
+  color: var(--pure-white);
+}
+
+.save-btn:hover:not(:disabled) {
+  background: #b30000;
+}
+
+.cancel-btn {
+  background: #f5f5f5;
+  color: #333;
+}
+
+.cancel-btn:hover:not(:disabled) {
+  background: #e0e0e0;
+}
+
+button:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.loading-state {
+  text-align: center;
+  padding: 4rem;
+  color: #666;
+}
+
+.loading-state fa-icon {
+  font-size: 2rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .edit-profile-section {
+    margin: 1rem;
+    padding: 0.5rem;
+  }
+
+  .edit-profile-title {
+    font-size: 1.5rem;
+  }
+
+  .form-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .save-btn, .cancel-btn {
+    width: 100%;
+  }
+}

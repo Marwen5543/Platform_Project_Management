@@ -1,46 +1,48 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
-
 import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
-import { AcceuilComponent } from './Components/acceuil/acceuil.component';
 import { FormsModule } from '@angular/forms';
 import { HTTP_INTERCEPTORS, HttpClientModule } from '@angular/common/http';
-import { KeycloakService } from './Service/KeycloakService';
 import { RouterModule } from '@angular/router';
-import { SidebarComponent } from './Components/acceuil/Sidebar/sidebar.component';
-import { HeaderComponent } from './Components/acceuil/header/header.component';
-import { ProfileComponent } from './Components/acceuil/profile/profile.component';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
-import { MainLayoutComponent } from './Components/acceuil/main-layout/main-layout.component';
 import { MatSnackBarModule } from '@angular/material/snack-bar';
 import { AuthInterceptor } from './interceptors/auth.interceptor';
 import { CommonModule } from '@angular/common';
-import { ManageUsersComponent } from './Components/acceuil/Admin/manage-users/manage-users.component';
+
+// ✅ Correction des chemins après renommage
+import { HeaderComponent } from './Components/accueil/header/header.component'; // Import HeaderComponent
+import { ProfileComponent } from './Components/accueil/profile/profile.component';
+import { MainLayoutComponent } from './Components/accueil/main-layout/main-layout.component';
+import { ManageUsersComponent } from './Components/accueil/Admin/manage-users/manage-users.component';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatTableModule } from '@angular/material/table';
+
+// ✅ Importation correcte du composant standalone AccueilComponent
 
 @NgModule({
   declarations: [
     AppComponent,
-    AcceuilComponent,
-    SidebarComponent,
-    HeaderComponent,
-    ProfileComponent,
-    MainLayoutComponent,
+    MainLayoutComponent, 
+    
   ],
   imports: [
     BrowserModule,
-    AppRoutingModule,
     FormsModule,
     HttpClientModule,
     RouterModule,
     AppRoutingModule,
     BrowserAnimationsModule,
     MatSnackBarModule,
+    CommonModule,
     ManageUsersComponent,
-    CommonModule
-
+    ProfileComponent,
+    HeaderComponent, 
+    MatProgressSpinnerModule,
+    CommonModule,
+    MatTableModule
   ],
-  providers: [ {
+  providers: [{
     provide: HTTP_INTERCEPTORS,
     useClass: AuthInterceptor,
     multi: true

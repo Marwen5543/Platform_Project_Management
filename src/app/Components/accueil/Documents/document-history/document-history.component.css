@@ -1,0 +1,35 @@
+/* document-history.component.css */
+.pending-text {
+    color: #ff9800; /* Orange */
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  
+  .failed-text {
+    color: #f44336; /* Red */
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  
+  .status-approved {
+    color: #4caf50; /* Green */
+  }
+  
+  .status-pending_approval {
+    color: #ff9800; /* Orange */
+  }
+  
+  .status-failed {
+    color: #f44336; /* Red */
+  }
+  
+  .container {
+    padding: 20px;
+  }
+  
+  table {
+    width: 100%;
+    margin-top: 20px;
+  }

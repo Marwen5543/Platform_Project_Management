@@ -1,0 +1,181 @@
+/* src/app/Components/accueil/leave-request/leave-request.component.css */
+.leave-request-container {
+    max-width: 800px;
+    margin: 40px auto;
+    padding: 0 16px;
+  }
+  
+  .form-card {
+    background-color: #FFFFFF;
+    border: 1px solid #D32F2F;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    padding: 24px;
+  }
+  
+  mat-card-header {
+    border-bottom: 2px solid #D32F2F;
+    margin-bottom: 24px;
+  }
+  
+  mat-card-title {
+    font-size: 1.75rem;
+    font-weight: 500;
+    color: #D32F2F;
+  }
+  
+  mat-card-subtitle {
+    font-size: 1rem;
+    color: #666;
+  }
+  
+  .form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 24px;
+  }
+  
+  .date-picker {
+    grid-column: 1 / 3;
+  }
+  
+  .full-width {
+    grid-column: 1 / 3;
+  }
+  
+  mat-form-field {
+    width: 100%;
+  }
+  
+  mat-form-field .mat-form-field-outline {
+    color: #D32F2F;
+  }
+  
+  mat-form-field .mat-form-field-label {
+    color: #D32F2F;
+  }
+  
+  mat-form-field .mat-error {
+    color: #D32F2F;
+    font-size: 0.875rem;
+  }
+  
+  mat-form-field .mat-hint {
+    color: #666;
+  }
+  
+  textarea {
+    resize: vertical;
+    min-height: 80px;
+  }
+  
+  .summary {
+    background-color: #FFF5F5;
+    border-left: 4px solid #D32F2F;
+    padding: 16px;
+    margin: 24px 0;
+    border-radius: 4px;
+  }
+  
+  .summary h3 {
+    font-size: 1.25rem;
+    color: #D32F2F;
+    margin-bottom: 12px;
+  }
+  
+  .summary p {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 1rem;
+    color: #333;
+  }
+  
+  .form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 16px;
+    margin-top: 24px;
+  }
+  
+  button[mat-raised-button] {
+    background-color: #D32F2F;
+    color: #FFFFFF;
+    font-weight: 500;
+    padding: 0 24px;
+    transition: background-color 0.3s;
+  }
+  
+  button[mat-raised-button]:hover {
+    background-color: #B71C1C;
+  }
+  
+  button[mat-raised-button][disabled] {
+    background-color: #E57373;
+    color: #FFF;
+  }
+  
+  button[mat-stroked-button] {
+    border: 1px solid #D32F2F;
+    color: #D32F2F;
+    font-weight: 500;
+    padding: 0 24px;
+    transition: background-color 0.3s;
+  }
+  
+  button[mat-stroked-button]:hover {
+    background-color: #FFF5F5;
+  }
+  
+  mat-spinner {
+    margin-left: 8px;
+  }
+  
+  .loading-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+  }
+  
+  .success-snackbar {
+    background-color: #D32F2F;
+    color: #FFFFFF;
+  }
+  
+  .error-snackbar {
+    background-color: #B71C1C;
+    color: #FFFFFF;
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 600px) {
+    .form-grid {
+      grid-template-columns: 1fr;
+    }
+  
+    .date-picker {
+      grid-column: 1 / 2;
+    }
+  
+    .full-width {
+      grid-column: 1 / 2;
+    }
+  
+    .form-actions {
+      flex-direction: column;
+      gap: 12px;
+    }
+  
+    button[mat-raised-button],
+    button[mat-stroked-button] {
+      width: 100%;
+    }
+  }

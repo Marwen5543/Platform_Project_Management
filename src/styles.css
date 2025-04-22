@@ -1,43 +1,85 @@
+/* style.css */
+
+/* Define CSS Variables */
 :root {
-  --header-height: 64px;
-  --sidebar-width: 260px;
-  --primary-red: #CE0000;
-  --primary-light: rgba(206, 0, 0, 0.08);
-  --text-primary: #2D3748;
-  --background-light: #F7FAFC;
+  --header-height: 64px; /* Kept this as it’s still relevant for the fixed header */
+  --primary-red: #CE0000; /* Your brand’s primary color */
+  --primary-light: rgba(206, 0, 0, 0.08); /* Light variant for hover/backgrounds */
+  --text-primary: #2D3748; /* Primary text color */
+  --background-light: #F7FAFC; /* Light background for the app */
+  --white: #FFFFFF; /* Added for clarity in header and dropdowns */
+  --shadow-sm: 0 2px 10px rgba(0, 0, 0, 0.1); /* Subtle shadow for elevation */
+  --transition-speed: 0.3s; /* For smooth transitions */
 }
 
-/* Shared Layout Styles */
-.app-container {
-  display: grid;
-  grid-template-areas:
-    "header header"
-    "sidebar main";
-  grid-template-columns: var(--sidebar-width) auto;
-  grid-template-rows: var(--header-height) auto;
-  height: 100vh;
+/* Reset and Base Styles */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: Roboto, "Helvetica Neue", sans-serif;
+  background-color: var(--background-light);
+  color: var(--text-primary);
 }
 
-.header {
-  grid-area: header;
+/* Import Angular Material Theme */
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
+/* Global Styles */
+* {
+  box-sizing: border-box;
+}
+
+/* Main Content Area */
+main {
+  padding-top: var(--header-height); /* Offset for fixed header */
+  min-height: calc(100vh - var(--header-height)); /* Ensure content fills viewport */
+  background-color: var(--background-light);
+}
+
+/* Links and Buttons */
+a, button {
+  cursor: pointer;
+  transition: all var(--transition-speed) ease;
+}
+
+a:hover, button:hover {
+  opacity: 0.9;
+}
+
+/* Utility Classes */
+.elevated {
+  box-shadow: var(--shadow-sm);
+}
+
+.text-primary {
+  color: var(--text-primary);
+}
+
+.bg-primary-light {
+  background-color: var(--primary-light);
+}
+
+/* Ensure header stays fixed */
+.modern-header {
   position: fixed;
   top: 0;
   left: 0;
-  width: calc(100% - var(--sidebar-width));
+  right: 0;
+  z-index: 1000;
   height: var(--header-height);
-  background-color: var(--background-light);
-  color: var(--text-primary);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 1rem;
 }
 
-.sidebar {
-  grid-area: sidebar;
-  position: fixed;
-  top: var(--header-height);
+/* Profile Section Adjustments (for ProfileComponent) */
+.profile-section {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem;
 }
 
-html, body { height: 100%; }
-body { margin: 0; font-family: Roboto, "Helvetica Neue", sans-serif; }
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .profile-section {
+    padding: 1rem;
+  }
+}

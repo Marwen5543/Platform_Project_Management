@@ -1,0 +1,133 @@
+<!-- src/app/components/header/header.component.html -->
+<header class="modern-header">
+  <!-- Logo Section -->
+  <div class="header-logo">
+    <img src="assets/tunisys.png" alt="Tunisys" class="logo-img">
+    <span class="app-title">Project Suite</span>
+  </div>
+
+  <!-- Navigation Section -->
+  <div class="header-nav">
+    <!-- Desktop Menu -->
+    <nav class="desktop-menu" [ngClass]="{'open': isMenuOpen}" role="navigation" aria-label="Main navigation">
+      <a (click)="navigateTo('/acceuil')" class="nav-item" role="menuitem">Accueil</a>
+      <div class="nav-item dropdown" role="menuitem" aria-haspopup="true">
+        <span class="dropdown-toggle" (click)="toggleDropdown($event)">Gestion Congé</span>
+        <div class="dropdown-menu" role="menu">
+          <a (click)="navigateTo('/demande-conge')" role="menuitem">Demande Congé</a>
+          <a (click)="navigateTo('/consulter-conge')" role="menuitem">Consulter Congé</a>
+          <a *ngIf="hasManagerRole()" (click)="navigateTo('/liste-equipe-conge')" role="menuitem">
+            Liste Équipe
+            <span *ngIf="pendingTeamLeavesCount > 0" class="leave-badge">
+              {{ pendingTeamLeavesCount }}
+            </span>
+          </a>
+        </div>
+      </div>
+      <!-- Document Requests for non-HR users -->
+      <div class="nav-item dropdown" *ngIf="canRequestAttestations()" role="menuitem" aria-haspopup="true">
+        <span class="dropdown-toggle" (click)="toggleDropdown($event)">Documents</span>
+        <div class="dropdown-menu" role="menu">
+          <a (click)="navigateTo('/fiche-paie')" role="menuitem">Fiche de Paie</a>
+          <a (click)="navigateTo('/attestation-travail')" role="menuitem">Attestation Travail</a>
+          <a (click)="navigateTo('/certificat-travail')" role="menuitem">Certificat Travail</a>
+          <a (click)="navigateTo('/document-history')" class="document-history-link" role="menuitem">
+            My Documents
+            <span *ngIf="readyDocumentsCount > 0" class="document-badge">
+              {{ readyDocumentsCount }}
+            </span>
+          </a>
+        </div>
+      </div>
+      <!-- HR Document Management -->
+      <div class="nav-item dropdown" *ngIf="canShowHrLinks()" role="menuitem" aria-haspopup="true">
+        <span class="dropdown-toggle" (click)="toggleDropdown($event)">Document Management</span>
+        <div class="dropdown-menu" role="menu">
+          <a (click)="navigateTo('/hr/document-requests')" role="menuitem">Manage Document Requests</a>
+        </div>
+      </div>
+      <a (click)="navigateTo('/plannification')" class="nav-item" role="menuitem">Plannification</a>
+      <a *ngIf="canShowAdminLink()" (click)="navigateTo('/project-affectation')" class="nav-item" role="menuitem">Project Affectation</a>
+      <!-- Admin Dropdown for SUPER_ADMIN only -->
+      <div class="nav-item dropdown" *ngIf="canShowSuperAdminLinks()" role="menuitem" aria-haspopup="true">
+        <span class="dropdown-toggle" (click)="toggleDropdown($event)">Admin</span>
+        <div class="dropdown-menu" role="menu">
+          <a (click)="navigateTo('/manage-users')" role="menuitem">Manage Users</a>
+          <a (click)="navigateTo('/system-settings')" role="menuitem">System Settings</a>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Mobile Menu Toggle -->
+    <button class="menu-toggle" (click)="toggleMenu()" aria-label="Toggle mobile menu">
+      <i class="fas" [ngClass]="isMenuOpen ? 'fa-times' : 'fa-bars'"></i>
+    </button>
+
+    <!-- User Profile Dropdown -->
+    <div class="user-info" (click)="toggleProfile()" role="button" aria-haspopup="true" aria-label="User profile menu">
+      <span class="user-role">{{ getRoleDisplayName(user?.role) }}</span>
+      <span class="user-name">{{ user?.username || 'Unknown User' }}</span>
+      <i class="fas fa-chevron-down"></i>
+      <span *ngIf="readyDocumentsCount > 0 || pendingTeamLeavesCount > 0" class="notification-badge">
+        {{ readyDocumentsCount + pendingTeamLeavesCount }}
+      </span>
+    </div>
+    <div class="profile-dropdown" [ngClass]="{'open': isProfileOpen}" role="menu">
+      <a (click)="navigateTo('/profile')" role="menuitem">Profile</a>
+      <a (click)="navigateTo('/document-history')" role="menuitem">
+        My Documents
+        <span *ngIf="readyDocumentsCount > 0" class="document-badge">
+          {{ readyDocumentsCount }}
+        </span>
+      </a>
+      <a (click)="logout()" role="menuitem">Logout</a>
+    </div>
+  </div>
+
+  <!-- Mobile Menu -->
+  <div class="mobile-menu" [ngClass]="{'active': isMenuOpen}" role="navigation" aria-label="Mobile navigation">
+    <a (click)="navigateTo('/acceuil')" role="menuitem">Accueil</a>
+    <div class="mobile-dropdown">
+      <span (click)="toggleMobileDropdown('conges')" role="button" aria-haspopup="true">Gestion Congé</span>
+      <div class="dropdown-content" [ngClass]="{'open': isCongesDropdownOpen}">
+        <a (click)="navigateTo('/demande-conge')" role="menuitem">Demande Congé</a>
+        <a (click)="navigateTo('/consulter-conge')" role="menuitem">Consulter Congé</a>
+        <a *ngIf="hasManagerRole()" (click)="navigateTo('/liste-equipe-conge')" role="menuitem">
+          Liste Équipe
+          <span *ngIf="pendingTeamLeavesCount > 0" class="leave-badge">
+            {{ pendingTeamLeavesCount }}
+          </span>
+        </a>
+      </div>
+    </div>
+    <div class="mobile-dropdown" *ngIf="canRequestAttestations()">
+      <span (click)="toggleMobileDropdown('documents')" role="button" aria-haspopup="true">Documents</span>
+      <div class="dropdown-content" [ngClass]="{'open': isDocumentsDropdownOpen}">
+        <a (click)="navigateTo('/fiche-paie')" role="menuitem">Fiche de Paie</a>
+        <a (click)="navigateTo('/attestation-travail')" role="menuitem">Attestation Travail</a>
+        <a (click)="navigateTo('/certificat-travail')" role="menuitem">Certificat Travail</a>
+        <a (click)="navigateTo('/document-history')" class="document-history-link" role="menuitem">
+          My Documents
+          <span *ngIf="readyDocumentsCount > 0" class="document-badge">
+            {{ readyDocumentsCount }}
+          </span>
+        </a>
+      </div>
+    </div>
+    <div class="mobile-dropdown" *ngIf="canShowHrLinks()">
+      <span (click)="toggleMobileDropdown('doc-management')" role="button" aria-haspopup="true">Document Management</span>
+      <div class="dropdown-content" [ngClass]="{'open': isDocManagementDropdownOpen}">
+        <a (click)="navigateTo('/hr/document-requests')" role="menuitem">Manage Document Requests</a>
+      </div>
+    </div>
+    <a (click)="navigateTo('/plannification')" role="menuitem">Plannification</a>
+    <a *ngIf="canShowAdminLink()" (click)="navigateTo('/project-affectation')" role="menuitem">Project Affectation</a>
+    <div class="mobile-dropdown" *ngIf="canShowSuperAdminLinks()">
+      <span (click)="toggleMobileDropdown('admin')" role="button" aria-haspopup="true">Admin</span>
+      <div class="dropdown-content" [ngClass]="{'open': isAdminDropdownOpen}">
+        <a (click)="navigateTo('/manage-users')" role="menuitem">Manage Users</a>
+        <a (click)="navigateTo('/system-settings')" role="menuitem">System Settings</a>
+      </div>
+    </div>
+  </div>
+</header>

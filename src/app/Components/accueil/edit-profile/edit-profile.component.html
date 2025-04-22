@@ -1,0 +1,182 @@
+<div class="edit-profile-section">
+  <ng-container *ngIf="user && !isLoading; else loading">
+    <h1 class="edit-profile-title">
+      <fa-icon [icon]="faUserEdit"></fa-icon> Modifier le Profil de {{ user!.username }}
+    </h1>
+
+    <form #editForm="ngForm" class="edit-profile-form" (ngSubmit)="saveProfile()">
+      <!-- Personal Information -->
+      <div class="form-group">
+        <label for="firstName">Prénom</label>
+        <input 
+          id="firstName" 
+          [(ngModel)]="user!.firstName" 
+          name="firstName" 
+          type="text" 
+          required 
+          minlength="2"
+          #firstName="ngModel">
+        <span class="error" *ngIf="firstName.invalid && (firstName.dirty || firstName.touched)">
+          <span *ngIf="firstName.errors?.['required']">Le prénom est requis.</span>
+          <span *ngIf="firstName.errors?.['minlength']">Le prénom doit contenir au moins 2 caractères.</span>
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="lastName">Nom</label>
+        <input 
+          id="lastName" 
+          [(ngModel)]="user!.lastName" 
+          name="lastName" 
+          type="text" 
+          required 
+          minlength="2"
+          #lastName="ngModel">
+        <span class="error" *ngIf="lastName.invalid && (lastName.dirty || lastName.touched)">
+          <span *ngIf="lastName.errors?.['required']">Le nom est requis.</span>
+          <span *ngIf="lastName.errors?.['minlength']">Le nom doit contenir au moins 2 caractères.</span>
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="email">Email</label>
+        <input 
+          id="email" 
+          [(ngModel)]="user!.email" 
+          name="email" 
+          type="email" 
+          [disabled]="true">
+      </div>
+
+      <div class="form-group">
+        <label for="phone">Téléphone</label>
+        <input 
+          id="phone" 
+          [(ngModel)]="user!.phone" 
+          name="phone" 
+          type="text" 
+          pattern="^\+?[1-9]\d{1,14}$"
+          #phone="ngModel">
+        <span class="error" *ngIf="phone.invalid && (phone.dirty || phone.touched)">
+          <span *ngIf="phone.errors?.['pattern']">Entrez un numéro de téléphone valide (ex. +1234567890).</span>
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="address">Adresse</label>
+        <input 
+          id="address" 
+          [(ngModel)]="user!.address" 
+          name="address" 
+          type="text" 
+          minlength="5"
+          #address="ngModel">
+        <span class="error" *ngIf="address.invalid && (address.dirty || address.touched)">
+          <span *ngIf="address.errors?.['minlength']">L'adresse doit contenir au moins 5 caractères.</span>
+        </span>
+      </div>
+
+      <div class="form-group">
+        <label for="position">Poste</label>
+        <select 
+          id="position" 
+          [(ngModel)]="user!.position" 
+          name="position" 
+          required
+          #position="ngModel">
+          <option value="" disabled>Choisir un poste</option>
+          <option value="Software Engineer">Software Engineer</option>
+          <option value="Web Developer">Web Developer</option>
+          <option value="DevOps Engineer">DevOps Engineer</option>
+          <option value="QA Engineer">QA Engineer</option>
+          <option value="Product Manager">Product Manager</option>
+          <option value="UX Designer">UX Designer</option>
+          <option value="Data Scientist">Data Scientist</option>
+          <option value="System Administrator">System Administrator</option>
+          <option value="Technical Lead">Technical Lead</option>
+          <option value="CTO">CTO</option>
+        </select>
+        <span class="error" *ngIf="position.invalid && (position.dirty || position.touched)">
+          <span *ngIf="position.errors?.['required']">Le poste est requis.</span>
+        </span>
+      </div>
+
+      <!-- Password Change Section -->
+      <div class="password-section">
+        <button type="button" class="toggle-password-btn" (click)="togglePasswordFields()">
+          {{ showPasswordFields ? 'Annuler le changement de mot de passe' : 'Changer le mot de passe' }}
+        </button>
+
+        <ng-container *ngIf="showPasswordFields">
+          <div class="form-group">
+            <label for="currentPassword">Mot de passe actuel</label>
+            <input 
+              id="currentPassword" 
+              [(ngModel)]="passwordData.currentPassword" 
+              name="currentPassword" 
+              type="password" 
+              required
+              #currentPassword="ngModel">
+            <span class="error" *ngIf="currentPassword.invalid && (currentPassword.dirty || currentPassword.touched)">
+              <span *ngIf="currentPassword.errors?.['required']">Le mot de passe actuel est requis.</span>
+            </span>
+          </div>
+
+          <div class="form-group">
+            <label for="newPassword">Nouveau mot de passe</label>
+            <input 
+              id="newPassword" 
+              [(ngModel)]="passwordData.newPassword" 
+              name="newPassword" 
+              type="password" 
+              required
+              minlength="8"
+              #newPassword="ngModel">
+            <span class="error" *ngIf="newPassword.invalid && (newPassword.dirty || newPassword.touched)">
+              <span *ngIf="newPassword.errors?.['required']">Le nouveau mot de passe est requis.</span>
+              <span *ngIf="newPassword.errors?.['minlength']">Le mot de passe doit contenir au moins 8 caractères.</span>
+            </span>
+          </div>
+
+          <div class="form-group">
+            <label for="confirmPassword">Confirmer le nouveau mot de passe</label>
+            <input 
+              id="confirmPassword" 
+              [(ngModel)]="passwordData.confirmPassword" 
+              name="confirmPassword" 
+              type="password" 
+              required
+              #confirmPassword="ngModel">
+            <span class="error" *ngIf="confirmPassword.invalid && (confirmPassword.dirty || confirmPassword.touched)">
+              <span *ngIf="confirmPassword.errors?.['required']">La confirmation est requise.</span>
+            </span>
+          </div>
+        </ng-container>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="form-actions">
+        <button 
+          class="save-btn" 
+          type="submit"
+          [disabled]="isSaving || editForm.invalid">
+          <fa-icon [icon]="faSave"></fa-icon> {{ isSaving ? 'Sauvegarde...' : 'Sauvegarder' }}
+        </button>
+        <button 
+          class="cancel-btn" 
+          type="button"
+          (click)="cancel()" 
+          [disabled]="isSaving">
+          <fa-icon [icon]="faTimes"></fa-icon> Annuler
+        </button>
+      </div>
+    </form>
+  </ng-container>
+
+  <ng-template #loading>
+    <div class="loading-state">
+      <fa-icon [icon]="faSpinner" [spin]="true"></fa-icon>
+      <p>Chargement des détails...</p>
+    </div>
+  </ng-template>
+</div>
