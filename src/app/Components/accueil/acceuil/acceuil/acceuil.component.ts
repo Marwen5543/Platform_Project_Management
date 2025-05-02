@@ -104,7 +104,7 @@ export class AcceuilComponent implements OnInit {
     const allProjects: CompanyProject[] = [
       { 
         title: 'Cloud Migration Platform', 
-        description: 'Enterprise cloud migration platform designed to seamlessly transfer on-premise infrastructure to cloud providers. Features automated discovery, dependency mapping, and migration planning tools.', 
+        description: "Plateforme de migration cloud pour les entreprises, conçue pour transférer de manière fluide l'infrastructure sur site vers des fournisseurs cloud. Inclut des outils d-discovery automatisée, de cartographie des dépendances et de planification de migration.",
         position: 'DevOps Engineer',
         category: 'Infrastructure',
         technologies: ['AWS', 'Azure', 'Terraform', 'Docker', 'Kubernetes'],
@@ -112,7 +112,7 @@ export class AcceuilComponent implements OnInit {
       },
       { 
         title: 'AI-Powered Analytics Suite', 
-        description: 'Machine learning platform that transforms raw data into actionable intelligence. Includes data preprocessing, model training, evaluation tools and interactive visualization dashboards.', 
+        description: "Une plateforme d'apprentissage automatique qui transforme les données brutes en insights exploitables. Elle offre des outils pour le prétraitement des données et l'entraînement de modèles d'IA. Des outils d'évaluation permettent de mesurer la performance des modèles. Des tableaux de bord interactifs facilitent la visualisation des résultats et des performances. Cette plateforme simplifie le processus de création et d'optimisation de modèles d'IA pour des applications pratiques.",
         position: 'Data Scientist',
         category: 'Data & AI',
         technologies: ['Python', 'TensorFlow', 'PyTorch', 'Pandas', 'Scikit-learn'],
@@ -121,7 +121,7 @@ export class AcceuilComponent implements OnInit {
       },
       { 
         title: 'Next-Gen UI Framework', 
-        description: 'Modern web development framework focused on component reusability, performance optimization, and design system implementation. Provides a comprehensive library of UI elements.', 
+        description: "Un framework de développement web moderne, conçu pour favoriser la réutilisabilité des composants et l'optimisation des performances. Il permet l'implémentation de systèmes de design cohérents et efficaces. Il propose une bibliothèque complète d'éléments d'interface utilisateur, simplifiant ainsi le développement d'applications interactives. Il offre des outils puissants pour la gestion de l'état, la navigation et les animations. Ce framework est idéal pour construire des applications web évolutives et maintenables..", 
         position: 'Web Developer',
         category: 'Frontend',
         technologies: ['Angular', 'TypeScript', 'SCSS', 'RxJS', 'WebAssembly'],
@@ -130,7 +130,7 @@ export class AcceuilComponent implements OnInit {
       },
       { 
         title: 'Quality Assurance Suite', 
-        description: 'Automated testing framework for ensuring software reliability. Features end-to-end testing, integration testing, performance benchmarking, and continuous testing pipelines.', 
+        description: 'Un framework de tests automatisés pour garantir la fiabilité des logiciels. Il inclut des tests de bout en bout, des tests d"intégration et des benchmarks de performance. Des pipelines de tests continus assurent une validation constante du code. Il permet d"automatiser les processus de test pour détecter rapidement les problèmes. Ce framework améliore la qualité du logiciel tout en réduisant les erreurs humaines.', 
         position: 'QA Engineer',
         category: 'Quality Assurance',
         technologies: ['Selenium', 'Jest', 'Cypress', 'JUnit', 'JMeter'],
@@ -138,7 +138,7 @@ export class AcceuilComponent implements OnInit {
       },
       { 
         title: 'Enterprise CRM', 
-        description: 'Custom CRM solution designed for large enterprise needs. Includes contact management, sales pipeline tracking, reporting, integration with marketing automation, and AI-driven insights.', 
+        description: "Solution CRM personnalisée conçue pour les besoins des grandes entreprises. Elle inclut la gestion des contacts, le suivi des pipelines de vente et des rapports détaillés. L'intégration avec l'automatisation du marketing permet une gestion fluide des campagnes. Des insights basés sur l'IA offrent des recommandations pour améliorer les performances commerciales. Cette solution centralise les données pour une prise de décision plus éclairée et stratégique.", 
         position: 'Software Engineer',
         category: 'Business Applications',
         technologies: ['Java', 'Spring Boot', 'PostgreSQL', 'React', 'Redis'],
@@ -147,7 +147,7 @@ export class AcceuilComponent implements OnInit {
       },
       { 
         title: 'Product Roadmap Tool', 
-        description: 'Planning and tracking tool for product development teams. Features backlog management, sprint planning, resource allocation, and release management capabilities.', 
+        description: "Outil de planification et de suivi pour les équipes de développement de produits. Il comprend la gestion du backlog, la planification des sprints, l'allocation des ressources et des fonctionnalités de gestion des versions. Ce système facilite la coordination entre les membres de l'équipe et assure le suivi des progrès tout au long du cycle de développement. Il aide à prioriser les tâches et à livrer les produits dans les délais. L'outil optimise la gestion des projets en offrant une vue d'ensemble claire et en temps réel.", 
         position: 'Product Manager',
         category: 'Business Applications',
         technologies: ['Node.js', 'Express', 'MongoDB', 'Vue.js', 'D3.js'],
@@ -155,7 +155,7 @@ export class AcceuilComponent implements OnInit {
       },
       { 
         title: 'User Experience Revamp', 
-        description: 'Redesigning interfaces across all company products to improve usability, accessibility, and visual consistency. Includes user research, prototyping, and design system creation.', 
+        description: "Refonte des interfaces de tous les produits de l'entreprise pour améliorer l'ergonomie, l'accessibilité et la cohérence visuelle. Ce projet inclut la recherche utilisateur, la création de prototypes et le développement d'un système de design. L'objectif est d'uniformiser l'expérience utilisateur tout en répondant aux besoins spécifiques des utilisateurs. Le processus implique une évaluation approfondie des interfaces actuelles et l'intégration de solutions basées sur les meilleures pratiques en matière de design. Cela permet d'offrir une expérience plus fluide et intuitive pour les utilisateurs.",
         position: 'UX Designer',
         category: 'Frontend',
         technologies: ['Figma', 'Sketch', 'Adobe XD', 'InVision', 'Zeplin'],
@@ -164,7 +164,7 @@ export class AcceuilComponent implements OnInit {
       },
       { 
         title: 'Server Management Suite', 
-        description: 'Tools for system administrators to monitor, manage, and optimize server infrastructure. Features performance monitoring, automated patching, and security vulnerability scanning.', 
+        description: "Outils pour les administrateurs système permettant de surveiller, gérer et optimiser l'infrastructure des serveurs. Ils incluent la surveillance des performances, la mise à jour automatique, ainsi que l'analyse des vulnérabilités de sécurité. Ces outils aident à garantir la disponibilité et la sécurité des serveurs tout en réduisant les risques de pannes. Ils offrent une gestion centralisée, permettant aux administrateurs de réagir rapidement aux problèmes et d'améliorer l'efficacité opérationnelle. Grâce à des rapports détaillés, ces outils facilitent la prise de décision pour maintenir une infrastructure optimale.",
         position: 'System Administrator',
         category: 'Infrastructure',
         technologies: ['Linux', 'Ansible', 'Nagios', 'Prometheus', 'Grafana'],
@@ -172,7 +172,7 @@ export class AcceuilComponent implements OnInit {
       },
       { 
         title: 'Tech Strategy Platform', 
-        description: 'Leadership tools for technology planning, architecture governance, and investment tracking. Supports IT portfolio management and strategic roadmapping.', 
+        description: "Outils de leadership pour la planification technologique, la gouvernance de l'architecture et le suivi des investissements. Ils soutiennent la gestion du portefeuille informatique et la création de feuilles de route stratégiques. Ces outils permettent aux responsables technologiques de prendre des décisions éclairées, d'aligner les initiatives sur les objectifs d'affaires et de suivre l'évolution des projets. Ils offrent une vue d'ensemble de l'architecture IT, facilitent la gestion des ressources et assurent une meilleure allocation des investissements. Grâce à des outils de suivi, les entreprises peuvent anticiper les besoins futurs et optimiser leur infrastructure technologique.",
         position: 'Technical Lead',
         category: 'Leadership & Strategy',
         technologies: ['Java', 'Spring', 'Angular', 'PostgreSQL', 'Elasticsearch'],
@@ -180,7 +180,7 @@ export class AcceuilComponent implements OnInit {
       },
       { 
         title: 'Innovation Hub', 
-        description: 'Driving company-wide innovation through ideation tools, prototype development resources, and innovation metrics tracking. Supports the entire innovation lifecycle.', 
+        description: "Outils permettant de stimuler l'innovation à l'échelle de l'entreprise grâce à des ressources de génération d'idées, de développement de prototypes et de suivi des indicateurs d'innovation. Ces outils soutiennent l'ensemble du cycle de vie de l'innovation, de la conception initiale à la mise en œuvre. Ils facilitent la collaboration entre les équipes, permettent de transformer les idées en prototypes fonctionnels et mesurent l'impact des initiatives innovantes. En fournissant une plateforme pour évaluer les projets d'innovation, ces outils aident les entreprises à rester compétitives et à anticiper les tendances du marché.",
         position: 'CTO',
         category: 'Leadership & Strategy',
         technologies: ['Node.js', 'GraphQL', 'React', 'MongoDB', 'WebSockets'],

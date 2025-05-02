@@ -17,6 +17,7 @@ import { MainLayoutComponent } from './Components/accueil/main-layout/main-layou
 import { ManageUsersComponent } from './Components/accueil/Admin/manage-users/manage-users.component';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTableModule } from '@angular/material/table';
+import { FooterComponent } from './Components/accueil/Footer/footer/footer.component';
 
 // ✅ Importation correcte du composant standalone AccueilComponent
 
@@ -24,6 +25,7 @@ import { MatTableModule } from '@angular/material/table';
   declarations: [
     AppComponent,
     MainLayoutComponent, 
+  
     
   ],
   imports: [
@@ -40,7 +42,8 @@ import { MatTableModule } from '@angular/material/table';
     HeaderComponent, 
     MatProgressSpinnerModule,
     CommonModule,
-    MatTableModule
+    MatTableModule,
+    FooterComponent
   ],
   providers: [{
     provide: HTTP_INTERCEPTORS,

@@ -1,10 +1,16 @@
+/* Root container */
 .affect-users-projects-container {
   max-width: 1200px;
   margin: 0 auto;
+  margin-top: calc(64px + 2rem); /* Account for fixed header (64px) */
   padding: 20px;
-  font-family: 'Roboto', Arial, sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; /* Match header */
+  color: #333; /* Match header text color */
+  z-index: 500; /* Below header (1000) and dropdown (1100) */
+  position: relative;
 }
 
+/* Profile Header */
 .profile-header {
   margin-bottom: 30px;
   padding: 20px;
@@ -15,7 +21,7 @@
 
 .profile-title {
   font-size: 28px;
-  color: #333;
+  color: #d32f2f; /* Match header primary red */
   margin: 0;
   display: flex;
   align-items: center;
@@ -23,17 +29,21 @@
 
 .profile-icon {
   margin-right: 15px;
-  color: #3f51b5;
+  color: #d32f2f; /* Match header primary red */
   font-size: 24px;
 }
 
-.loading, .error-message, .no-users {
+/* Loading, Error, and No Users States */
+.loading,
+.error-message,
+.no-users {
   padding: 30px;
   text-align: center;
   background-color: #fff;
   border-radius: 8px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
   margin-bottom: 20px;
+  color: #666; /* Match secondary text color */
 }
 
 .error-message p {
@@ -41,6 +51,7 @@
   font-weight: 500;
 }
 
+/* Table Wrapper */
 .table-wrapper {
   background-color: #fff;
   border-radius: 8px;
@@ -49,13 +60,14 @@
   margin-bottom: 30px;
 }
 
+/* Users Table */
 .users-table {
   width: 100%;
   border-collapse: collapse;
 }
 
 .users-table th {
-  background-color: #f5f7fa;
+  background-color: #ffebee; /* Match header --primary-light */
   color: #495057;
   padding: 16px;
   text-align: left;
@@ -63,6 +75,7 @@
   border-bottom: 2px solid #e9ecef;
 }
 
+/* Main Row */
 .main-row {
   cursor: pointer;
   transition: background-color 0.2s;
@@ -73,7 +86,7 @@
 }
 
 .main-row.expanded {
-  background-color: #edf2ff;
+  background-color: #fff1f1; /* Light red tint to match theme */
 }
 
 .main-row td {
@@ -81,6 +94,7 @@
   border-bottom: 1px solid #e9ecef;
 }
 
+/* Toggle Icon */
 .toggle-icon {
   width: 30px;
   text-align: center;
@@ -95,6 +109,7 @@
   transform: rotate(90deg);
 }
 
+/* Details Row */
 .details-row td {
   padding: 0;
 }
@@ -115,9 +130,11 @@
   padding: 5px;
 }
 
+/* Project Assign Container */
 .project-assign-container {
   display: flex;
   align-items: center;
+  gap: 10px; /* Add spacing between elements */
 }
 
 .project-select {
@@ -130,6 +147,11 @@
   width: 100%;
   max-width: 200px;
   cursor: pointer;
+  transition: border-color 0.3s ease;
+}
+
+.project-select:hover:not(:disabled) {
+  border-color: #d32f2f; /* Match header primary red */
 }
 
 .project-select:disabled {
@@ -141,7 +163,7 @@
   margin-left: 10px;
 }
 
-/* Status styling */
+/* Status Styling */
 .status-active {
   color: #28a745;
   font-weight: 500;
@@ -152,25 +174,54 @@
   font-weight: 500;
 }
 
-/* Responsive tweaks */
+/* Responsive Tweaks */
 @media (max-width: 992px) {
   .users-table th:nth-child(5),
   .main-row td:nth-child(5) {
     display: none;
   }
-  
+
   .details-grid {
     grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   }
 }
 
 @media (max-width: 768px) {
+  .affect-users-projects-container {
+    margin-top: calc(64px + 1rem); /* Adjust for mobile */
+    padding: 10px;
+  }
+
   .users-table th:nth-child(3),
   .main-row td:nth-child(3) {
     display: none;
   }
-  
+
   .details-grid {
     grid-template-columns: 1fr;
+  }
+
+  .profile-title {
+    font-size: 24px;
+  }
+
+  .profile-icon {
+    font-size: 20px;
+  }
+
+  .project-select {
+    max-width: 150px;
+  }
+}
+
+/* Animation for details row slide down */
+@keyframes slideDown {
+  from {
+    height: 0;
+    opacity: 0;
+  }
+  to {
+    height: auto;
+    opacity: 1;
   }
 }

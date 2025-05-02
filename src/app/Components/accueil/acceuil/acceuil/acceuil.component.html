@@ -1,50 +1,50 @@
 <div class="accueil-container">
-  <!-- Hero Section -->
+  <!-- Section Héros -->
   <section class="hero-section">
     <div class="hero-content" [ngClass]="{'loaded': isLoaded}">
-      <h1>Welcome to Tunisys Project Suite</h1>
-      <p class="lead">Innovating enterprise solutions through cutting-edge technology and expert teams</p>
+      <h1>Bienvenue dans la Suite de Projets Tunisys</h1>
+      <p class="lead">Innover les solutions d'entreprise grâce à une technologie de pointe et des équipes d'experts</p>
       <div class="company-highlights">
-        <img src="assets/tunisys.png" alt="Tunisys Office" class="company-image">
+        <img src="assets/tunisys.png" alt="Bureau Tunisys" class="company-image">
         <div class="description">
-          <h2>About Tunisys</h2>
-          <p>Tunisys is a leading technology solutions provider specializing in enterprise-level digital transformation. With a team of expert engineers and consultants, we deliver cutting-edge solutions that drive business growth and innovation.</p>
+          <h2>À propos de Tunisys</h2>
+          <p>Tunisys est un fournisseur leader de solutions technologiques spécialisé dans la transformation numérique au niveau de l'entreprise. Avec une équipe d'ingénieurs et de consultants experts, nous livrons des solutions innovantes qui stimulent la croissance et l'innovation des entreprises.</p>
         </div>
       </div>
     </div>
   </section>
 
-  <!-- Stats Section -->
+  <!-- Section Statistiques -->
   <section class="stats-section">
     <div class="stats-container">
       <div class="stat-card">
         <div class="stat-number">{{projectStats.totalProjects}}</div>
-        <div class="stat-label">Active Projects</div>
+        <div class="stat-label">Projets Actifs</div>
       </div>
       <div class="stat-card">
         <div class="stat-number">{{projectStats.totalUsers}}</div>
-        <div class="stat-label">Team Members</div>
+        <div class="stat-label">Membres de l'Équipe</div>
       </div>
       <div class="stat-card">
         <div class="stat-number">{{categories.length - 1}}</div>
-        <div class="stat-label">Project Categories</div>
+        <div class="stat-label">Catégories de Projets</div>
       </div>
       <div class="stat-card">
         <div class="stat-number">{{projectStats.averageTeamSize | number:'1.1-1'}}</div>
-        <div class="stat-label">Avg Team Size</div>
+        <div class="stat-label">Taille Moyenne d'Équipe</div>
       </div>
     </div>
   </section>
 
-  <!-- Projects Section -->
+  <!-- Section Projets -->
   <section class="projects-section">
-    <h2 *ngIf="currentUser?.role === 'EMPLOYEE'">My Assigned Projects</h2>
-    <h2 *ngIf="currentUser?.role !== 'EMPLOYEE'">Featured Projects</h2>
+    <h2 *ngIf="currentUser?.role === 'EMPLOYEE'">Mes Projets Assignés</h2>
+    <h2 *ngIf="currentUser?.role !== 'EMPLOYEE'">Projets en Vedette</h2>
     
-    <!-- Filter Controls (hidden for EMPLOYEE) -->
+    <!-- Contrôles de Filtrage (cachés pour EMPLOYEE) -->
     <div class="filter-controls" *ngIf="currentUser?.role !== 'EMPLOYEE'">
       <div class="category-filter">
-        <span class="filter-label">Filter by Category:</span>
+        <span class="filter-label">Filtrer par Catégorie :</span>
         <div class="category-buttons">
           <button 
             *ngFor="let category of categories" 
@@ -58,13 +58,13 @@
       <div class="search-filter">
         <input 
           type="text" 
-          placeholder="Search projects, technologies..." 
+          placeholder="Rechercher des projets, technologies..." 
           class="search-input"
           (input)="searchProjects($any($event.target).value)">
       </div>
     </div>
     
-    <!-- Project Listing -->
+    <!-- Liste des Projets -->
     <div *ngIf="!selectedProject; else projectDetail">
       <div class="projects-grid">
         <div *ngFor="let project of filteredProjects" class="project-card" (click)="selectProject(project)">
@@ -78,12 +78,12 @@
               <div class="progress-bar">
                 <div class="progress-fill" [ngClass]="getProgressColorClass(project.progress)" [style.width.%]="project.progress"></div>
               </div>
-              <div class="progress-text">{{project.progress}}% Complete</div>
+              <div class="progress-text">{{project.progress}}% Complété</div>
             </div>
             
             <div class="project-meta">
               <span class="position-tag">{{ project.position }}</span>
-              <span class="user-count">{{ getUserCountForProject(project.title) }} {{ getUserCountForProject(project.title) === 1 ? 'User' : 'Users' }}</span>
+              <span class="user-count">{{ getUserCountForProject(project.title) }} {{ getUserCountForProject(project.title) === 1 ? 'Utilisateur' : 'Utilisateurs' }}</span>
             </div>
             
             <div class="project-tech">
@@ -94,20 +94,20 @@
         </div>
       </div>
       
-      <!-- No projects message -->
+      <!-- Message pour aucun projet -->
       <div *ngIf="filteredProjects.length === 0" class="no-projects">
         <div class="no-projects-message">
-          <p *ngIf="currentUser?.role === 'EMPLOYEE'">You are not assigned to any projects.</p>
-          <p *ngIf="currentUser?.role !== 'EMPLOYEE'">No projects match your filter criteria.</p>
-          <button *ngIf="currentUser?.role !== 'EMPLOYEE'" class="reset-btn" (click)="filterByCategory('All'); searchProjects('')">Reset Filters</button>
+          <p *ngIf="currentUser?.role === 'EMPLOYEE'">Vous n'êtes assigné à aucun projet.</p>
+          <p *ngIf="currentUser?.role !== 'EMPLOYEE'">Aucun projet ne correspond à vos critères de filtre.</p>
+          <button *ngIf="currentUser?.role !== 'EMPLOYEE'" class="reset-btn" (click)="filterByCategory('All'); searchProjects('')">Réinitialiser les Filtres</button>
         </div>
       </div>
     </div>
 
-    <!-- Project Detail Template -->
+    <!-- Modèle de Détail du Projet -->
     <ng-template #projectDetail>
       <div class="project-detail" *ngIf="selectedProject">
-        <button class="back-btn" (click)="deselectProject()">Back to Projects</button>
+        <button class="back-btn" (click)="deselectProject()">Retour aux Projets</button>
         
         <div class="category-chip">{{selectedProject.category}}</div>
         <h3>{{ selectedProject.title }}</h3>
@@ -120,19 +120,19 @@
         
         <div class="project-meta-detail">
           <span class="position-tag">{{ selectedProject.position }}</span>
-          <span class="user-count">{{ getUserCountForProject(selectedProject.title) }} {{ getUserCountForProject(selectedProject.title) === 1 ? 'User' : 'Users' }} Assigned</span>
+          <span class="user-count">{{ getUserCountForProject(selectedProject.title) }} {{ getUserCountForProject(selectedProject.title) === 1 ? 'Utilisateur' : 'Utilisateurs' }} Assignés</span>
           <span class="deadline-tag" *ngIf="selectedProject.deadline">
-            Deadline: {{selectedProject.deadline | date:'mediumDate'}}
+            Date Limite : {{selectedProject.deadline | date:'mediumDate'}}
           </span>
         </div>
         
         <div class="project-progress-detail">
-          <h4>Project Progress</h4>
+          <h4>Progression du Projet</h4>
           <div class="project-progress-detail">
             <div class="progress-bar-detail">
               <div class="progress-fill-detail" [ngClass]="getProgressColorClass(selectedProject.progress)" [style.width.%]="selectedProject.progress"></div>
             </div>
-            <div class="progress-percentage">{{selectedProject.progress}}% Complete</div>
+            <div class="progress-percentage">{{selectedProject.progress}}% Complété</div>
           </div>
         </div>
         
@@ -146,29 +146,29 @@
         </div>
         
         <div class="team-section">
-          <h4>Assigned Team Members</h4>
+          <h4>Membres de l'Équipe Assignés</h4>
           <div class="members-list">
             <div *ngFor="let user of getUsersForProject(selectedProject.title)" class="member">
-              {{ user.username }} - {{ user.position || 'No Position' }}
+              {{ user.username }} - {{ user.position || 'Aucun Poste' }}
             </div>
             <div *ngIf="!getUsersForProject(selectedProject.title).length" class="no-members">
-              No users assigned to this project.
+              Aucun utilisateur assigné à ce projet.
             </div>
           </div>
         </div>
         
         <div class="project-actions">
-          <button class="action-btn primary-action">View Documentation</button>
-          <button class="action-btn secondary-action">Project Timeline</button>
-          <button class="action-btn secondary-action">Team Chat</button>
+          <button class="action-btn primary-action">Voir la Documentation</button>
+          <button class="action-btn secondary-action">Chronologie du Projet</button>
+          <button class="action-btn secondary-action">Chat d'Équipe</button>
         </div>
       </div>
     </ng-template>
   </section>
 
-  <!-- Additional Sections -->
+  <!-- Sections Supplémentaires -->
   <section class="categories-section" *ngIf="currentUser?.role !== 'EMPLOYEE'">
-    <h2>Project Categories</h2>
+    <h2>Catégories de Projets</h2>
     <div class="categories-grid">
       <ng-container *ngFor="let category of categories">
         <div class="category-card" 
@@ -178,7 +178,7 @@
           <div class="category-icon" [ngClass]="'category-icon-' + category.toLowerCase().replace(' & ', '-').replace(' ', '-')"></div>
           <h3>{{category}}</h3>
           <div class="category-count">
-            {{projectStats.categoryCounts[category] || 0}} Projects
+            {{projectStats.categoryCounts[category] || 0}} Projets
           </div>
         </div>
       </ng-container>

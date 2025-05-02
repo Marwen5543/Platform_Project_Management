@@ -11,9 +11,11 @@ import { EditProfileComponent } from './Components/accueil/edit-profile/edit-pro
 import { DocumentRequestComponent } from './Components/accueil/Documents/document-request/document-request.component';
 import { HrDocumentRequestsComponent } from './Components/accueil/Documents/hr-document-requests/hr-document-requests.component';
 import { DocumentComponent } from './Components/accueil/Documents/document/document.component';
-import { TeamLeavesComponent } from './Components/accueil/team-leaves/team-leaves.component';
-import { LeaveRequestComponent } from './Components/accueil/leave-request/leave-request.component';
-import { LeaveHistoryComponent } from './Components/accueil/leave-history/leave-history.component';
+import { TeamLeavesComponent } from './Components/accueil/LeaveRequest/team-leaves/team-leaves.component';
+import { LeaveHistoryComponent } from './Components/accueil/LeaveRequest/leave-history/leave-history.component';
+import { CalanderComponent } from './Components/accueil/Calander/calander/calander.component';
+import { LeaveRequestComponent } from './Components/accueil/LeaveRequest/leave-request/leave-request.component';
+import { TaskDetailComponent } from './Components/accueil/Calander/task-detail/task-detail.component';
 
 const routes: Routes = [
   {
@@ -35,10 +37,12 @@ const routes: Routes = [
       { path: 'demande-conge', component: LeaveRequestComponent },
       { path: 'consulter-conge', component: LeaveHistoryComponent },
       { path: 'liste-equipe-conge', component: TeamLeavesComponent },
-      { path: '', redirectTo: 'profile', pathMatch: 'full' }
+      { path: 'planification', component: CalanderComponent },
+      { path: '', redirectTo: 'acceuil', pathMatch: 'full' }
     ]
   },
-  { path: '**', redirectTo: 'profile' }
+  { path: 'task-detail', component: TaskDetailComponent },
+  { path: '**', redirectTo: 'acceuil' }
 ];
 
 @NgModule({

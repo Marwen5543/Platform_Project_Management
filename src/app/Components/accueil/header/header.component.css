@@ -135,6 +135,7 @@
 
 /* User Profile Dropdown */
 .user-info {
+  z-index: 1200;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -161,6 +162,7 @@
 }
 
 .profile-dropdown {
+  z-index: 1100;
   display: none;
   position: absolute;
   right: 0;
@@ -182,6 +184,7 @@
 }
 
 .profile-dropdown a {
+  z-index: 1101;
   display: block;
   padding: 0.5rem 1rem;
   color: var(--text-primary);
@@ -314,4 +317,18 @@
   .profile-dropdown {
     right: 10px;
   }
+
+  /* Notification Badges */
+.notification-badge,
+.document-badge,
+.leave-badge {
+  z-index: 1000; /* Below profile-dropdown */
+}
+
+/* MatSnackBar */
+.mat-snack-bar-container {
+  z-index: 900 !important; /* Below profile-dropdown */
+}
+
+
 }

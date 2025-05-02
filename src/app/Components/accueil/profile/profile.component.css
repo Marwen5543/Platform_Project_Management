@@ -2,9 +2,14 @@
 .profile-section {
   max-width: 1200px;
   margin: 2rem auto;
+  margin-top: calc(64px + 2rem); /* Account for fixed header (64px) */
   padding: 1rem;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  color: #333;
+  color: #333; /* Primary text color */
+  z-index: 500; /* Below header (1000) and dropdown (1100) */
+  position: relative;
+  pointer-events: auto;
+  touch-action: manipulation;
 }
 
 /* Loading State */
@@ -30,10 +35,11 @@
   text-align: center;
   margin-bottom: 3rem;
   position: relative;
+  z-index: 600; /* Below header */
 }
 
 .profile-title {
-  color: #ce0000;
+  color: #ce0000; /* Primary red */
   font-size: 2.25rem;
   margin-bottom: 1.5rem;
   display: flex;
@@ -50,7 +56,7 @@
   width: 120px;
   height: 120px;
   border-radius: 50%;
-  background: linear-gradient(45deg, #ce0000, #ff6b6b);
+  background: linear-gradient(45deg, #ce0000, #ff6b6b); /* Red gradient */
   color: white;
   display: flex;
   align-items: center;
@@ -59,21 +65,19 @@
   font-weight: 500;
   margin: 0 auto 1.5rem;
   position: relative;
+  z-index: 650; /* Below header */
 }
 
-.user-avatar.online .status-indicator {
-  background: #4caf50;
-}
-
-.status-indicator {
+.avatar-status-indicator {
   position: absolute;
   bottom: 8px;
   right: 8px;
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #e0e0e0;
+  background: #4caf50; /* Always green (online) */
   border: 2px solid white;
+  z-index: 660; /* Above avatar */
 }
 
 /* Update Profile Button */
@@ -87,21 +91,24 @@
   font-size: 1rem;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
   box-shadow: 0 2px 4px rgba(206, 0, 0, 0.2);
+  z-index: 700; /* Below header */
+  pointer-events: auto;
+  touch-action: manipulation;
+  min-height: 44px; /* WCAG touch target */
 }
 
 .update-profile-btn:hover:not(:disabled) {
-  background-color: #b00000;
-  transform: translateY(-1px);
+  background-color: #b00000; /* Darker red */
   box-shadow: 0 4px 8px rgba(206, 0, 0, 0.3);
 }
 
 .update-profile-btn:active:not(:disabled) {
-  transform: translateY(0);
+  box-shadow: 0 2px 4px rgba(206, 0, 0, 0.2);
 }
 
 .update-profile-btn:disabled {
@@ -127,11 +134,11 @@
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.08);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: box-shadow 0.3s ease;
+  z-index: 650; /* Below header */
 }
 
 .profile-card:hover {
-  transform: translateY(-2px);
   box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -214,6 +221,23 @@
   margin-bottom: 1.5rem;
 }
 
+.two-factor-status {
+  padding: 0.3rem 0.8rem;
+  border-radius: 12px;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.two-factor-status.active {
+  background: rgba(76, 175, 80, 0.1); /* Green background for "Activé" */
+  color: #4caf50;
+}
+
+.two-factor-status:not(.active) {
+  background: rgba(206, 0, 0, 0.1); /* Red background for "Désactivé" */
+  color: #ce0000;
+}
+
 .security-action {
   width: 100%;
   padding: 0.75rem;
@@ -222,17 +246,41 @@
   border-radius: 8px;
   color: #ce0000;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: background-color 0.3s ease;
+  z-index: 700; /* Below header */
+  pointer-events: auto;
+  touch-action: manipulation;
+  min-height: 44px; /* WCAG touch target */
 }
 
 .security-action:hover {
   background: rgba(206, 0, 0, 0.1);
 }
 
+/* Icon Animation for All .fas Elements */
+.fas {
+  display: inline-block; /* Ensure Font Awesome icons can transform */
+  transition: transform 0.3s ease, color 0.3s ease;
+}
+
+.fas:hover {
+  transform: scale(1.2); /* 20% larger on hover */
+  color: #ce0000; /* Debugging: Change color to confirm hover */
+}
+
+/* Disable icon scaling on touch devices */
+@media (hover: none) {
+  .fas {
+    transform: none !important; /* Prevent scaling on touch */
+    color: inherit !important; /* Prevent color change on touch */
+  }
+}
+
 /* Responsive Styles */
 @media (max-width: 768px) {
   .profile-section {
     margin: 1rem;
+    margin-top: calc(64px + 1rem); /* Account for header */
     padding: 0.5rem;
   }
 
@@ -247,12 +295,20 @@
     font-size: 1.8rem;
   }
 
+  .avatar-status-indicator {
+    width: 12px;
+    height: 12px;
+    bottom: 6px;
+    right: 6px;
+  }
+
   .profile-grid {
     grid-template-columns: 1fr;
     gap: 1rem;
   }
 
-  .card-header, .card-body {
+  .card-header,
+  .card-body {
     padding: 1rem;
   }
 
@@ -271,5 +327,15 @@
   .update-profile-btn {
     padding: 0.6rem 1.2rem;
     font-size: 0.9rem;
+    width: 100%; /* Full width for mobile */
+  }
+
+  .security-action {
+    width: 100%;
+  }
+
+  .two-factor-status {
+    font-size: 0.85rem;
+    padding: 0.2rem 0.6rem;
   }
 }

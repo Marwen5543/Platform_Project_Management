@@ -1,4 +1,4 @@
-<div class="profile-section" >
+<div class="profile-section">
   <app-header [user]="user"></app-header>
 
   <ng-container *ngIf="user; else loading">
@@ -7,17 +7,19 @@
         <i class="fas fa-user-shield profile-icon"></i>
         Profil {{ user.username }}
       </h1>
-      <div class="user-avatar" [ngClass]="{'online': user.isOnline}">
+      <div class="user-avatar">
         {{ getInitials(user.username) }}
-        <div class="status-indicator"></div>
+        <div class="avatar-status-indicator"></div>
       </div>
       <button 
-  class="update-profile-btn"
-  (click)="updateProfile()"
-  [disabled]="isUpdating">
-  <i class="fas fa-sync-alt"></i>
-  <span>{{ isUpdating ? 'Mise à jour...' : 'Mettre à jour' }}</span>
-</button>
+        class="update-profile-btn"
+        (click)="updateProfile(); $event.stopPropagation()"
+        (touchstart)="$event.stopPropagation()"
+        [disabled]="isUpdating"
+        aria-label="Update profile">
+        <i class="fas fa-sync-alt"></i>
+        <span>{{ isUpdating ? 'Mise à jour...' : 'Mettre à jour' }}</span>
+      </button>
     </div>
 
     <div class="profile-grid">
@@ -149,11 +151,15 @@
             <div class="two-factor">
               <i class="fas fa-mobile-alt"></i>
               <span>Authentification à deux facteurs</span>
-              <span class="status-indicator" [ngClass]="{'active': user.twoFactorEnabled}">
+              <span class="two-factor-status" [ngClass]="{'active': user.twoFactorEnabled}">
                 {{ user.twoFactorEnabled ? 'Activé' : 'Désactivé' }}
               </span>
             </div>
-            <button class="security-action">
+            <button 
+              class="security-action"
+              (click)="manageSecurity(); $event.stopPropagation()"
+              (touchstart)="$event.stopPropagation()"
+              aria-label="Manage security settings">
               <i class="fas fa-cog"></i>
               Gérer la sécurité
             </button>
@@ -161,7 +167,6 @@
         </div>
       </div>
     </div> 
-
   </ng-container>
 
   <ng-template #loading>
@@ -170,5 +175,4 @@
       <p>Chargement du profil...</p>
     </div>
   </ng-template>
-
 </div>

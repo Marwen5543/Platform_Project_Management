@@ -3,7 +3,7 @@ import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { catchError, from, Observable, switchMap, throwError, map, tap, retry } from 'rxjs';
 import { KeycloakService } from './KeycloakService';
 import { LeaveRequest, LeaveRequestDto, LeaveStatus } from '../Models/LeaveRequest';
-import { jwtDecode } from 'jwt-decode'; 
+import { jwtDecode } from 'jwt-decode';
 
 interface DecodedToken {
     realm_access?: {
@@ -46,11 +46,24 @@ export class LeaveService {
     getLeaveHistory(): Observable<LeaveRequest[]> {
         console.log('Fetching leave history...');
         return this.getHeaders().pipe(
+            tap(headers => {
+                const token = headers.get('Authorization')?.replace('Bearer ', '');
+                if (token) {
+                    try {
+                        const decoded = jwtDecode<DecodedToken>(token);
+                        console.log('Token roles:', decoded.realm_access?.roles || []);
+                    } catch (error) {
+                        console.error('Error decoding token:', error);
+                    }
+                }
+            }),
             switchMap(headers =>
                 this.http.get<LeaveRequest[]>(`${this.apiUrl}/history`, { headers })
             ),
             retry(1),
+            tap(leaves => console.log('Raw leave history response:', leaves)),
             map(leaves => this.sortLeavesByStatus(leaves)),
+            tap(sortedLeaves => console.log('Sorted leave history:', sortedLeaves)),
             catchError(this.handleError)
         );
     }
@@ -68,32 +81,32 @@ export class LeaveService {
     }
 
     updateLeaveStatus(leaveId: string, status: string): Observable<any> {
-      return this.getHeaders().pipe(
-          tap(headers => {
-              const token = headers.get('Authorization')?.replace('Bearer ', '');
-              console.log('Token sent in request:', token);
-              if (token) {
-                  try {
-                      const decoded = jwtDecode<DecodedToken>(token);
-                      console.log('Token roles:', decoded.realm_access?.roles || []);
-                      console.log('HR role present:', decoded.realm_access?.roles?.includes('HR'));
-                  } catch (error) {
-                      console.error('Error decoding token:', error);
-                  }
-              }
-          }),
-          switchMap(headers =>
-              this.http.put(`${this.apiUrl}/${leaveId}/status`, { status }, { headers })
-          ),
-          catchError(error => {
-              if (error.status === 403) {
-                  console.error('Permission denied: User does not have HR role');
-                  alert('You do not have permission to update leave status. HR role required.');
-              }
-              return throwError(() => error);
-          })
-      );
-  }
+        return this.getHeaders().pipe(
+            tap(headers => {
+                const token = headers.get('Authorization')?.replace('Bearer ', '');
+                console.log('Token sent in request:', token);
+                if (token) {
+                    try {
+                        const decoded = jwtDecode<DecodedToken>(token);
+                        console.log('Token roles:', decoded.realm_access?.roles || []);
+                        console.log('HR role present:', decoded.realm_access?.roles?.includes('HR'));
+                    } catch (error) {
+                        console.error('Error decoding token:', error);
+                    }
+                }
+            }),
+            switchMap(headers =>
+                this.http.put(`${this.apiUrl}/${leaveId}/status`, { status }, { headers })
+            ),
+            catchError(error => {
+                if (error.status === 403) {
+                    console.error('Permission denied: User does not have HR role');
+                    alert('You do not have permission to update leave status. HR role required.');
+                }
+                return throwError(() => error);
+            })
+        );
+    }
 
     private sortLeavesByStatus(leaves: LeaveRequest[]): LeaveRequest[] {
         return [...leaves].sort((a, b) => {

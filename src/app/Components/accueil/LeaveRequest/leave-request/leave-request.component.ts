@@ -1,4 +1,3 @@
-// leave-request.component.ts
 import { Component } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule, DatePipe } from '@angular/common';
@@ -41,6 +40,15 @@ export class LeaveRequestComponent {
   leaveTypes = Object.values(LeaveType);
   isLoading = false;
 
+  leaveTypeLabels: { [key in LeaveType]: string } = {
+    [LeaveType.VACATION]: 'Congé payé',
+    [LeaveType.SICK]: 'Congé maladie',
+    [LeaveType.PERSONAL]: 'Congé personnel',
+    [LeaveType.MATERNITY]: 'Congé maternité',
+    [LeaveType.PATERNITY]: 'Congé paternité',
+    [LeaveType.BEREAVEMENT]: 'Congé de deuil'
+  };
+
   constructor(
     private fb: FormBuilder,
     private leaveService: LeaveService,
@@ -59,6 +67,9 @@ export class LeaveRequestComponent {
     });
   }
 
+  getLeaveTypeLabel(type: string): string {
+    return this.leaveTypeLabels[type as LeaveType] || type;
+  }
   calculateTotalDays(): number {
     if (this.rangeForm.valid) {
       const start = new Date(this.rangeForm.value.start);
@@ -73,7 +84,7 @@ export class LeaveRequestComponent {
     if (this.leaveForm.valid) {
       this.isLoading = true;
       const formValue = this.leaveForm.value;
-      
+
       const dto: LeaveRequestDto = {
         startDate: this.datePipe.transform(formValue.range.start, 'yyyy-MM-dd')!,
         endDate: this.datePipe.transform(formValue.range.end, 'yyyy-MM-dd')!,
@@ -85,14 +96,14 @@ export class LeaveRequestComponent {
         next: () => {
           this.leaveForm.reset();
           this.isLoading = false;
-          this.snackBar.open('Leave request submitted successfully!', 'Close', {
+          this.snackBar.open('Demande de congé soumise avec succès !', 'Fermer', {
             duration: 3000,
             panelClass: ['success-snackbar']
           });
         },
         error: (err) => {
           this.isLoading = false;
-          this.snackBar.open(`Error: ${err.message}`, 'Close', {
+          this.snackBar.open(`Erreur : ${err.message}`, 'Fermer', {
             duration: 5000,
             panelClass: ['error-snackbar']
           });

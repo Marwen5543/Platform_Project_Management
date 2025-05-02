@@ -1,9 +1,10 @@
 import { Injectable } from '@angular/core';
 import Keycloak, { KeycloakProfile } from 'keycloak-js';
 import { keycloakConfig } from '../Config/keycloak-config';
-import { BehaviorSubject, Observable, from } from 'rxjs';
+import { BehaviorSubject, Observable, from, of, throwError } from 'rxjs';
 import { jwtDecode } from 'jwt-decode';
 import { Router, UrlTree } from '@angular/router';
+import { UserDTO, UserRole, UserStatus } from '../Models/user.models';
 
 interface DecodedToken {
   preferred_username?: string;
@@ -68,6 +69,29 @@ export class KeycloakService {
 
 getRoles(): string[] {
   return this.keycloak.realmAccess?.roles || [];
+}
+
+// In keycloak.service.ts
+getCurrentUser(): Observable<UserDTO> {
+  if (!this.isAuthenticated() || !this.keycloak.token) {
+    return throwError(() => new Error('User not authenticated'));
+  }
+
+  const decoded = jwtDecode<DecodedToken>(this.keycloak.token);
+  const user: UserDTO = {
+    userId: decoded.sub || '',
+    username: decoded.preferred_username || 'Unknown',
+    email: decoded.email || '',
+    role: this.getRole() as UserRole,
+    roles: this.getRoles(),
+    status: UserStatus.ACTIVE, 
+    isOnline: false,
+    emailVerified: false,
+    twoFactorEnabled: false,
+    projectTitles: [],
+    joinDate: new Date().toISOString() 
+  };
+  return of(user);
 }
 
   isAuthenticated(): boolean {

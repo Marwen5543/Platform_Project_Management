@@ -1,0 +1,83 @@
+<!-- Section Footer -->
+<footer class="footer-section">
+    <div class="footer-top">
+      <div class="footer-container">
+        <div class="footer-brand">
+          <img src="assets/tunisys.png" alt="Tunisys Logo" class="footer-logo">
+          <p class="footer-tagline">Innover les solutions d'entreprise</p>
+          <div class="social-links">
+            <a href="https://www.linkedin.com/company/tunisys" class="social-link" aria-label="LinkedIn"><i class="fab fa-linkedin-in"></i></a>
+            <a href="https://twitter.com/tunisys" class="social-link" aria-label="Twitter"><i class="fab fa-twitter"></i></a>
+            <a href="https://www.facebook.com/tunisys" class="social-link" aria-label="Facebook"><i class="fab fa-facebook-f"></i></a>
+            <a href="https://www.instagram.com/tunisys" class="social-link" aria-label="Instagram"><i class="fab fa-instagram"></i></a>
+          </div>
+        </div>
+        
+        <div class="footer-links">
+          <div class="footer-links-column">
+            <h4>Catégories</h4>
+            <ul>
+              <li><a routerLink="/categories/infrastructure"><i class="fa fa-server"></i> Infrastructure</a></li>
+              <li><a routerLink="/categories/data-ai"><i class="fa fa-database"></i> Data & AI</a></li>
+              <li><a routerLink="/categories/frontend"><i class="fa fa-code"></i> Frontend</a></li>
+              <li><a routerLink="/categories/quality-assurance"><i class="fa fa-check-circle"></i> Quality Assurance</a></li>
+              <li><a routerLink="/categories/business-applications"><i class="fa fa-briefcase"></i> Business Applications</a></li>
+            </ul>
+          </div>
+          
+          <div class="footer-links-column">
+            <h4>Entreprise</h4>
+            <ul>
+              <li><a routerLink="/about"><i class="fa fa-info-circle"></i> À propos</a></li>
+              <li><a routerLink="/team"><i class="fa fa-users"></i> Notre équipe</a></li>
+              <li><a routerLink="/careers"><i class="fa fa-briefcase"></i> Carrières</a></li>
+              <li><a routerLink="/partners"><i class="fa fa-link"></i> Partenaires</a></li>
+              <li><a routerLink="/testimonials"><i class="fa fa-comments"></i> Témoignages</a></li>
+            </ul>
+          </div>
+          
+          <div class="footer-links-column">
+            <h4>Ressources</h4>
+            <ul>
+              <li><a routerLink="/documentation"><i class="fa fa-book"></i> Documentation</a></li>
+              <li><a routerLink="/help-center"><i class="fa fa-question-circle"></i> Centre d'aide</a></li>
+              <li><a routerLink="/blog"><i class="fa fa-rss"></i> Blog</a></li>
+              <li><a routerLink="/events"><i class="fa fa-calendar"></i> Événements</a></li>
+              <li><a routerLink="/webinars"><i class="fa fa-play-circle"></i> Webinaires</a></li>
+            </ul>
+          </div>
+          
+          <div class="footer-newsletter">
+            <h4>Abonnez-vous à notre newsletter</h4>
+            <p>Recevez nos dernières mises à jour et actualités</p>
+            <form class="newsletter-form" (ngSubmit)="subscribeToNewsletter(emailInput.value)">
+              <input #emailInput type="email" placeholder="Votre adresse email" required>
+              <button type="submit" class="newsletter-btn">S'abonner</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer-bottom">
+      <div class="footer-container">
+        <div class="copyright">
+          <p>© {{ currentYear }} Tunisys. Tous droits réservés.</p>
+        </div>
+        <div class="footer-bottom-links">
+          <a routerLink="/legal">Mentions légales</a>
+          <span class="separator">|</span>
+          <a routerLink="/privacy">Politique de confidentialité</a>
+          <span class="separator">|</span>
+          <a routerLink="/terms">Conditions d'utilisation</a>
+        </div>
+      </div>
+    </div>
+    
+    <div class="footer-decoration">
+      <div class="footer-pulse"></div>
+      <div class="footer-pulse pulse-delay"></div>
+    </div>
+  </footer>
+  
+  
