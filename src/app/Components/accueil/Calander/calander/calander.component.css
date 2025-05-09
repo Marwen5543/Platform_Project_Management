@@ -4,8 +4,8 @@
 :host {
   --primary: #d4203e;
   --primary-light: #d4acb5;
-  --primary-dark: #3730a3;
-  --primary-hover: #4338ca;
+  --primary-dark: #e62b2b;
+  --primary-hover: #dd6e6e;
   --success: #10b981;
   --success-light: #a7f3d0;
   --warning: #f59e0b;
@@ -563,6 +563,14 @@
   margin-right: 6px;
   opacity: 0.8;
   font-size: 11px;
+}
+
+.task-title {
+  display: inline-block;
+  max-width: 100px; /* Adjust as needed */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 

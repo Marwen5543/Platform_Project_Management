@@ -111,7 +111,7 @@
           (click)="openTaskModal(task); $event.stopPropagation(); $event.preventDefault()"
         >
           <span class="task-time">{{ task.start | date:'shortTime' }}</span>
-          <span class="task-title">{{ task.title }}</span>
+          <span class="task-title">{{ task.title | truncate:10 }}</span>
           <button
             *ngIf="canDeleteTasks[task.id!]"
             class="task-delete"
@@ -150,7 +150,7 @@
           (click)="openTaskModal(task); $event.stopPropagation(); $event.preventDefault()"
         >
           <span class="task-time">{{ task.start | date:'shortTime' }}</span>
-          <span class="task-title">{{ task.title }}</span>
+          <span class="task-title">{{ task.title | truncate:10 }}</span>
           <button
             *ngIf="canDeleteTasks[task.id!]"
             class="task-delete"
@@ -180,7 +180,7 @@
             (click)="openTaskModal(task); $event.stopPropagation(); $event.preventDefault()"
           >
             <span class="task-time">{{ task.start | date:'shortTime' }}</span>
-            <span class="task-title">{{ task.title }}</span>
+            <span class="task-title">{{ task.title | truncate:10 }}</span>
             <button
               *ngIf="canDeleteTasks[task.id!]"
               class="task-delete"
@@ -263,7 +263,7 @@
     </div>
   </div>
 
-  <!-- New Task Details Modal (Read-Only) -->
+  <!-- Task Details Modal (Read-Only) -->
   <div class="modal" [class.open]="isTaskDetailModalOpen">
     <div class="modal-content">
       <div class="modal-header">

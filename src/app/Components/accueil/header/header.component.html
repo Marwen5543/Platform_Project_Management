@@ -22,9 +22,8 @@
       <div class="nav-item dropdown" *ngIf="canRequestAttestations()" role="menuitem" aria-haspopup="true">
         <span class="dropdown-toggle" (click)="toggleDropdown($event)">Documents</span>
         <div class="dropdown-menu" role="menu">
-          <a [routerLink]="['/fiche-paie']" role="menuitem">Fiche de Paie</a>
-          <a [routerLink]="['/attestation-travail']" role="menuitem">Attestation Travail</a>
-          <a [routerLink]="['/certificat-travail']" role="menuitem">Certificat Travail</a>
+          <a [routerLink]="['/fiche-paie']" role="menuitem">Demande documents</a>
+          
           <a [routerLink]="['/document-history']" class="document-history-link" role="menuitem">
             My Documents
             <span *ngIf="readyDocumentsCount > 0" class="document-badge">

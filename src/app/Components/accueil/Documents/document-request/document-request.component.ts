@@ -50,8 +50,8 @@ export class DocumentRequestComponent implements OnInit {
     this.canRequest = (roles.includes('EMPLOYEE') || roles.includes('MANAGER') || roles.includes('ADMIN')) &&
                      !roles.includes('HR') && !roles.includes('SUPER_ADMIN');
     if (!this.canRequest) {
-      this.snackBar.open('Only Employee, Manager, or Admin can request documents', 'Close', { duration: 5000 });
-      this.router.navigate(['/acceuil']);
+      this.snackBar.open('Seuls les employés, managers ou administrateurs peuvent demander des documents', 'Fermer', { duration: 5000 });
+      this.router.navigate(['/accueil']);
       return;
     }
 
@@ -92,7 +92,7 @@ export class DocumentRequestComponent implements OnInit {
 
   submitRequest() {
     if (this.documentForm.invalid) {
-      this.snackBar.open('Please fill all required fields', 'Close', { duration: 5000 });
+      this.snackBar.open('Veuillez remplir tous les champs requis', 'Fermer', { duration: 5000 });
       return;
     }
 
@@ -103,10 +103,12 @@ export class DocumentRequestComponent implements OnInit {
 
     this.documentService.requestDocument(dto).subscribe({
       next: () => {
-        this.snackBar.open('Document request submitted', 'Close', { duration: 3000 });
-        this.router.navigate(['/document-history']);
+        this.snackBar.open('Demande de document soumise', 'Fermer', { duration: 3000 });
+        this.router.navigate(['/historique-documents']);
       },
-      error: () => {} // Handled by DocumentService
+      error: () => {
+        this.snackBar.open('Erreur lors de la soumission de la demande', 'Fermer', { duration: 5000 });
+      }
     });
   }
 }

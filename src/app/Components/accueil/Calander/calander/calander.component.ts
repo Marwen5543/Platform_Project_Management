@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { PermissionService } from 'src/app/Service/PermissionService';
 import { KeycloakService } from 'src/app/Service/KeycloakService';
+import { TruncatePipe } from './TruncatePipe';
 
 type Priority = 'high' | 'medium' | 'low';
 
@@ -45,7 +46,7 @@ interface CalendarCell {
   templateUrl: './calander.component.html',
   styleUrls: ['./calander.component.css'],
   standalone: true,
-  imports: [FormsModule, CommonModule],
+  imports: [FormsModule, CommonModule, TruncatePipe],
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CalanderComponent implements OnInit, OnDestroy {
@@ -54,7 +55,7 @@ export class CalanderComponent implements OnInit, OnDestroy {
     'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'
   ];
   days = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi'];
-  currentDate: Date = new Date(); // Changed from new Date(2025, 3, 1) to today's date
+  currentDate: Date = new Date();
   currentView: 'month' | 'week' | 'day' = 'month';
   currentMonthName: string = this.monthNames[this.currentDate.getMonth()];
   currentYear: number = this.currentDate.getFullYear();
@@ -106,7 +107,6 @@ export class CalanderComponent implements OnInit, OnDestroy {
           .filter((task: Task) => task.id !== undefined && task.creatorId)
       : [];
     this.filteredTasks = [...this.tasks];
-    // Ensure month and year are set correctly after initializing currentDate
     this.currentMonthName = this.monthNames[this.currentDate.getMonth()];
     this.currentYear = this.currentDate.getFullYear();
   }

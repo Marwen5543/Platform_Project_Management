@@ -1,9 +1,12 @@
-// src/app/Config/keycloak-config.ts
+import { environment } from "../environments/environment";
+
+console.log('Loaded environment:', environment); // Debug log
+
 export const keycloakConfig = {
-  url: 'http://localhost:8080',          
-  realm: 'Tunisys',                      
-  clientId: 'demo-rest-api',             
-  enablePkce: true,                      
-  publicClient: true,                    
-  postLogoutRedirectUri: window.location.origin 
+  url: environment.keycloak.url,
+  realm: environment.keycloak.realm,
+  clientId: environment.keycloak.clientId,
+  enablePkce: environment.keycloak.enablePkce,
+  publicClient: environment.keycloak.publicClient,
+  postLogoutRedirectUri: environment.keycloak.postLogoutRedirectUri
 };

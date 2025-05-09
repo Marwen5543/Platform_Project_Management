@@ -23,9 +23,11 @@ export class KeycloakService {
   private userProfile = new BehaviorSubject<DecodedToken>({});
   private refreshInterval?: number;
 
-  constructor(private router: Router) {
+  constructor(private router: Router,) {
     console.log('Keycloak config:', keycloakConfig); // Log config at construction
+    console.log('Keycloak URL:', keycloakConfig.url); // Should be http://localhost:8080
     this.keycloak = new Keycloak(keycloakConfig);
+    
     this.initializeAuth();
   }
 
@@ -114,7 +116,13 @@ getCurrentUser(): Observable<UserDTO> {
     if (!this.initializedSubject.value) {
       await this.initializedSubject.toPromise();
     }
-    return this.isAuthenticated() || this.router.parseUrl('/login');
+    if (!this.isAuthenticated()) {
+      if (this.router.url === '/login') {
+        return false;
+      }
+      return this.router.parseUrl('/login');
+    }
+    return true;
   }
 
   login(): Promise<void> {
@@ -129,27 +137,42 @@ getCurrentUser(): Observable<UserDTO> {
   }
 
   private async initializeAuth(): Promise<void> {
-    try {
-      console.log('Attempting Keycloak initialization with config:', keycloakConfig);
-      const authenticated = await this.keycloak.init({
-        onLoad: 'login-required',
-        checkLoginIframe: false,
-        pkceMethod: 'S256'
-      });
-      console.log('Keycloak initialized successfully, authenticated:', authenticated);
-      this.initializedSubject.next(true);
-      this.authSubject.next(authenticated);
-
-      if (authenticated) {
-        console.log('Token after init:', this.keycloak.token);
-        this.updateUserProfile();
-        this.setupTokenRefresh();
+    let retries = 0;
+    const maxRetries = 3;
+    const retryDelay = 2000;
+  
+    const tryInit = async () => {
+      try {
+        console.log('Attempting Keycloak initialization with config:', keycloakConfig);
+        const authenticated = await this.keycloak.init({
+          onLoad: 'login-required',
+          checkLoginIframe: false,
+          pkceMethod: 'S256'
+        });
+        console.log('Keycloak initialized successfully, authenticated:', authenticated);
+        this.initializedSubject.next(true);
+        this.authSubject.next(authenticated);
+  
+        if (authenticated) {
+          console.log('Token after init:', this.keycloak.token);
+          this.updateUserProfile();
+          this.setupTokenRefresh();
+        }
+      } catch (error) {
+        console.error('Keycloak initialization failed:', error);
+        console.error('Keycloak instance state:', this.keycloak);
+        retries++;
+        if (retries < maxRetries) {
+          console.log(`Retrying initialization (${retries}/${maxRetries})...`);
+          setTimeout(tryInit, retryDelay);
+        } else {
+          console.error('Max retries reached, handling initialization error');
+          this.handleInitializationError();
+        }
       }
-    } catch (error) {
-      console.error('Keycloak initialization failed:', error || 'No additional error details available');
-      console.error('Keycloak instance state:', this.keycloak);
-      this.handleInitializationError();
-    }
+    };
+  
+    await tryInit();
   }
 
   private updateUserProfile(): void {
@@ -168,9 +191,13 @@ getCurrentUser(): Observable<UserDTO> {
   }
 
   private setupTokenRefresh(): void {
+    let refreshAttempts = 0;
+    const maxRefreshAttempts = 3;
+  
     this.refreshInterval = window.setInterval(() => {
       this.keycloak.updateToken(30)
         .then((refreshed: boolean) => {
+          refreshAttempts = 0;
           if (refreshed) {
             console.log('Token refreshed, new token:', this.keycloak.token);
             this.updateUserProfile();
@@ -180,16 +207,21 @@ getCurrentUser(): Observable<UserDTO> {
         })
         .catch((error) => {
           console.error('Token refresh failed:', error);
-          this.logout();
+          refreshAttempts++;
+          if (refreshAttempts >= maxRefreshAttempts) {
+            console.warn('Max refresh attempts reached, stopping refresh and redirecting to login');
+            window.clearInterval(this.refreshInterval);
+            this.router.navigate(['/login'], { queryParams: { sessionExpired: true } });
+          }
         });
     }, 30000);
   }
 
   private handleInitializationError(): void {
-    console.log('Handling initialization error, redirecting to /error');
+    console.log('Handling initialization error, redirecting to /login with error message');
     this.initializedSubject.next(true);
     this.authSubject.next(false);
-    this.router.navigate(['/error']);
+    this.router.navigate(['/login'], { queryParams: { error: 'auth-failed' } });
   }
 
   loadUserProfile(forceReload: boolean = false): Promise<KeycloakProfile> {

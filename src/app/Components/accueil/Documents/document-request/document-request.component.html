@@ -5,7 +5,7 @@
       <mat-label>Type de document</mat-label>
       <mat-select formControlName="documentType" required>
         <mat-option *ngFor="let type of documentTypes" [value]="type">
-          {{ type | titlecase }}
+          {{ type === 'PAYSLIP' ? 'Fiche de paie' : type === 'WORK_ATTESTATION' ? 'Attestation de travail' : 'Certificat de travail' }}
         </mat-option>
       </mat-select>
       <mat-error *ngIf="documentForm.get('documentType')?.hasError('required')">
