@@ -63,10 +63,11 @@
       <label class="filter-label" for="category-filter">Category</label>
       <select id="category-filter" class="select" (change)="applyFilters()">
         <option value="">All Categories</option>
-        <option value="work">Work</option>
-        <option value="personal">Personal</option>
-        <option value="health">Health</option>
-        <option value="education">Education</option>
+        <option value="Management">Management</option>
+        <option value="Administration">Administration</option>
+        <option value="Human Resources">Human Resources</option>
+        <option value="Development">Development</option>
+        <option value="Review">Review</option>
       </select>
     </div>
     <div class="filter-group">
@@ -92,6 +93,7 @@
   <section id="month-view" [class.calendar-view-active]="currentView === 'month'" role="grid" aria-label="Monthly Calendar">
     <div class="calendar-day-header" *ngFor="let day of days; let i = index">
       <span class="full-day-name">{{ day }}</span>
+      <span class="abbrev-day-name">{{ day.slice(0, 3) }}</span>
     </div>
     <ng-container *ngFor="let cell of calendarCells; let i = index">
       <div
@@ -111,7 +113,7 @@
           (click)="openTaskModal(task); $event.stopPropagation(); $event.preventDefault()"
         >
           <span class="task-time">{{ task.start | date:'shortTime' }}</span>
-          <span class="task-title">{{ task.title | truncate:10 }}</span>
+          <span class="task-title" title="{{ task.title }}">{{ task.title | truncate:7 }}</span>
           <button
             *ngIf="canDeleteTasks[task.id!]"
             class="task-delete"
@@ -135,7 +137,8 @@
       <span class="header-date">{{ cell.date.getDate() }}</span>
     </div>
     <ng-container *ngFor="let hour of [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,23]; let hourIndex = index">
-      <div class="calendar-time-label">{{ hour % 12 || 12 }}:00 {{ hour < 12 ? 'AM' : 'PM' }}</div>
+      <div
+        class="calendar-time-label">{{ hour % 12 || 12 }}:00 {{ hour < 12 ? 'AM' : 'PM' }}</div>
       <div
         *ngFor="let cell of weekCells; let dayIndex = index"
         class="calendar-time-slot"
@@ -150,7 +153,7 @@
           (click)="openTaskModal(task); $event.stopPropagation(); $event.preventDefault()"
         >
           <span class="task-time">{{ task.start | date:'shortTime' }}</span>
-          <span class="task-title">{{ task.title | truncate:10 }}</span>
+          <span class="task-title" title="{{ task.title }}">{{ task.title | truncate:7 }}</span>
           <button
             *ngIf="canDeleteTasks[task.id!]"
             class="task-delete"
@@ -180,7 +183,7 @@
             (click)="openTaskModal(task); $event.stopPropagation(); $event.preventDefault()"
           >
             <span class="task-time">{{ task.start | date:'shortTime' }}</span>
-            <span class="task-title">{{ task.title | truncate:10 }}</span>
+            <span class="task-title" title="{{ task.title }}">{{ task.title | truncate:7 }}</span>
             <button
               *ngIf="canDeleteTasks[task.id!]"
               class="task-delete"
@@ -225,35 +228,94 @@
         <div class="form-group">
           <label class="form-label" for="task-category">Category</label>
           <select id="task-category" class="form-control" [(ngModel)]="taskData.category" name="category">
-            <option value="work">Work</option>
-            <option value="personal">Personal</option>
-            <option value="health">Health</option>
-            <option value="education">Education</option>
+            <option value="Management">Management</option>
+            <option value="Administration">Administration</option>
+            <option value="Human Resources">Human Resources</option>
+            <option value="Development">Development</option>
+            <option value="Review">Review</option>
           </select>
         </div>
         <div class="form-group">
-          <label class="form-label" for="task-priority">Priority</label>
-          <select id="task-priority" class="form-control" [(ngModel)]="taskData.priority" name="priority">
-            <option value="high">High</option>
-            <option value="medium">Medium</option>
-            <option value="low">Low</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Color</label>
-          <div class="color-picker">
-            <div 
-              *ngFor="let color of ['#dc2626', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899']" 
-              class="color-option" 
-              [style.backgroundColor]="color" 
-              [class.selected]="taskData.color === color"
-              (click)="taskData.color = color">
+          <label class="form-label" for="priority-picker">Priority</label>
+          <div class="priority-picker" role="radiogroup" id="priority-picker">
+            <div
+              class="priority-option"
+              [class.selected]="taskData.priority === 'high'"
+              (click)="selectPriority('high')"
+              [style.backgroundColor]="priorityColors.high"
+              tabindex="0"
+              role="radio"
+              [attr.aria-checked]="taskData.priority === 'high' ? 'true' : 'false'"
+              aria-label="Select High Priority"
+            >
+              High
+            </div>
+            <div
+              class="priority-option"
+              [class.selected]="taskData.priority === 'medium'"
+              (click)="selectPriority('medium')"
+              [style.backgroundColor]="priorityColors.medium"
+              tabindex="0"
+              role="radio"
+              [attr.aria-checked]="taskData.priority === 'medium' ? 'true' : 'false'"
+              aria-label="Select Medium Priority"
+            >
+              Medium
+            </div>
+            <div
+              class="priority-option"
+              [class.selected]="taskData.priority === 'low'"
+              (click)="selectPriority('low')"
+              [style.backgroundColor]="priorityColors.low"
+              tabindex="0"
+              role="radio"
+              [attr.aria-checked]="taskData.priority === 'low' ? 'true' : 'false'"
+              aria-label="Select Low Priority"
+            >
+              Low
             </div>
           </div>
         </div>
         <div class="form-group checkbox-group" *ngIf="currentTask">
           <input type="checkbox" id="task-completed" [(ngModel)]="taskData.completed" name="completed">
           <label class="form-label" for="task-completed">Mark as Completed</label>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="task-visible-to-users">Visible to Users</label>
+          <div class="custom-multiselect">
+            <div class="selected-users" *ngIf="taskData.visibleToUserIds.length > 0">
+              <span *ngFor="let userId of taskData.visibleToUserIds" class="user-tag">
+                {{ getUsernameById(userId) }}
+                <span class="user-role role-{{getUserRoleById(userId).toLowerCase().replace(' ', '_')}}">
+                  {{ getUserRoleById(userId) }}
+                </span>
+                <button class="remove-user" (click)="removeUser(userId)" aria-label="Remove user">×</button>
+              </span>
+            </div>
+            <div class="multiselect-trigger" (click)="toggleUserDropdown()" [class.open]="isUserDropdownOpen">
+              <span *ngIf="taskData.visibleToUserIds.length === 0" class="placeholder">Select users or choose Only creator</span>
+              <span class="chevron"></span>
+            </div>
+            <div class="multiselect-dropdown" *ngIf="isUserDropdownOpen">
+              <label class="multiselect-option">
+                <input
+                  type="checkbox"
+                  [checked]="taskData.visibleToUserIds.length === 0"
+                  (change)="toggleUserSelection('')"
+                >
+                <span class="option-label">Only creator</span>
+              </label>
+              <label class="multiselect-option" *ngFor="let user of users">
+                <input
+                  type="checkbox"
+                  [checked]="taskData.visibleToUserIds.includes(user.userId)"
+                  (change)="toggleUserSelection(user.userId)"
+                >
+                <span class="option-label">{{ user.username }}</span>
+                <span class="user-role role-{{user.role.toLowerCase().replace(' ', '_')}}">{{ user.role }}</span>
+              </label>
+            </div>
+          </div>
         </div>
       </form>
       <div class="modal-footer">
@@ -293,15 +355,15 @@
         </div>
         <div class="form-group">
           <label class="form-label">Priority</label>
-          <p class="task-detail-text">{{ selectedTask.priority }}</p>
+          <p class="task-detail-text">{{ selectedTask.priority | titlecase }}</p>
         </div>
         <div class="form-group">
           <label class="form-label">Status</label>
           <p class="task-detail-text">{{ selectedTask.completed ? 'Completed' : 'Pending' }}</p>
         </div>
         <div class="form-group">
-          <label class="form-label">Color</label>
-          <div class="color-display" [style.backgroundColor]="selectedTask.color"></div>
+          <label class="form-label">Creator</label>
+          <p class="task-detail-text">{{ selectedTask.createdBy }} ({{ getUserRoleById(selectedTask.creatorId) }})</p>
         </div>
       </div>
       <div class="modal-footer">

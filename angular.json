@@ -13,7 +13,7 @@
         "build": {
           "builder": "@angular-devkit/build-angular:browser",
           "options": {
-            "allowedCommonJsDependencies": ["js-sha256","file-saver"],
+            "allowedCommonJsDependencies": ["js-sha256","file-saver","@zegocloud/zego-uikit-prebuilt"],
             "outputPath": "dist/managment",
             "index": "src/index.html",
             "main": "src/main.ts",

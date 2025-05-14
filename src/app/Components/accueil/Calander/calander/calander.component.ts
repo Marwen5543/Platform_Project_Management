@@ -3,9 +3,18 @@ import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { PermissionService } from 'src/app/Service/PermissionService';
 import { KeycloakService } from 'src/app/Service/KeycloakService';
+import { UserService } from 'src/app/Service/UserService';
 import { TruncatePipe } from './TruncatePipe';
+import { VideoCallComponent } from '../../video-call/video-call.component';
 
 type Priority = 'high' | 'medium' | 'low';
+type Category = 'Management' | 'Administration' | 'Human Resources' | 'Development' | 'Review';
+
+interface User {
+  userId: string;
+  username: string;
+  role: string;
+}
 
 interface Task {
   id?: number;
@@ -14,11 +23,13 @@ interface Task {
   start: string | Date;
   end?: string | Date | null;
   allDay: boolean;
-  category: string;
+  category: Category;
   priority: Priority;
   color: string;
   completed: boolean;
   creatorId: string;
+  createdBy: string;
+  visibleToUserIds: string[];
 }
 
 interface WeekCell {
@@ -46,7 +57,7 @@ interface CalendarCell {
   templateUrl: './calander.component.html',
   styleUrls: ['./calander.component.css'],
   standalone: true,
-  imports: [FormsModule, CommonModule, TruncatePipe],
+  imports: [FormsModule, CommonModule, TruncatePipe, VideoCallComponent], // Add VideoCallComponent to imports
   changeDetection: ChangeDetectionStrategy.OnPush
 })
 export class CalanderComponent implements OnInit, OnDestroy {
@@ -73,11 +84,13 @@ export class CalanderComponent implements OnInit, OnDestroy {
     start: '',
     end: null,
     allDay: false,
-    category: 'work',
+    category: 'Management',
     priority: 'medium',
-    color: '#dc2626',
+    color: '#f59e0b',
     completed: false,
-    creatorId: ''
+    creatorId: '',
+    createdBy: '',
+    visibleToUserIds: []
   };
   toasts: Toast[] = [];
   todayTasks: number = 0;
@@ -89,10 +102,20 @@ export class CalanderComponent implements OnInit, OnDestroy {
   dayCells: { hour: number; tasks: Task[] }[] = [];
   searchQuery: string = '';
   canDeleteTasks: { [taskId: number]: boolean } = {};
+  currentUserId: string = '';
+  currentUserRole: string = '';
+  users: User[] = [];
+  isUserDropdownOpen: boolean = false;
+  readonly priorityColors: Record<Priority, string> = {
+    high: '#dc2626',
+    medium: '#f59e0b',
+    low: '#10b981'
+  };
 
   constructor(
     private permissionService: PermissionService,
     private keycloakService: KeycloakService,
+    private userService: UserService,
     private cdr: ChangeDetectorRef
   ) {
     const tasksJson = localStorage.getItem('tasks');
@@ -101,8 +124,12 @@ export class CalanderComponent implements OnInit, OnDestroy {
           .map((task: any) => ({
             ...task,
             creatorId: task.creatorId || 'unknown',
+            createdBy: task.createdBy || 'Unknown',
             start: task.start ? new Date(task.start) : task.start,
-            end: task.end ? new Date(task.end) : task.end
+            end: task.end ? new Date(task.end) : task.end,
+            visibleToUserIds: task.visibleToUserIds || (task.visibleToUserId ? [task.visibleToUserId] : task.visibleToRoles || []),
+            color: task.color || this.priorityColors[task.priority as Priority] || '#f59e0b',
+            category: task.category || 'Management'
           }))
           .filter((task: Task) => task.id !== undefined && task.creatorId)
       : [];
@@ -112,14 +139,75 @@ export class CalanderComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    this.updateMonthView();
-    this.updateWeekView();
-    this.updateDayView();
-    this.updateStats();
-    this.updateDeletePermissions();
+    this.keycloakService.getCurrentUser().subscribe({
+      next: (currentUser) => {
+        if (currentUser) {
+          this.currentUserId = currentUser.userId;
+          this.userService.getCurrentUserNameAndRole().subscribe({
+            next: (data) => {
+              this.currentUserRole = data.role;
+              this.userService.getAllUsers().subscribe({
+                next: (users) => {
+                  this.users = users;
+                  this.filterTasksByUser();
+                  this.updateMonthView();
+                  this.updateWeekView();
+                  this.updateDayView();
+                  this.updateStats();
+                  this.updateDeletePermissions();
+                  this.cdr.markForCheck();
+                },
+                error: (err) => {
+                  console.error('Failed to fetch users:', err);
+                  this.showToast('Error fetching users', 'error');
+                  this.cdr.markForCheck();
+                }
+              });
+            },
+            error: (err) => {
+              console.error('Failed to fetch current user role:', err);
+              this.showToast('Error fetching user role', 'error');
+              this.cdr.markForCheck();
+            }
+          });
+        } else {
+          this.showToast('User not authenticated', 'error');
+          this.cdr.markForCheck();
+        }
+      },
+      error: (err) => {
+        console.error('Failed to fetch current user:', err);
+        this.showToast('Authentication error. Please try logging in again.', 'error');
+        this.cdr.markForCheck();
+      }
+    });
   }
 
   ngOnDestroy(): void {}
+
+  private initTask(userId: string = '', username: string = ''): Task {
+    return {
+      title: '',
+      description: '',
+      start: '',
+      end: null,
+      allDay: false,
+      category: 'Management',
+      priority: 'medium',
+      color: this.priorityColors.medium,
+      completed: false,
+      creatorId: userId,
+      createdBy: username,
+      visibleToUserIds: []
+    };
+  }
+
+  private filterTasksByUser(): void {
+    this.filteredTasks = this.tasks.filter(task =>
+      task.creatorId === this.currentUserId ||
+      task.visibleToUserIds.includes(this.currentUserId)
+    );
+  }
 
   private updateDeletePermissions(): void {
     this.canDeleteTasks = {};
@@ -131,7 +219,6 @@ export class CalanderComponent implements OnInit, OnDestroy {
           this.permissionService.canDeleteTask(task.creatorId).subscribe({
             next: (canDelete) => {
               this.canDeleteTasks[task.id!] = canDelete;
-              console.log(`Permission for task ${task.id}:`, canDelete, 'creatorId:', task.creatorId);
               this.cdr.markForCheck();
             },
             error: (err) => {
@@ -366,27 +453,16 @@ export class CalanderComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
           return;
         }
-        console.log(`openTaskModalForDay: Creating new task for user ${currentUser.userId}`);
-        this.taskData = {
-          title: '',
-          description: '',
-          start: date.toISOString().slice(0, 16),
-          end: null,
-          allDay: false,
-          category: 'work',
-          priority: 'medium',
-          color: '#dc2626',
-          completed: false,
-          creatorId: currentUser.userId
-        };
+        this.taskData = this.initTask(currentUser.userId, currentUser.username);
+        this.taskData.start = date.toISOString().slice(0, 16);
         this.currentTask = null;
-        console.log('Opening modal for new task on day:', this.taskData);
         this.isModalOpen = true;
+        this.isUserDropdownOpen = false;
         this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error checking authentication for new task:', err);
-        this.showToast('Error checking authentication', 'error');
+        this.showToast('Authentication error. Please try logging in again.', 'error');
         this.cdr.markForCheck();
       }
     });
@@ -400,31 +476,21 @@ export class CalanderComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
           return;
         }
-        console.log(`openTaskModalForDayAndHour: Creating new task for user ${currentUser.userId}`);
         const taskStartDate = new Date(date);
         taskStartDate.setHours(hour, 0, 0, 0);
         const taskEndDate = new Date(taskStartDate);
         taskEndDate.setHours(hour + 1);
-        this.taskData = {
-          title: '',
-          description: '',
-          start: taskStartDate.toISOString().slice(0, 16),
-          end: taskEndDate.toISOString().slice(0, 16),
-          allDay: false,
-          category: 'work',
-          priority: 'medium',
-          color: '#dc2626',
-          completed: false,
-          creatorId: currentUser.userId
-        };
+        this.taskData = this.initTask(currentUser.userId, currentUser.username);
+        this.taskData.start = taskStartDate.toISOString().slice(0, 16);
+        this.taskData.end = taskEndDate.toISOString().slice(0, 16);
         this.currentTask = null;
-        console.log('Opening modal for new task at hour:', this.taskData);
         this.isModalOpen = true;
+        this.isUserDropdownOpen = false;
         this.cdr.markForCheck();
       },
       error: (err) => {
         console.error('Error checking authentication for new task:', err);
-        this.showToast('Error checking authentication', 'error');
+        this.showToast('Authentication error. Please try logging in again.', 'error');
         this.cdr.markForCheck();
       }
     });
@@ -432,7 +498,6 @@ export class CalanderComponent implements OnInit, OnDestroy {
 
   openTaskModal(task: Task | null = null): void {
     if (task) {
-      console.log(`openTaskModal: Attempting to access task ${task.id}, creatorId: ${task.creatorId}`);
       this.keycloakService.getCurrentUser().subscribe({
         next: (currentUser) => {
           if (!currentUser) {
@@ -441,17 +506,18 @@ export class CalanderComponent implements OnInit, OnDestroy {
             return;
           }
           if (task.creatorId === currentUser.userId) {
-            console.log(`User ${currentUser.userId} is the creator, opening edit modal`);
             this.currentTask = { ...task };
             this.taskData = {
               ...task,
               creatorId: task.creatorId,
               start: task.start instanceof Date ? task.start.toISOString().slice(0, 16) : task.start,
-              end: task.end instanceof Date ? task.end.toISOString().slice(0, 16) : task.end
+              end: task.end ? (task.end instanceof Date ? task.end.toISOString().slice(0, 16) : task.end) : null,
+              visibleToUserIds: task.visibleToUserIds,
+              color: this.priorityColors[task.priority]
             };
             this.isModalOpen = true;
+            this.isUserDropdownOpen = false;
           } else {
-            console.log(`User ${currentUser.userId} is not the creator, opening task details modal`);
             this.selectedTask = {
               ...task,
               start: task.start instanceof Date ? task.start : new Date(task.start),
@@ -463,7 +529,7 @@ export class CalanderComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           console.error(`Error checking user authentication for task ${task?.id}:`, err);
-          this.showToast('Error checking authentication', 'error');
+          this.showToast('Authentication error. Please try logging in again.', 'error');
           this.cdr.markForCheck();
         }
       });
@@ -475,26 +541,15 @@ export class CalanderComponent implements OnInit, OnDestroy {
             this.cdr.markForCheck();
             return;
           }
-          console.log(`openTaskModal: Creating new task for user ${currentUser.userId}`);
           this.currentTask = null;
-          this.taskData = {
-            title: '',
-            description: '',
-            start: '',
-            end: null,
-            allDay: false,
-            category: 'work',
-            priority: 'medium',
-            color: '#dc2626',
-            completed: false,
-            creatorId: currentUser.userId
-          };
+          this.taskData = this.initTask(currentUser.userId, currentUser.username);
           this.isModalOpen = true;
+          this.isUserDropdownOpen = false;
           this.cdr.markForCheck();
         },
         error: (err) => {
           console.error('Error checking authentication for new task:', err);
-          this.showToast('Error checking authentication', 'error');
+          this.showToast('Authentication error. Please try logging in again.', 'error');
           this.cdr.markForCheck();
         }
       });
@@ -510,6 +565,8 @@ export class CalanderComponent implements OnInit, OnDestroy {
   closeModal(): void {
     this.isModalOpen = false;
     this.currentTask = null;
+    this.isUserDropdownOpen = false;
+    this.taskData = this.initTask();
     this.cdr.markForCheck();
   }
 
@@ -530,17 +587,14 @@ export class CalanderComponent implements OnInit, OnDestroy {
           this.cdr.markForCheck();
           return;
         }
-        console.log(`saveTask: Current user ${currentUser.userId}, task creatorId: ${this.currentTask?.creatorId || 'new'}`);
         if (this.currentTask && this.currentTask.id !== undefined) {
           if (!this.currentTask.creatorId || this.currentTask.creatorId === 'unknown') {
-            console.error(`saveTask: Invalid creatorId for task ${this.currentTask.id}`);
             this.showToast('Invalid task creator', 'error');
             this.cdr.markForCheck();
             return;
           }
           this.permissionService.canEditTask(this.currentTask.creatorId).subscribe({
             next: (canEdit) => {
-              console.log(`saveTask: Can edit task ${this.currentTask?.id ?? 'unknown'} (creator: ${this.currentTask?.creatorId ?? 'unknown'}): ${canEdit}`);
               if (!canEdit) {
                 this.showToast('You do not have permission to edit this task', 'error');
                 this.cdr.markForCheck();
@@ -560,39 +614,46 @@ export class CalanderComponent implements OnInit, OnDestroy {
       },
       error: (err) => {
         console.error('Error fetching current user:', err);
-        this.showToast('Error checking authentication', 'error');
+        this.showToast('Authentication error. Please try logging in again.', 'error');
         this.cdr.markForCheck();
       }
     });
   }
 
   private saveTaskInternal(userId: string): void {
-    const task: Task = {
-      ...this.taskData,
-      id: this.currentTask?.id ?? Date.now(),
-      creatorId: this.currentTask?.creatorId ?? userId,
-      start: this.taskData.start ? new Date(this.taskData.start) : this.taskData.start,
-      end: this.taskData.end ? new Date(this.taskData.end) : null
-    };
-    console.log('Saving task:', task, 'Original creatorId:', this.currentTask?.creatorId);
-    if (this.currentTask && this.currentTask.id !== undefined) {
-      const index = this.tasks.findIndex(t => t.id === this.currentTask!.id);
-      if (index !== -1) {
-        this.tasks = [...this.tasks.slice(0, index), task, ...this.tasks.slice(index + 1)];
-        this.filteredTasks = [...this.filteredTasks.slice(0, index), task, ...this.filteredTasks.slice(index + 1)];
-      }
-    } else {
-      this.tasks = [...this.tasks, task];
-      this.filteredTasks = [...this.tasks, task];
+  const newId = this.currentTask?.id ?? Date.now();
+  const task: Task = {
+    ...this.taskData,
+    id: newId,
+    creatorId: this.currentTask?.creatorId ?? userId,
+    createdBy: this.currentTask?.createdBy ?? this.getUsernameById(userId),
+    start: this.taskData.start ? new Date(this.taskData.start) : this.taskData.start,
+    end: this.taskData.end ? new Date(this.taskData.end) : null,
+    visibleToUserIds: this.taskData.visibleToUserIds,
+    color: this.priorityColors[this.taskData.priority]
+  };
+  if (this.currentTask && this.currentTask.id !== undefined) {
+    const index = this.tasks.findIndex(t => t.id === this.currentTask!.id);
+    if (index !== -1) {
+      this.tasks = [...this.tasks.slice(0, index), task, ...this.tasks.slice(index + 1)];
+      this.filteredTasks = [...this.filteredTasks.slice(0, index), task, ...this.filteredTasks.slice(index + 1)];
     }
-    localStorage.setItem('tasks', JSON.stringify(this.tasks));
-    this.closeModal();
-    this.applyFilters();
-    this.updateStats();
-    this.updateDeletePermissions();
-    this.showToast('Task saved successfully');
-    this.cdr.markForCheck();
+  } else {
+    this.tasks = [...this.tasks, task];
+    this.filteredTasks = [...this.tasks];
+    this.taskData.id = newId; // Set taskData.id for new tasks
   }
+  localStorage.setItem('tasks', JSON.stringify(this.tasks));
+  this.closeModal();
+  this.filterTasksByUser();
+  this.updateMonthView();
+  this.updateWeekView();
+  this.updateDayView();
+  this.updateStats();
+  this.updateDeletePermissions();
+  this.showToast('Task saved successfully');
+  this.cdr.markForCheck();
+}
 
   validateTaskDate(): boolean {
     if (!this.taskData.start) {
@@ -615,15 +676,19 @@ export class CalanderComponent implements OnInit, OnDestroy {
     const priorityFilter = document.getElementById('priority-filter') as HTMLSelectElement;
 
     let filteredTasks = [...this.tasks];
-    if (categoryFilter.value) {
+
+    if (categoryFilter.value && categoryFilter.value !== 'all') {
       filteredTasks = filteredTasks.filter(t => t.category === categoryFilter.value);
     }
-    if (completedFilter.value) {
+
+    if (completedFilter.value && completedFilter.value !== 'all') {
       filteredTasks = filteredTasks.filter(t => t.completed === (completedFilter.value === 'true'));
     }
-    if (priorityFilter.value) {
+
+    if (priorityFilter.value && priorityFilter.value !== 'all') {
       filteredTasks = filteredTasks.filter(t => t.priority === priorityFilter.value);
     }
+
     if (this.searchQuery) {
       filteredTasks = filteredTasks.filter(t =>
         t.title.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
@@ -631,7 +696,11 @@ export class CalanderComponent implements OnInit, OnDestroy {
       );
     }
 
-    this.filteredTasks = filteredTasks;
+    this.filteredTasks = filteredTasks.filter(task =>
+      task.creatorId === this.currentUserId ||
+      task.visibleToUserIds.includes(this.currentUserId)
+    );
+
     this.updateMonthView();
     this.updateWeekView();
     this.updateDayView();
@@ -649,10 +718,10 @@ export class CalanderComponent implements OnInit, OnDestroy {
     const upcomingDate = new Date(today);
     upcomingDate.setDate(today.getDate() + 7);
 
-    this.todayTasks = this.tasks.filter(t => new Date(t.start).toDateString() === today.toDateString()).length;
-    this.upcomingTasks = this.tasks.filter(t => t.end && new Date(t.end) > today && new Date(t.end) <= upcomingDate).length;
-    this.completionRate = this.tasks.length ? `${((this.tasks.filter(t => t.completed).length / this.tasks.length) * 100).toFixed(0)}%` : '0%';
-    this.overdueTasks = this.tasks.filter(t => t.end && new Date(t.end) < today && !t.completed).length;
+    this.todayTasks = this.filteredTasks.filter(t => new Date(t.start).toDateString() === today.toDateString()).length;
+    this.upcomingTasks = this.filteredTasks.filter(t => t.end && new Date(t.end) > today && new Date(t.end) <= upcomingDate).length;
+    this.completionRate = this.filteredTasks.length ? `${((this.filteredTasks.filter(t => t.completed).length / this.filteredTasks.length) * 100).toFixed(0)}%` : '0%';
+    this.overdueTasks = this.filteredTasks.filter(t => t.end && new Date(t.end) < today && !t.completed).length;
     this.cdr.markForCheck();
   }
 
@@ -701,5 +770,63 @@ export class CalanderComponent implements OnInit, OnDestroy {
     } else if (event.key === 'Escape' && this.isDeleteConfirmOpen) {
       this.closeDeleteConfirm();
     }
+  }
+
+  getUsernameById(userId: string): string {
+    const user = this.users.find(u => u.userId === userId);
+    return user ? user.username : 'Unknown';
+  }
+
+  getUserRoleById(userId: string): string {
+    const user = this.users.find(u => u.userId === userId);
+    return user ? user.role : 'Unknown';
+  }
+
+  getVisibleUsersDisplay(visibleToUserIds: string[]): string {
+    if (!visibleToUserIds || visibleToUserIds.length === 0) {
+      return 'Only creator';
+    }
+    return visibleToUserIds
+      .map(userId => `${this.getUsernameById(userId)} (${this.getUserRoleById(userId)})`)
+      .join(', ');
+  }
+
+  toggleUserDropdown(): void {
+    this.isUserDropdownOpen = !this.isUserDropdownOpen;
+    this.cdr.markForCheck();
+  }
+
+  toggleUserSelection(userId: string): void {
+    if (userId === '') {
+      this.taskData.visibleToUserIds = [];
+    } else {
+      const index = this.taskData.visibleToUserIds.indexOf(userId);
+      if (index === -1) {
+        this.taskData.visibleToUserIds.push(userId);
+      } else {
+        this.taskData.visibleToUserIds.splice(index, 1);
+      }
+    }
+    this.cdr.markForCheck();
+  }
+
+  removeUser(userId: string): void {
+    this.taskData.visibleToUserIds = this.taskData.visibleToUserIds.filter(id => id !== userId);
+    this.cdr.markForCheck();
+  }
+
+  selectPriority(priority: Priority): void {
+    this.taskData.priority = priority;
+    this.taskData.color = this.priorityColors[priority];
+    this.cdr.markForCheck();
+  }
+
+  startVideoCall(): void {
+    if (!this.taskData.id || !this.taskData.creatorId) {
+      this.showToast('Cannot start video call: Task must be saved first', 'error');
+      this.cdr.markForCheck();
+      return;
+    }
+    this.cdr.markForCheck();
   }
 }

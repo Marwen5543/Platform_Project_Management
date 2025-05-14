@@ -10,6 +10,7 @@
 
   <div class="loading" *ngIf="isLoading">
     <p>Loading users...</p>
+    <mat-spinner diameter="40" class="center-spinner"></mat-spinner>
   </div>
 
   <div class="error-message" *ngIf="errorMessage && !isLoading">
@@ -24,7 +25,7 @@
           <th>Username</th>
           <th>Email</th>
           <th>Role</th>
-          <th>Current Project</th>
+          <th>Current Projects</th>
           <th>Affect to Project</th>
         </tr>
       </thead>
@@ -69,8 +70,22 @@
                   <div><strong>Department ID:</strong> {{ user.departmentId ?? 'N/A' }}</div>
                   <div><strong>Manager ID:</strong> {{ user.managerId ?? 'N/A' }}</div>
                   <div><strong>Position:</strong> {{ user.position || 'N/A' }}</div>
-                  <div><strong>Assigned Projects:</strong> {{ getAssignedProjects(user) }}</div>
+                  <div class="assigned-projects">
+                    <strong>Assigned Projects:</strong>
+                    <div class="project-tags" *ngIf="user.projectTitles && user.projectTitles.length > 0">
+                      <div class="project-tag" *ngFor="let project of user.projectTitles">
+                        {{ project }}
+                        <button 
+                          class="remove-project-btn" 
+                          (click)="$event.stopPropagation(); deassignProject(user.userId, project)"
+                          title="Remove project">
+                          <i class="fas fa-times"></i>
+                        </button>
+                      </div>
+                    </div>
+                    <span *ngIf="!user.projectTitles || user.projectTitles.length === 0">None</span>
                   </div>
+                </div>
               </div>
             </td>
           </tr>

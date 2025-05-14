@@ -15,7 +15,7 @@ import { TeamLeavesComponent } from './Components/accueil/LeaveRequest/team-leav
 import { LeaveHistoryComponent } from './Components/accueil/LeaveRequest/leave-history/leave-history.component';
 import { CalanderComponent } from './Components/accueil/Calander/calander/calander.component';
 import { LeaveRequestComponent } from './Components/accueil/LeaveRequest/leave-request/leave-request.component';
-import { TaskDetailComponent } from './Components/accueil/Calander/task-detail/task-detail.component';
+import { VideoCallComponent } from './Components/accueil/video-call/video-call.component';
 
 const routes: Routes = [
   {
@@ -38,10 +38,10 @@ const routes: Routes = [
       { path: 'consulter-conge', component: LeaveHistoryComponent },
       { path: 'liste-equipe-conge', component: TeamLeavesComponent },
       { path: 'planification', component: CalanderComponent },
+      { path: 'video-call/:taskId', component: VideoCallComponent },
       { path: '', redirectTo: 'acceuil', pathMatch: 'full' }
     ]
   },
-  { path: 'task-detail', component: TaskDetailComponent },
   { path: '**', redirectTo: 'acceuil' }
 ];
 

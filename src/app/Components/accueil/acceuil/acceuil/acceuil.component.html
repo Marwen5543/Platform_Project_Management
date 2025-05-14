@@ -1,4 +1,14 @@
 <div class="accueil-container">
+  <!-- Error Message for Authentication Failure -->
+  <div *ngIf="errorMessage" class="error-message">
+    {{ errorMessage }}
+    <button class="retry-btn" (click)="loadCurrentUser()">Retry</button>
+  </div>
+
+  <!-- User Identity -->
+  <div *ngIf="currentUser" class="user-info">
+  </div>
+
   <!-- Section Héros -->
   <section class="hero-section">
     <div class="hero-content" [ngClass]="{'loaded': isLoaded}">
@@ -161,6 +171,7 @@
           <button class="action-btn primary-action">Voir la Documentation</button>
           <button class="action-btn secondary-action">Chronologie du Projet</button>
           <button class="action-btn secondary-action">Chat d'Équipe</button>
+          <button class="action-btn secondary-action" (click)="startMeeting()">Call Meeting</button>
         </div>
       </div>
     </ng-template>

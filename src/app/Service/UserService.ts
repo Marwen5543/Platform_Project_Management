@@ -222,9 +222,9 @@ updateUser(user: UserDTO): Observable<UserDTO> {
   );
 }
 
-assignProjects(user: UserDTO): Observable<UserDTO> {
-  // Simulate a successful assignment by returning the input user
-  return of({ ...user });
+assignProject(userId: string, projectTitle: string): Observable<UserDTO> {
+  const encodedProjectTitle = encodeURIComponent(projectTitle);
+  return this.http.post<UserDTO>(`${this.apiUrl}/${userId}/project/${encodedProjectTitle}`, {});
 }
 
 
@@ -256,6 +256,28 @@ removeUserFromProject(userId: string, projectTitle: string): Observable<UserDTO>
   return of(user);
 }
 
+
+// Get the current user's name and role
+  getCurrentUserNameAndRole(): Observable<{name: string, role: string}> {
+    return this.http.get<{name: string, role: string}>(`${this.apiUrl}/me/name-and-role`);
+  }
+
+  // Get name and role by user ID
+  getUserNameAndRole(userId: string): Observable<{name: string, role: string}> {
+    return this.http.get<{name: string, role: string}>(`${this.apiUrl}/${userId}/name-and-role`);
+  }
+
+  // Get name and role by username
+  getUserNameAndRoleByUsername(username: string): Observable<{name: string, role: string}> {
+    return this.http.get<{name: string, role: string}>(`${this.apiUrl}/username/${username}/name-and-role`);
+  }
+  
+
+deassignProject(userId: string, projectTitle: string): Observable<any> {
+  // Add URL encoding for the project title to handle special characters like spaces
+  const encodedProjectTitle = encodeURIComponent(projectTitle);
+  return this.http.delete(`${this.apiUrl}/${userId}/project/${encodedProjectTitle}`);
+}
 
 
 }
