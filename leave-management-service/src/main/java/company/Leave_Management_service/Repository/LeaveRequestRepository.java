@@ -9,9 +9,9 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
+import java.util.UUID;
 
-public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, Long> {
-
-    List<LeaveRequest> findByEmployeeId(Long employeeId);
-    List<LeaveRequest> findByStatus(LeaveRequest.LeaveStatus status);
+public interface LeaveRequestRepository extends JpaRepository<LeaveRequest, UUID> {
+    List<LeaveRequest> findByEmployeeId(String employeeId);
+    List<LeaveRequest> findByEmployeeIdIn(List<String> employeeIds);
 }

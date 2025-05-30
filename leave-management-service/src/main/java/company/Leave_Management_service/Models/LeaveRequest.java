@@ -2,37 +2,37 @@ package company.Leave_Management_service.Models;
 
 import jakarta.persistence.*;
 import lombok.Data;
+import org.hibernate.annotations.GenericGenerator;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 @Data
 @Entity
-@Table(name = "leave_requests")
 public class LeaveRequest {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long requestId;
+    @GeneratedValue(generator = "UUID")
+    @GenericGenerator(name = "UUID", strategy = "org.hibernate.id.UUIDGenerator")
+    private UUID id;
 
-    private Long employeeId;
+    private String employeeId;
+
+    private String username;
+
     private LocalDate startDate;
+
     private LocalDate endDate;
 
     @Enumerated(EnumType.STRING)
-    private LeaveType leaveType;
+    private LeaveType type;
 
     @Enumerated(EnumType.STRING)
     private LeaveStatus status;
 
-    private String comments;
-    private Long approverEmployeeId;
-    private LocalDate submissionDate;
-    private LocalDate approvalDate;
+    private String reason;
 
-    public enum LeaveType {
-        VACATION, SICK, PERSONAL, MATERNITY, PATERNITY, OTHER
-    }
+    private LocalDateTime createdAt;
 
-    public enum LeaveStatus {
-        PENDING, APPROVED, REJECTED, CANCELLED
-    }
+    private LocalDateTime updatedAt;
 }
