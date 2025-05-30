@@ -67,42 +67,49 @@ export class AcceuilComponent implements OnInit {
   }
 
   public loadCurrentUser(): void {
-    const userId = this.keycloakService.getUserId();
-    const username = this.keycloakService.getUsername();
-    const role = this.convertToUserRole(this.keycloakService.getRole());
-    if (userId && username) {
-      this.currentUser = {
-        userId,
-        username,
-        email: this.keycloakService.getEmail() || '',
-        role,
-        status: 'ACTIVE' as UserStatus,
-        projectTitles: []
-      };
-      const storageKey = `user_${userId}_projects`;
-      const savedData = localStorage.getItem(storageKey);
-      if (savedData) {
-        try {
-          const { projectTitles, position } = JSON.parse(savedData);
-          this.currentUser.projectTitles = Array.isArray(projectTitles) ? projectTitles : [];
-          this.currentUser.position = typeof position === 'string' ? position : '';
-          console.log(`Loaded projects for ${username} (${userId}):`, this.currentUser.projectTitles);
-        } catch (e) {
-          console.error(`Error parsing local storage for user ${userId}:`, e);
-          this.currentUser.projectTitles = [];
-          this.currentUser.position = '';
-          localStorage.removeItem(storageKey); // Clear invalid data
+    this.keycloakService.getCurrentUser().subscribe({
+      next: (user: UserDTO) => {
+        if (user && user.userId && user.username) {
+          this.currentUser = user;
+          // Fetch the current user's details from the backend to get projectTitles
+          this.userService.getUserDetailsById(user.userId).subscribe({
+            next: (userDetails: UserDTO) => {
+              this.currentUser = {
+                ...user,
+                projectTitles: userDetails.projectTitles ?? [],
+                position: userDetails.position ?? ''
+              };
+              console.log('Loaded current user', this.currentUser);
+              // Reload featured projects since it depends on currentUser.projectTitles
+              this.loadFeaturedProjects();
+              this.cdr.detectChanges();
+            },
+            error: (err: any) => {
+              console.error('Error fetching current user details:', err);
+              this.currentUser = {
+                ...user,
+                projectTitles: [],
+                position: ''
+              };
+              this.errorMessage = 'Failed to load user projects. Showing default view.';
+              this.loadFeaturedProjects();
+              this.cdr.detectChanges();
+            }
+          });
+        } else {
+          console.error('Failed to load user: missing userId or username', user);
+          this.errorMessage = 'User authentication failed. Please log in again.';
+          this.currentUser = null;
+          this.cdr.detectChanges();
         }
-      } else {
-        console.log(`No localStorage data for user ${userId} (${username})`);
-        this.currentUser.projectTitles = []; // Rely on ProjectAffectationComponent assignments
+      },
+      error: (err: any) => {
+        console.error('Error getting current user from Keycloak:', err);
+        this.errorMessage = 'User authentication failed. Please log in again.';
+        this.currentUser = null;
+        this.cdr.detectChanges();
       }
-      console.log('Current user:', { userId, username, role, projectTitles: this.currentUser.projectTitles });
-    } else {
-      console.error('Failed to load user: missing userId or username', { userId, username });
-      this.errorMessage = 'User authentication failed. Please log in again.';
-      this.currentUser = null;
-    }
+    });
   }
 
   private convertToUserRole(roleString: string): UserRole {
@@ -203,7 +210,7 @@ export class AcceuilComponent implements OnInit {
     ];
 
     if (this.currentUser?.role === UserRole.EMPLOYEE) {
-      const projectTitles = this.currentUser?.projectTitles || [];
+      const projectTitles = this.currentUser?.projectTitles ?? [];
       this.featuredProjects = allProjects.filter(project =>
         projectTitles.includes(project.title)
       );
@@ -223,28 +230,19 @@ export class AcceuilComponent implements OnInit {
       next: (users) => {
         this.users = users;
         this.users.forEach(user => {
+          // Ensure projectTitles is initialized (already fetched from backend)
           if (!user.projectTitles) {
             user.projectTitles = [];
           }
-          const savedData = localStorage.getItem(`user_${user.userId}_projects`);
-          if (savedData) {
-            try {
-              const { projectTitles, position } = JSON.parse(savedData);
-              user.projectTitles = Array.isArray(projectTitles) ? projectTitles : [];
-              user.position = typeof position === 'string' ? position : user.position || '';
-              console.log(`Loaded user ${user.username} (${user.userId}) projects:`, user.projectTitles);
-            } catch (e) {
-              console.error(`Error parsing local storage for user ${user.userId}:`, e);
-              user.projectTitles = [];
-              user.position = '';
-            }
+          if (!user.position) {
+            user.position = '';
           }
         });
         console.log('Users with assignments:', this.users.map(u => ({ userId: u.userId, username: u.username, projectTitles: u.projectTitles })));
         this.calculateStats();
         this.cdr.detectChanges();
       },
-      error: (err) => {
+      error: (err: any) => {
         console.error('Error loading users:', err);
         this.users = [];
         this.calculateStats();

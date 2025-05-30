@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { HttpClient, HttpHeaders, HttpErrorResponse } from '@angular/common/http';
+import { HttpClient, HttpHeaders, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Observable, throwError, from, of } from 'rxjs';
 import { catchError, map, switchMap, tap } from 'rxjs/operators';
 import { UserDTO, LoginRequest, LoginResponse, UserRole, UserStatus } from '../Models/user.models';
@@ -153,11 +153,19 @@ isRoleAssignable(role: UserRole): boolean {
 
 getUserDetailsById(userId: string): Observable<UserDTO> {
   return from(this.getAuthHeaders()).pipe(
-    switchMap(headers => this.http.get<UserDTO>(`${this.apiUrl}/${userId}`, { headers })),
+    switchMap(headers => {
+      const params = new HttpParams().set('_t', Date.now().toString());
+      const noCacheHeaders = headers.append('Cache-Control', 'no-cache, no-store, must-revalidate')
+                                   .append('Pragma', 'no-cache')
+                                   .append('Expires', '0');
+      return this.http.get<UserDTO>(`${this.apiUrl}/${userId}`, { headers: noCacheHeaders, params });
+    }),
     map(user => ({
       ...user,
       role: this.validateRole(user.role as string),
       roles: user.roles || [],
+      projectTitles: user.projectTitles ?? [],
+      position: user.position ?? '',
       isOnline: user.isOnline ?? false,
       emailVerified: user.emailVerified ?? false,
       twoFactorEnabled: user.twoFactorEnabled ?? false,
@@ -222,10 +230,7 @@ updateUser(user: UserDTO): Observable<UserDTO> {
   );
 }
 
-assignProject(userId: string, projectTitle: string): Observable<UserDTO> {
-  const encodedProjectTitle = encodeURIComponent(projectTitle);
-  return this.http.post<UserDTO>(`${this.apiUrl}/${userId}/project/${encodedProjectTitle}`, {});
-}
+
 
 
 removeUserFromProject(userId: string, projectTitle: string): Observable<UserDTO> {
@@ -273,11 +278,61 @@ removeUserFromProject(userId: string, projectTitle: string): Observable<UserDTO>
   }
   
 
-deassignProject(userId: string, projectTitle: string): Observable<any> {
-  // Add URL encoding for the project title to handle special characters like spaces
-  const encodedProjectTitle = encodeURIComponent(projectTitle);
-  return this.http.delete(`${this.apiUrl}/${userId}/project/${encodedProjectTitle}`);
-}
+assignProject(userId: string, projectTitle: string): Observable<UserDTO> {
+    const encodedProjectTitle = encodeURIComponent(projectTitle);
+    
+    // Force cache busting to get fresh data
+    const params = new HttpParams().set('_t', Date.now().toString());
+    
+    // Set headers to avoid caching
+    const headers = new HttpHeaders({
+      'Cache-Control': 'no-cache, no-store, must-revalidate, post-check=0, pre-check=0',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    
+    return this.http.post<UserDTO>(
+      `${this.apiUrl}/${userId}/project/${encodedProjectTitle}`, 
+      {}, 
+      { params, headers }
+    ).pipe(
+      tap(updatedUser => {
+        console.log(`Project ${projectTitle} assigned to user ${userId}:`, updatedUser);
+        console.log('Updated projectTitles:', updatedUser.projectTitles);
+      }),
+      catchError(error => {
+        console.error(`Error assigning project ${projectTitle} to user ${userId}:`, error);
+        throw error;
+      })
+    );
+  }
 
+deassignProject(userId: string, projectTitle: string): Observable<UserDTO> {
+    const encodedProjectTitle = encodeURIComponent(projectTitle);
+    
+    // Force cache busting to get fresh data
+    const params = new HttpParams().set('_t', Date.now().toString());
+    
+    // Set headers to avoid caching
+    const headers = new HttpHeaders({
+      'Cache-Control': 'no-cache, no-store, must-revalidate, post-check=0, pre-check=0',
+      'Pragma': 'no-cache',
+      'Expires': '0'
+    });
+    
+    return this.http.delete<UserDTO>(
+      `${this.apiUrl}/${userId}/project/${encodedProjectTitle}`, 
+      { params, headers }
+    ).pipe(
+      tap(updatedUser => {
+        console.log(`Project ${projectTitle} deassigned from user ${userId}:`, updatedUser);
+        console.log('Updated projectTitles:', updatedUser.projectTitles);
+      }),
+      catchError(error => {
+        console.error(`Error deassigning project ${projectTitle} from user ${userId}:`, error);
+        throw error;
+      })
+    );
+  }
 
 }

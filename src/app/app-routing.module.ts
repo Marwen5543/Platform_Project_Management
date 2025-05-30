@@ -1,4 +1,4 @@
-import { Component, NgModule } from '@angular/core';
+import { Component, NgModule, Injectable } from '@angular/core';
 import { RouterModule, Routes } from '@angular/router';
 import { KeycloakService } from './Service/KeycloakService';
 import { MainLayoutComponent } from './Components/accueil/main-layout/main-layout.component';
@@ -17,7 +17,23 @@ import { CalanderComponent } from './Components/accueil/Calander/calander/caland
 import { LeaveRequestComponent } from './Components/accueil/LeaveRequest/leave-request/leave-request.component';
 import { VideoCallComponent } from './Components/accueil/video-call/video-call.component';
 
+// Guard to explicitly allow unauthenticated access
+@Injectable({
+  providedIn: 'root'
+})
+export class NoAuthGuard {
+  canActivate(): boolean {
+    console.log('NoAuthGuard: Allowing access to video-call route');
+    return true;
+  }
+}
+
 const routes: Routes = [
+  { 
+    path: 'video-call/:taskId', 
+    component: VideoCallComponent,
+    canActivate: [NoAuthGuard]
+  },
   {
     path: '',
     component: MainLayoutComponent,
@@ -26,27 +42,26 @@ const routes: Routes = [
       { path: 'profile', component: ProfileComponent },
       { path: 'manage-users', component: ManageUsersComponent },
       { path: 'system-settings', component: SystemSettingsComponent },
-      { path: 'acceuil',component: AcceuilComponent},
-      { path: 'project-affectation',component: ProjectAffectationComponent},
+      { path: 'acceuil', component: AcceuilComponent },
+      { path: 'project-affectation', component: ProjectAffectationComponent },
       { path: 'edit-profile/:userId', component: EditProfileComponent },
       { path: 'fiche-paie', component: DocumentRequestComponent, data: { type: 'fiche-paie' } },
       { path: 'attestation-travail', component: DocumentRequestComponent, data: { type: 'attestation-travail' } },
       { path: 'certificat-travail', component: DocumentRequestComponent, data: { type: 'certificat-travail' } },
       { path: 'hr/document-requests', component: HrDocumentRequestsComponent },
-      { path: 'document-history', component: DocumentComponent},
+      { path: 'document-history', component: DocumentComponent },
       { path: 'demande-conge', component: LeaveRequestComponent },
       { path: 'consulter-conge', component: LeaveHistoryComponent },
       { path: 'liste-equipe-conge', component: TeamLeavesComponent },
       { path: 'planification', component: CalanderComponent },
-      { path: 'video-call/:taskId', component: VideoCallComponent },
       { path: '', redirectTo: 'acceuil', pathMatch: 'full' }
     ]
   },
-  { path: '**', redirectTo: 'acceuil' }
+  { path: '**', redirectTo: '', pathMatch: 'full' }
 ];
 
 @NgModule({
-  imports: [RouterModule.forRoot(routes)],
+  imports: [RouterModule.forRoot(routes, { enableTracing: true })],
   exports: [RouterModule]
 })
-export class AppRoutingModule {}
+export class AppRoutingModule { }

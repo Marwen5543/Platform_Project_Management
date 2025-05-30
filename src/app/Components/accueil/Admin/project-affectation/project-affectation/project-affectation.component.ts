@@ -8,6 +8,7 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { KeycloakService } from 'src/app/Service/KeycloakService';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { HeaderComponent } from '../../../header/header.component';
+import { finalize } from 'rxjs/operators';
 
 interface CompanyProject {
   title: string;
@@ -40,6 +41,8 @@ export class ProjectAffectationComponent implements OnInit {
   currentUserRole: UserRole;
   user: UserDTO;
   isAssigningProject: { [userId: string]: boolean } = {};
+  isDeassigningProject: { [userId: string]: boolean } = {};
+  operationInProgress: boolean = false;
 
   constructor(
     private userService: UserService,
@@ -70,7 +73,7 @@ export class ProjectAffectationComponent implements OnInit {
       hireDate: '',
       departmentId: 0,
       managerId: 0,
-      projectTitles: [] // Initialize as empty array
+      projectTitles: []
     };
   }
 
@@ -92,16 +95,10 @@ export class ProjectAffectationComponent implements OnInit {
         this.users = data.filter(user => 
           user.role === UserRole.EMPLOYEE || user.role === UserRole.HR
         );
-        // Initialize projectTitles and load from local storage
+        // Ensure projectTitles is initialized
         this.users.forEach(user => {
           if (!user.projectTitles) {
             user.projectTitles = [];
-          }
-          const savedData = localStorage.getItem(`user_${user.userId}_projects`);
-          if (savedData) {
-            const { projectTitles, position } = JSON.parse(savedData);
-            user.projectTitles = Array.isArray(projectTitles) ? projectTitles : [];
-            user.position = typeof position === 'string' ? position : user.position || '';
           }
         });
         console.log('Users loaded successfully:', this.users.length, 'users found');
@@ -115,6 +112,7 @@ export class ProjectAffectationComponent implements OnInit {
         console.error('Error loading users:', err);
         this.showSnackbar(this.errorMessage);
         this.isLoading = false;
+        this.cdr.detectChanges();
       }
     });
   }
@@ -146,129 +144,159 @@ export class ProjectAffectationComponent implements OnInit {
   assignProject(userId: string, projectTitle: string): void {
     if (!projectTitle || projectTitle.trim() === '') {
       this.showSnackbar('Project title cannot be empty', 2000);
-      this.cdr.detectChanges();
       return;
     }
 
+    if (this.operationInProgress) {
+      this.showSnackbar('Another operation is in progress, please wait', 2000);
+      return;
+    }
+
+    this.operationInProgress = true;
     this.isAssigningProject[userId] = true;
     console.log(`Starting project assignment - User ID: ${userId}, Project: ${projectTitle}`);
 
-    // Call backend to assign project
-    this.userService.assignProject(userId, projectTitle).subscribe({
-      next: (updatedUser: UserDTO) => {
-        console.log(`Project ${projectTitle} assigned successfully`, updatedUser);
-        this.showSnackbar(`Assigned ${projectTitle} to user successfully`, 2000);
+    this.userService.assignProject(userId, projectTitle)
+      .pipe(
+        finalize(() => {
+          this.isAssigningProject[userId] = false;
+          this.operationInProgress = false;
+          this.cdr.detectChanges();
+        })
+      )
+      .subscribe({
+        next: (updatedUser: UserDTO) => {
+          console.log(`Project ${projectTitle} assigned successfully`, updatedUser);
+          this.showSnackbar(`Assigned ${projectTitle} to user successfully`, 2000);
 
-        // Update local users array with backend response
-        const userIndex = this.users.findIndex(u => u.userId === userId);
-        if (userIndex !== -1 && updatedUser && updatedUser.projectTitles) {
-          // Set position from featuredProjects
-          const project = this.featuredProjects.find(p => p.title === projectTitle);
-          updatedUser.position = project ? project.position : updatedUser.position || '';
-          this.users[userIndex] = { ...updatedUser, projectTitles: updatedUser.projectTitles || [] };
-
-          // Update localStorage with backend response
-          localStorage.setItem(
-            `user_${userId}_projects`,
-            JSON.stringify({
-              projectTitles: updatedUser.projectTitles || [],
-              position: updatedUser.position || ''
-            })
-          );
-        } else {
-          console.warn(`User ${userId} not found in local array or invalid response`);
-          this.showSnackbar('Warning: Could not update local user data', 2000);
+          // Update local user data
+          const userIndex = this.users.findIndex(u => u.userId === userId);
+          if (userIndex !== -1) {
+            // Ensure updatedUser has all expected properties
+            if (updatedUser && updatedUser.projectTitles) {
+              // Find the project to get position
+              const project = this.featuredProjects.find(p => p.title === projectTitle);
+              
+              // Update the user in our local array
+              this.users[userIndex] = {
+                ...this.users[userIndex],
+                ...updatedUser,
+                projectTitles: [...(updatedUser.projectTitles || [])],
+                position: project ? project.position : (updatedUser.position || this.users[userIndex].position || '')
+              };
+              
+              console.log('Local user data updated:', this.users[userIndex]);
+            } else {
+              console.warn('Received incomplete user data from API', updatedUser);
+              // Force reload to get fresh data
+              this.loadUserDetails();
+            }
+          } else {
+            console.warn(`User ${userId} not found in local array`);
+            // Reload all users to ensure consistency
+            this.loadUserDetails();
+          }
+          
+          this.cdr.detectChanges();
+        },
+        error: (err) => {
+          console.error('Error assigning project:', err);
+          this.showSnackbar(`Failed to assign project: ${err.error || 'Unknown error'}`, 3500);
+          // Reload to ensure data consistency
+          this.loadUserDetails();
         }
-
-        this.isAssigningProject[userId] = false;
-        this.cdr.detectChanges();
-      },
-      error: (err) => {
-        console.error('Error assigning project:', err);
-        this.showSnackbar(`Failed to assign project: ${err.error || 'Unknown error'}`, 2000);
-        this.isAssigningProject[userId] = false;
-        this.cdr.detectChanges();
-      }
-    });
+      });
   }
 
   deassignProject(userId: string, projectTitle: string): void {
-  if (confirm(`Are you sure you want to remove ${projectTitle} from this user?`)) {
-    this.isLoading = true;
-
-    this.userService.deassignProject(userId, projectTitle).subscribe({
-      next: (updatedUser: UserDTO) => {
-        console.log(`Project ${projectTitle} deassigned successfully`, updatedUser);
-        this.showSnackbar(`Removed ${projectTitle} from user successfully`, 2000);
-
-        // Update local users array with backend response
-        const userIndex = this.users.findIndex(u => u.userId === userId);
-        if (userIndex !== -1 && updatedUser && updatedUser.projectTitles) {
-          // Validate backend response
-          const localProjects = this.users[userIndex].projectTitles || [];
-          if (updatedUser.projectTitles.includes(projectTitle)) {
-            console.warn(`Backend response for user ${userId} still includes ${projectTitle}`);
-            this.showSnackbar('Warning: Project deassignment may not have completed', 2000);
-          } else if (updatedUser.projectTitles.length >= localProjects.length) {
-            console.warn(`Backend response for user ${userId} has unexpected project count`, updatedUser.projectTitles);
-            this.showSnackbar('Warning: Project list may be out of sync', 2000);
-          }
-
-          // Update position if no projects remain
-          updatedUser.position = updatedUser.projectTitles.length > 0 ? 
-            updatedUser.position || this.users[userIndex].position || '' : '';
-          this.users[userIndex] = { ...updatedUser, projectTitles: updatedUser.projectTitles || [] };
-
-          // Update localStorage with backend response
-          localStorage.setItem(
-            `user_${userId}_projects`,
-            JSON.stringify({
-              projectTitles: updatedUser.projectTitles || [],
-              position: updatedUser.position || ''
-            })
-          );
-        } else {
-          console.warn(`User ${userId} not found in local array or invalid response`);
-          this.showSnackbar('Warning: Could not update local user data', 2000);
-        }
-
-        this.isLoading = false;
-        this.cdr.detectChanges();
-      },
-      error: (error) => {
-        console.error('Error deassigning project:', error);
-        let errorMessage = error.error || 'Unknown error';
-        if (error.status === 400 && errorMessage.includes('Project not assigned')) {
-          // Sync local state
-          const userIndex = this.users.findIndex(u => u.userId === userId);
-          if (userIndex !== -1) {
-            // Ensure projectTitles is an array, default to empty array if undefined
-            const projectTitles = this.users[userIndex].projectTitles || [];
-            this.users[userIndex].projectTitles = projectTitles.filter(pt => pt !== projectTitle);
-            // Update position based on remaining projects
-            this.users[userIndex].position = projectTitles.length > 0 ?
-              this.users[userIndex].position || '' : '';
-            localStorage.setItem(
-              `user_${userId}_projects`,
-              JSON.stringify({
-                projectTitles: this.users[userIndex].projectTitles,
-                position: this.users[userIndex].position || ''
-              })
-            );
-            errorMessage = `Removed ${projectTitle} from local storage`;
-          } else {
-            errorMessage = `User ${userId} not found`;
-          }
-        } else if (error.status === 404) {
-          errorMessage = 'User not found';
-        }
-        this.showSnackbar(`Failed to deassign project: ${errorMessage}`, 2000);
-        this.isLoading = false;
-        this.cdr.detectChanges();
+    if (confirm(`Are you sure you want to remove ${projectTitle} from this user?`)) {
+      if (this.operationInProgress) {
+        this.showSnackbar('Another operation is in progress, please wait', 2000);
+        return;
       }
-    });
+
+      this.operationInProgress = true;
+      this.isDeassigningProject[userId] = true;
+      console.log(`Starting project deassignment - User ID: ${userId}, Project: ${projectTitle}`);
+
+      this.userService.deassignProject(userId, projectTitle)
+        .pipe(
+          finalize(() => {
+            this.isDeassigningProject[userId] = false;
+            this.operationInProgress = false;
+            this.cdr.detectChanges();
+          })
+        )
+        .subscribe({
+          next: (updatedUser: UserDTO) => {
+            console.log(`Project ${projectTitle} deassigned successfully`, updatedUser);
+            this.showSnackbar(`Removed ${projectTitle} from user successfully`, 2000);
+
+            // Update local user data
+            const userIndex = this.users.findIndex(u => u.userId === userId);
+            if (userIndex !== -1) {
+              if (updatedUser && Array.isArray(updatedUser.projectTitles)) {
+                // Update user with fresh data from the response
+                this.users[userIndex] = {
+                  ...this.users[userIndex],
+                  ...updatedUser,
+                  projectTitles: [...(updatedUser.projectTitles || [])]
+                };
+                
+                // Update position if needed
+                const currentProjects = this.users[userIndex].projectTitles ?? [];
+                this.users[userIndex].position = currentProjects.length > 0 ?
+                  (this.users[userIndex].position ?? '') : '';
+                
+                console.log('Local user data updated after deassignment:', this.users[userIndex]);
+              } else {
+                console.warn('Received incomplete user data from API during deassignment', updatedUser);
+                // Remove the project locally as fallback, safely handling undefined
+                const currentProjects = this.users[userIndex].projectTitles ?? [];
+                this.users[userIndex].projectTitles = currentProjects.filter(
+                  pt => pt !== projectTitle
+                );
+                this.users[userIndex].position = currentProjects.length > 1 ? 
+                  (this.users[userIndex].position ?? '') : '';
+                
+                // Force reload to get fresh data
+                this.loadUserDetails();
+              }
+            } else {
+              console.warn(`User ${userId} not found in local array during deassignment`);
+              // Reload all users to ensure consistency
+              this.loadUserDetails();
+            }
+            
+            this.cdr.detectChanges();
+          },
+          error: (err) => {
+            console.error('Error deassigning project:', err);
+            let errorMessage = err.error || 'Unknown error';
+            
+            if (err.status === 404) {
+              errorMessage = 'User not found';
+            } else if (err.status === 400 && typeof err.error === 'string' && err.error.includes('Project not assigned')) {
+              // Project wasn't actually assigned - remove it from our local state
+              const userIndex = this.users.findIndex(u => u.userId === userId);
+              if (userIndex !== -1) {
+                const currentProjects = this.users[userIndex].projectTitles ?? [];
+                this.users[userIndex].projectTitles = currentProjects.filter(
+                  pt => pt !== projectTitle
+                );
+                this.users[userIndex].position = currentProjects.length > 1 ?
+                  (this.users[userIndex].position ?? '') : '';
+              }
+              errorMessage = `Project was not assigned to this user`;
+            }
+            
+            this.showSnackbar(`Operation result: ${errorMessage}`, 3500);
+            // Reload to ensure data consistency
+            this.loadUserDetails();
+          }
+        });
+    }
   }
-}
 
   private showSnackbar(message: string, duration: number = 3000): void {
     this.snackBar.open(message, 'Close', { duration });
@@ -281,12 +309,20 @@ export class ProjectAffectationComponent implements OnInit {
   isProjectBeingAssigned(userId: string): boolean {
     return this.isAssigningProject[userId] ?? false;
   }
+  
+  isProjectBeingDeassigned(userId: string): boolean {
+    return this.isDeassigningProject[userId] ?? false;
+  }
+
+  isOperationInProgress(userId: string): boolean {
+    return this.isProjectBeingAssigned(userId) || this.isProjectBeingDeassigned(userId);
+  }
 
   getAssignedProjectTitle(user: UserDTO): string {
     if (user.projectTitles && user.projectTitles.length > 0) {
       return user.projectTitles.join(', ');
     }
-    return this.featuredProjects.find(p => p.position === user.position)?.title || 'Not Assigned';
+    return 'None';
   }
 
   getAssignedProjects(user: UserDTO): string {
