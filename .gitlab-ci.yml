@@ -1,0 +1,105 @@
+# This pipeline builds and pushes Docker images for all microservices.
+# It will only build the services that have changed.
+# It will NOT deploy to or touch the Kubernetes cluster.
+
+stages:
+  - build
+  - push
+
+# Reusable template for pushing to Docker Hub
+.build_and_push_template:
+  stage: push
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  before_script:
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+  script:
+    - echo "Building Docker image for $MICROSERVICE_NAME..."
+    - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" -f "$MICROSERVICE_PATH/Dockerfile" .
+    - echo "Pushing new image version to Docker Hub..."
+    - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA"
+
+# ===================================================================
+# JOBS FOR: user-management-service
+# ===================================================================
+build:user-service:
+  stage: build
+  image: maven:3.8.5-openjdk-17
+  script:
+    - cd user-management-service
+    - mvn clean package
+  artifacts:
+    paths:
+      - user-management-service/target/*.jar
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - user-management-service/**/*
+
+push:user-service:
+  extends: .build_and_push_template
+  variables:
+    MICROSERVICE_NAME: user-management-service
+    MICROSERVICE_PATH: user-management-service
+  needs: [build:user-service]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - user-management-service/**/*
+
+# ===================================================================
+# JOBS FOR: document-management-service
+# ===================================================================
+build:document-service:
+  stage: build
+  image: maven:3.8.5-openjdk-17
+  script:
+    - cd Document-management-service # Use the exact folder name
+    - mvn clean package
+  artifacts:
+    paths:
+      - Document-management-service/target/*.jar
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - Document-management-service/**/*
+
+push:document-service:
+  extends: .build_and_push_template
+  variables:
+    MICROSERVICE_NAME: document-management-service
+    MICROSERVICE_PATH: Document-management-service # Use the exact folder name
+  needs: [build:document-service]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - Document-management-service/**/*
+
+# ===================================================================
+# JOBS FOR: leave-management-service
+# ===================================================================
+build:leave-service:
+  stage: build
+  image: maven:3.8.5-openjdk-17
+  script:
+    - cd leave-management-service
+    - mvn clean package
+  artifacts:
+    paths:
+      - leave-management-service/target/*.jar
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - leave-management-service/**/*
+
+push:leave-service:
+  extends: .build_and_push_template
+  variables:
+    MICROSERVICE_NAME: leave-management-service
+    MICROSERVICE_PATH: leave-management-service
+  needs: [build:leave-service]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - leave-management-service/**/*
