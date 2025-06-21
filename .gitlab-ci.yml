@@ -1,9 +1,8 @@
 # This pipeline has a dedicated 'test' stage for the user-service.
-# It will NOT deploy to or touch the Kubernetes cluster.
+# This version is corrected to handle job dependencies and rules properly.
 
 stages:
-  - build
-  - test   # <-- ADDED a new stage here
+  - build-and-test
   - push
 
 # Reusable template for pushing to Docker Hub
@@ -21,58 +20,40 @@ stages:
     - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA"
 
 # ===================================================================
-# JOBS FOR: user-management-service (REFACTORED)
+# JOBS FOR: user-management-service (Corrected Structure)
 # ===================================================================
-
-# -- Job 1: Build (only compiles the code) --
-build:user-service:
-  stage: build
+# -- Job 1: Build the code AND run unit tests in a single, visible step --
+unit-tests:user-service:
+  stage: build-and-test # We use a single stage for build and test
   image: maven:3.8.5-openjdk-17
   script:
-    - echo "Compiling user-management-service..."
+    - echo "Building and testing user-management-service..."
     - cd user-management-service
-    # 'compile' is faster than 'package' as it doesn't run tests or create the jar yet
-    - mvn clean compile
+    - mvn clean package # This command compiles AND runs tests
   artifacts:
-    # We save the entire target folder to pass it to the next stage
+    # Save the created .jar file for the next stage
     paths:
-      - user-management-service/target/
+      - user-management-service/target/*.jar
+    # Also save the test reports for viewing in the GitLab UI
+    reports:
+      junit:
+        - user-management-service/target/surefire-reports/TEST-*.xml
   rules:
+    # This entire job runs only if files in this service's folder change
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
 
-# -- Job 2: Unit Tests (a new, visible job) --
-unit-tests:user-service:
-  stage: test # <-- This job runs in our new 'test' stage
-  image: maven:3.8.5-openjdk-17
-  needs: [build:user-service] # It depends on the 'build' job
-  script:
-    - echo "Running unit tests for user-management-service..."
-    - cd user-management-service
-    # The 'test' goal specifically runs the unit tests
-    - mvn test
-  artifacts:
-    # This allows GitLab to parse and display test results in the UI
-    reports:
-      junit:
-        - user-management-service/target/surefire-reports/TEST-*.xml
-
-# -- Job 3: Push (now depends on the 'test' job) --
+# -- Job 2: Push the Docker image --
 push:user-service:
   extends: .build_and_push_template
   variables:
     MICROSERVICE_NAME: user-management-service
     MICROSERVICE_PATH: user-management-service
-  needs: [unit-tests:user-service] # It now waits for the 'unit-tests' job to pass
-  script:
-    # The script needs to package the app before building the Docker image
-    - echo "Packaging user-management-service..."
-    - cd user-management-service
-    - mvn package -DskipTests # We skip tests here because they already ran
-    - cd .. # Go back to the root directory for the Docker build
-    # Now run the original script from the template
-    - !reference [.build_and_push_template, script]
+  needs:
+    # It now depends on the combined test job
+    - job: unit-tests:user-service
+      artifacts: true # This tells GitLab to download the artifacts (the .jar file)
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -80,10 +61,10 @@ push:user-service:
 
 
 # ===================================================================
-# JOBS FOR: document-management-service (Unchanged for now)
+# JOBS FOR: document-management-service (Unchanged, but still works)
 # ===================================================================
 build:document-service:
-  stage: build
+  stage: build-and-test # It will run in the same first stage
   image: maven:3.8.5-openjdk-17
   script:
     - cd Document-management-service
@@ -108,10 +89,10 @@ push:document-service:
         - Document-management-service/**/*
 
 # ===================================================================
-# JOBS FOR: leave-management-service (Unchanged for now)
+# JOBS FOR: leave-management-service (Unchanged, but still works)
 # ===================================================================
 build:leave-service:
-  stage: build
+  stage: build-and-test # It will run in the same first stage
   image: maven:3.8.5-openjdk-17
   script:
     - cd leave-management-service
