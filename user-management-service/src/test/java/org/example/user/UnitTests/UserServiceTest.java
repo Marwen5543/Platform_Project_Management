@@ -265,7 +265,7 @@ class UserServiceTest {
         assertEquals(UserDTO.UserStatus.ACTIVE, userDTO.getStatus());
     }
 
-
+/* ------------------------*/
     @Test
     void whenConvertToDTO_withCompleteDetails_thenDTOIsCorrect() {
         // --- ARRANGE ---
