@@ -1,9 +1,9 @@
-# This pipeline builds and pushes Docker images for all microservices.
-# It will only build the services that have changed.
+# This pipeline has a dedicated 'test' stage for the user-service.
 # It will NOT deploy to or touch the Kubernetes cluster.
 
 stages:
   - build
+  - test   # <-- ADDED a new stage here
   - push
 
 # Reusable template for pushing to Docker Hub
@@ -21,41 +21,72 @@ stages:
     - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA"
 
 # ===================================================================
-# JOBS FOR: user-management-service
+# JOBS FOR: user-management-service (REFACTORED)
 # ===================================================================
+
+# -- Job 1: Build (only compiles the code) --
 build:user-service:
   stage: build
   image: maven:3.8.5-openjdk-17
   script:
+    - echo "Compiling user-management-service..."
     - cd user-management-service
-    - mvn clean package
+    # 'compile' is faster than 'package' as it doesn't run tests or create the jar yet
+    - mvn clean compile
   artifacts:
+    # We save the entire target folder to pass it to the next stage
     paths:
-      - user-management-service/target/*.jar
+      - user-management-service/target/
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
 
+# -- Job 2: Unit Tests (a new, visible job) --
+unit-tests:user-service:
+  stage: test # <-- This job runs in our new 'test' stage
+  image: maven:3.8.5-openjdk-17
+  needs: [build:user-service] # It depends on the 'build' job
+  script:
+    - echo "Running unit tests for user-management-service..."
+    - cd user-management-service
+    # The 'test' goal specifically runs the unit tests
+    - mvn test
+  artifacts:
+    # This allows GitLab to parse and display test results in the UI
+    reports:
+      junit:
+        - user-management-service/target/surefire-reports/TEST-*.xml
+
+# -- Job 3: Push (now depends on the 'test' job) --
 push:user-service:
   extends: .build_and_push_template
   variables:
     MICROSERVICE_NAME: user-management-service
     MICROSERVICE_PATH: user-management-service
-  needs: [build:user-service]
+  needs: [unit-tests:user-service] # It now waits for the 'unit-tests' job to pass
+  script:
+    # The script needs to package the app before building the Docker image
+    - echo "Packaging user-management-service..."
+    - cd user-management-service
+    - mvn package -DskipTests # We skip tests here because they already ran
+    - cd .. # Go back to the root directory for the Docker build
+    # Now run the original script from the template
+    - !reference [.build_and_push_template, script]
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
 
+
 # ===================================================================
-# JOBS FOR: document-management-service
+# JOBS FOR: document-management-service (Unchanged for now)
 # ===================================================================
 build:document-service:
   stage: build
   image: maven:3.8.5-openjdk-17
   script:
-    - cd Document-management-service # Use the exact folder name
+    - cd Document-management-service
     - mvn clean package
   artifacts:
     paths:
@@ -69,7 +100,7 @@ push:document-service:
   extends: .build_and_push_template
   variables:
     MICROSERVICE_NAME: document-management-service
-    MICROSERVICE_PATH: Document-management-service # Use the exact folder name
+    MICROSERVICE_PATH: Document-management-service
   needs: [build:document-service]
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
@@ -77,7 +108,7 @@ push:document-service:
         - Document-management-service/**/*
 
 # ===================================================================
-# JOBS FOR: leave-management-service
+# JOBS FOR: leave-management-service (Unchanged for now)
 # ===================================================================
 build:leave-service:
   stage: build
