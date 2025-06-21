@@ -10,5 +10,12 @@ public class LoginRequest {
     private String username;
     @NotBlank(message = "Password cannot be blank")
     private String password;
+
+    public LoginRequest(String testuser, String correctPassword) {
     }
+
+    public LoginRequest() {
+
+    }
+}
 
