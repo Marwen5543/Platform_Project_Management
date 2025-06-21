@@ -20,45 +20,38 @@ stages:
     - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA"
 
 # ===================================================================
-# JOBS FOR: user-management-service (Corrected Structure)
+# JOBS FOR: user-management-service
 # ===================================================================
-# -- Job 1: Build the code AND run unit tests in a single, visible step --
 unit-tests:user-service:
-  stage: build-and-test # We use a single stage for build and test
+  stage: build-and-test
   image: maven:3.8.5-openjdk-17
   script:
     - echo "Building and testing user-management-service..."
     - cd user-management-service
-    - mvn clean package # This command compiles AND runs tests
+    - mvn clean package
   artifacts:
-    # Save the created .jar file for the next stage
     paths:
       - user-management-service/target/*.jar
-    # Also save the test reports for viewing in the GitLab UI
     reports:
       junit:
         - user-management-service/target/surefire-reports/TEST-*.xml
   rules:
-    # This entire job runs only if files in this service's folder change
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
 
-# -- Job 2: Push the Docker image --
 push:user-service:
   extends: .build_and_push_template
   variables:
     MICROSERVICE_NAME: user-management-service
     MICROSERVICE_PATH: user-management-service
   needs:
-    # It now depends on the combined test job
     - job: unit-tests:user-service
-      artifacts: true # This tells GitLab to download the artifacts (the .jar file)
+      artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
-
 
 # ===================================================================
 # JOBS FOR: document-management-service
@@ -82,7 +75,9 @@ push:document-service:
   variables:
     MICROSERVICE_NAME: document-management-service
     MICROSERVICE_PATH: Document-management-service
-  needs: [build:document-service]
+  needs:
+    - job: build:document-service
+      artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -110,7 +105,9 @@ push:leave-service:
   variables:
     MICROSERVICE_NAME: leave-management-service
     MICROSERVICE_PATH: leave-management-service
-  needs: [build:leave-service]
+  needs:
+    - job: build:leave-service
+      artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
