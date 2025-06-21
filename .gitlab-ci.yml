@@ -61,10 +61,10 @@ push:user-service:
 
 
 # ===================================================================
-# JOBS FOR: document-management-service (Unchanged, but still works)
+# JOBS FOR: document-management-service
 # ===================================================================
 build:document-service:
-  stage: build-and-test # It will run in the same first stage
+  stage: build-and-test
   image: maven:3.8.5-openjdk-17
   script:
     - cd Document-management-service
@@ -89,10 +89,10 @@ push:document-service:
         - Document-management-service/**/*
 
 # ===================================================================
-# JOBS FOR: leave-management-service (Unchanged, but still works)
+# JOBS FOR: leave-management-service
 # ===================================================================
 build:leave-service:
-  stage: build-and-test # It will run in the same first stage
+  stage: build-and-test
   image: maven:3.8.5-openjdk-17
   script:
     - cd leave-management-service
