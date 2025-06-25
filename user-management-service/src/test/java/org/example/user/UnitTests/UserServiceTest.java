@@ -30,7 +30,7 @@ class UserServiceTest {
 
     @Mock
     private KeycloakService keycloakService;
-
+/* ----------*/
     @InjectMocks
     private UserService userService;
 
