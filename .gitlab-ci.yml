@@ -1,7 +1,11 @@
 # ===================================================================
 # .gitlab-ci.yml - FINAL VERSION WITH SONARQUBE
 # ===================================================================
-
+default:
+  tags:
+    - windows
+    - docker
+    
 stages:
   - build-and-test
   - code-analysis  # New stage for SonarQube
