@@ -1,9 +1,27 @@
-# This pipeline has a dedicated 'test' stage for the user-service.
-# This version is corrected to handle job dependencies and rules properly.
+# ===================================================================
+# .gitlab-ci.yml - FINAL VERSION WITH SONARQUBE
+# ===================================================================
 
 stages:
   - build-and-test
+  - code-analysis  # New stage for SonarQube
   - push
+
+# Reusable template for SonarQube analysis
+.sonar_scanner_template:
+  stage: code-analysis
+  image: maven:3.8.5-openjdk-17
+  script:
+    - echo "Running SonarQube analysis for $MICROSERVICE_NAME..."
+    - cd $MICROSERVICE_PATH
+    # The 'verify' phase runs tests, and 'sonar:sonar' sends the results
+    - >-
+      mvn verify sonar:sonar
+      -Dsonar.projectKey=$SONAR_PROJECT_KEY
+      -Dsonar.host.url=$SONAR_HOST_URL
+      -Dsonar.login=$SONAR_TOKEN
+      -Dsonar.qualitygate.wait=true
+  allow_failure: false # Fail the pipeline if the Quality Gate fails
 
 # Reusable template for pushing to Docker Hub
 .build_and_push_template:
@@ -14,9 +32,7 @@ stages:
   before_script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
-    - echo "Building Docker image for $MICROSERVICE_NAME..."
     - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" -f "$MICROSERVICE_PATH/Dockerfile" .
-    - echo "Pushing new image version to Docker Hub..."
     - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA"
 
 # ===================================================================
@@ -26,15 +42,28 @@ unit-tests:user-service:
   stage: build-and-test
   image: maven:3.8.5-openjdk-17
   script:
-    - echo "Building and testing user-management-service..."
     - cd user-management-service
     - mvn clean package
   artifacts:
     paths:
-      - user-management-service/target/*.jar
+      - user-management-service/target/
     reports:
       junit:
         - user-management-service/target/surefire-reports/TEST-*.xml
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - user-management-service/**/*
+
+sonar-analysis:user-service:
+  extends: .sonar_scanner_template
+  variables:
+    MICROSERVICE_NAME: user-management-service
+    MICROSERVICE_PATH: user-management-service
+    SONAR_PROJECT_KEY: com.tunisys:user-management-service # The key you created in the SonarQube UI
+  needs:
+    - job: unit-tests:user-service
+      artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -46,8 +75,7 @@ push:user-service:
     MICROSERVICE_NAME: user-management-service
     MICROSERVICE_PATH: user-management-service
   needs:
-    - job: unit-tests:user-service
-      artifacts: true
+    - job: sonar-analysis:user-service # Depends on SonarQube analysis passing
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -64,7 +92,21 @@ build:document-service:
     - mvn clean package
   artifacts:
     paths:
-      - Document-management-service/target/*.jar
+      - Document-management-service/target/
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - Document-management-service/**/*
+
+sonar-analysis:document-service:
+  extends: .sonar_scanner_template
+  variables:
+    MICROSERVICE_NAME: document-management-service
+    MICROSERVICE_PATH: Document-management-service
+    SONAR_PROJECT_KEY: com.tunisys:document-management-service # Create this project key in SonarQube
+  needs:
+    - job: build:document-service
+      artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -76,8 +118,7 @@ push:document-service:
     MICROSERVICE_NAME: document-management-service
     MICROSERVICE_PATH: Document-management-service
   needs:
-    - job: build:document-service
-      artifacts: true
+    - job: sonar-analysis:document-service
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -94,7 +135,21 @@ build:leave-service:
     - mvn clean package
   artifacts:
     paths:
-      - leave-management-service/target/*.jar
+      - leave-management-service/target/
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - leave-management-service/**/*
+
+sonar-analysis:leave-service:
+  extends: .sonar_scanner_template
+  variables:
+    MICROSERVICE_NAME: leave-management-service
+    MICROSERVICE_PATH: leave-management-service
+    SONAR_PROJECT_KEY: com.tunisys:leave-management-service # Create this project key in SonarQube
+  needs:
+    - job: build:leave-service
+      artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -106,8 +161,7 @@ push:leave-service:
     MICROSERVICE_NAME: leave-management-service
     MICROSERVICE_PATH: leave-management-service
   needs:
-    - job: build:leave-service
-      artifacts: true
+    - job: sonar-analysis:leave-service
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:

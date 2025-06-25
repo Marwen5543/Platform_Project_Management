@@ -36,24 +36,30 @@ public class KeycloakService {
     private boolean provisioningEnabled;
     private Keycloak keycloak;
 
-    /*@PostConstruct
+    @PostConstruct
     public void init() {
         try {
             if (provisioningEnabled) {
-                // This is the old code, for the developer's local machine ONLY
-                log.warn("Keycloak provisioning is ENABLED. This should not be used in production.");
+                // This code is for initial, one-time setup (e.g., a developer's machine)
+                log.warn("Keycloak provisioning is ENABLED. Connecting to 'master' realm with admin credentials.");
                 keycloak = KeycloakBuilder.builder()
                         .serverUrl(authServerUrl)
                         .realm("master")
                         .username("admin")
-                        .password("admin")
+                        .password("admin") // Use environment variables for these too!
                         .clientId("admin-cli")
                         .build();
-                // ... (keep the realmExists, createRealm logic here) ...
 
-            } else {
-                // This is the new, correct code for Kubernetes/Production
-                log.info("Keycloak provisioning is DISABLED. Initializing standard admin client.");
+                log.info("Provisioning: Checking if realm '{}' exists...", realm);
+                if (!realmExists()) {
+                    createRealm();
+                }
+
+                log.info("Provisioning: Ensuring client '{}' exists...", clientId);
+                ensureClient();
+
+                // After provisioning, we MUST re-initialize the client to be the service itself!
+                log.info("Provisioning complete. Re-initializing Keycloak client for runtime operations.");
                 keycloak = KeycloakBuilder.builder()
                         .serverUrl(authServerUrl)
                         .realm(realm)
@@ -61,15 +67,26 @@ public class KeycloakService {
                         .clientId(clientId)
                         .clientSecret(clientSecret)
                         .build();
+
+            } else {
+                // This is the standard code for Kubernetes/Production
+                log.info("Keycloak provisioning is DISABLED. Initializing standard admin client for realm '{}'.", realm);
+                keycloak = KeycloakBuilder.builder()
+                        .serverUrl(authServerUrl)
+                        .realm(realm) // Uses tunisys-realm
+                        .grantType("client_credentials")
+                        .clientId(clientId) // Uses user-service-client
+                        .clientSecret(clientSecret) // Uses its own secret
+                        .build();
             }
-            log.info("Keycloak client initialized successfully.");
+            log.info("Keycloak client initialized successfully for runtime operations.");
         } catch (Exception e) {
             log.error("Keycloak initialization failed: {}", e.getMessage());
             throw new RuntimeException("Keycloak configuration error", e);
         }
-    }*/
+    }
 
-    @PostConstruct
+   /* @PostConstruct
     public void init() {
         try {
             keycloak = KeycloakBuilder.builder()
@@ -89,7 +106,7 @@ public class KeycloakService {
             log.error("Keycloak initialization failed: {}", e.getMessage());
             throw new RuntimeException("Keycloak configuration error", e);
         }
-    }
+    }*/
     private boolean realmExists() {
         return keycloak.realms().findAll().stream()
                 .anyMatch(r -> r.getRealm().equals(realm));

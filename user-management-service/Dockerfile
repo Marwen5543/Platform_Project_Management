@@ -15,8 +15,7 @@ WORKDIR /app
 
 # Copy the JAR file (use a consistent name)
 # --- THIS IS THE CORRECTED LINE ---
-COPY user-management-service/target/user-management-service-*.jar app.jar
-
+COPY target/user-management-service-*.jar app.jar
 # Expose the port (best practice, but doesn't actually publish it)
 EXPOSE 8085
 

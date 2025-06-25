@@ -1,37 +1,27 @@
-# Use a slim OpenJDK 17 base image for a smaller footprint
+# Dockerfile for document-management-service - CORRECTED AND CLEANED
+# Stage 1: Use a standard base image
 FROM openjdk:17-jdk-slim
 
-# Install curl for health checks
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Create a non-root user and group for security
+RUN addgroup --system appgroup && adduser --system --group appuser
 
-# Create a non-root user for security
-RUN useradd -m appuser
-
-# Set working directory
+# Set the working directory
 WORKDIR /app
 
-# Copy the built JAR file
+# Copy the application JAR file into the container
+# This line is specific to this service
 COPY target/document-administratif-service-0.0.1-SNAPSHOT.jar app.jar
 
-# Create directory for document storage and set ownership
-RUN mkdir -p /app/documents && chown -R appuser:appuser /app/documents
+# Create the directory for document storage as you had before
+RUN mkdir -p /app/documents
 
-# Expose the port (hardcoded to 8090 for consistency with application.properties)
-EXPOSE ${SERVER_PORT:-8090}
+# Change ownership of the entire app directory to the non-root user
+# This includes the JAR file and the documents directory
+RUN chown -R appuser:appgroup /app
 
-# Set environment variables for Docker
-ENV KEYCLOAK_AUTH_SERVER_URL=http://keycloak:8080
-ENV KEYCLOAK_REALM=Tunisys
-ENV KEYCLOAK_RESOURCE=demo-rest-api
-ENV KEYCLOAK_CREDENTIALS_SECRET=6ZWEg9yWkbERGGJK0ju0AKaqgTn7S0wI
-ENV EUREKA_SERVER_URL=http://eureka:8761/eureka/
-
-# Add health check for Docker orchestration
-HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:8090/actuator/health || exit 1
-
-# Run as the non-root user
+# Switch to the non-root user
 USER appuser
 
-# Specify the command to run the application with optimized JVM options
-ENTRYPOINT ["java", "-Xms256m", "-Xmx512m", "-jar", "app.jar"]
+# Define the entry point to run the application
+# All configuration will be passed in as environment variables by Kubernetes
+ENTRYPOINT ["java", "-jar", "app.jar"]
