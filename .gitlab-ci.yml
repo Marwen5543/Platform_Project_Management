@@ -31,8 +31,6 @@ stages:
 .build_and_push_template:
   stage: push
   image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
   before_script:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
