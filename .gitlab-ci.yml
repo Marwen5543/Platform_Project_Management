@@ -1,5 +1,5 @@
 # ===================================================================
-# .gitlab-ci.yml - FIXED VERSION
+# .gitlab-ci.yml - CORRECTED VERSION WITH PROPER ARTIFACT CHAIN
 # ===================================================================
 default:
   tags:
@@ -24,9 +24,14 @@ stages:
       -Dsonar.host.url=$SONAR_HOST_URL
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
+  # IMPORTANT: Pass through the artifacts from the build stage
+  artifacts:
+    paths:
+      - $MICROSERVICE_PATH/target/
+    expire_in: 1 hour
   allow_failure: false
 
-# Reusable template for pushing to Docker Hub - FIXED BUILD CONTEXT
+# Reusable template for pushing to Docker Hub
 .build_and_push_template:
   stage: push
   image: docker:20.10.16
@@ -36,18 +41,26 @@ stages:
     - echo "Testing Docker connection..."
     - docker version
     - docker info
-    - echo "Checking build artifacts..."
-    - ls -la $MICROSERVICE_PATH/
+    - echo "=== DEBUGGING ARTIFACTS ==="
+    - echo "Current working directory:"
+    - pwd
+    - echo "Contents of current directory:"
+    - ls -la
+    - echo "Contents of microservice directory:"
+    - ls -la $MICROSERVICE_PATH/ || echo "Microservice directory not found"
+    - echo "Looking for target directory:"
     - ls -la $MICROSERVICE_PATH/target/ || echo "Target directory not found"
+    - echo "Searching for JAR files:"
+    - find . -name "*.jar" -type f || echo "No JAR files found"
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
     - echo "Building Docker image..."
     - echo "Changing to microservice directory: $MICROSERVICE_PATH"
     - cd $MICROSERVICE_PATH
-    - echo "Current directory contents:"
+    - echo "Final check - current directory contents:"
     - ls -la
-    - echo "Target directory contents:"
-    - ls -la target/ || echo "No target directory found"
+    - echo "Final check - target directory contents:"
+    - ls -la target/
     - echo "Building Docker image from microservice directory..."
     - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" .
     - echo "Pushing Docker image..."
@@ -68,6 +81,7 @@ unit-tests:user-service:
     reports:
       junit:
         - user-management-service/target/surefire-reports/TEST-*.xml
+    expire_in: 1 hour
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -93,8 +107,9 @@ push:user-service:
     MICROSERVICE_NAME: user-management-service
     MICROSERVICE_PATH: user-management-service
   needs:
-    - job: sonar-analysis:user-service
-      artifacts: true  # Ensure artifacts are downloaded
+    - job: unit-tests:user-service
+      artifacts: true
+    # NOTE: Changed from sonar-analysis to unit-tests to get the JAR artifacts
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -112,6 +127,7 @@ build:document-service:
   artifacts:
     paths:
       - Document-management-service/target/
+    expire_in: 1 hour
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -137,8 +153,8 @@ push:document-service:
     MICROSERVICE_NAME: document-management-service
     MICROSERVICE_PATH: Document-management-service
   needs:
-    - job: sonar-analysis:document-service
-      artifacts: true  # Ensure artifacts are downloaded
+    - job: build:document-service
+      artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -156,6 +172,7 @@ build:leave-service:
   artifacts:
     paths:
       - leave-management-service/target/
+    expire_in: 1 hour
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -181,8 +198,8 @@ push:leave-service:
     MICROSERVICE_NAME: leave-management-service
     MICROSERVICE_PATH: leave-management-service
   needs:
-    - job: sonar-analysis:leave-service
-      artifacts: true  # Ensure artifacts are downloaded
+    - job: build:leave-service
+      artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
