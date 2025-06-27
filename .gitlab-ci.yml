@@ -35,32 +35,30 @@ stages:
 .build_and_push_template:
   stage: push
   image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
   variables:
-    DOCKER_HOST: unix:///var/run/docker.sock
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
   before_script:
-    - echo "Testing Docker connection..."
-    - docker version
-    - docker info
+    - until docker info; do sleep 1; done
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+  script:
+    - echo "Building Docker image for $MICROSERVICE_NAME..."
     - echo "=== DEBUGGING ARTIFACTS ==="
     - echo "Current working directory:"
     - pwd
-    - echo "Contents of current directory:"
-    - ls -la
     - echo "Contents of microservice directory:"
     - ls -la $MICROSERVICE_PATH/ || echo "Microservice directory not found"
-    - echo "Looking for target directory:"
+    - echo "Contents of target directory:"
     - ls -la $MICROSERVICE_PATH/target/ || echo "Target directory not found"
-    - echo "Searching for JAR files:"
-    - find . -name "*.jar" -type f || echo "No JAR files found"
-    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-  script:
-    - echo "Building Docker image..."
-    - echo "Changing to microservice directory: $MICROSERVICE_PATH"
+    - echo "JAR files found:"
+    - find $MICROSERVICE_PATH/target/ -name "*.jar" -type f || echo "No JAR files found"
+    
+    # Build from the microservice directory with proper context
     - cd $MICROSERVICE_PATH
-    - echo "Final check - current directory contents:"
-    - ls -la
-    - echo "Final check - target directory contents:"
-    - ls -la target/
     - echo "Building Docker image from microservice directory..."
     - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" .
     - echo "Pushing Docker image..."
