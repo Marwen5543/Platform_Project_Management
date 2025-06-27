@@ -15,7 +15,13 @@ WORKDIR /app
 
 # Copy the JAR file (use a consistent name)
 # --- THIS IS THE CORRECTED LINE ---
-COPY target/user-management-service-*.jar app.jar
+#COPY target/user-management-service-*.jar app.jar
+# Copy the JAR file - Updated path for microservice structure
+COPY user-management-service/target/user-management-service-*.jar app.jar
+
+# Change ownership to appuser
+RUN chown appuser:appuser app.jar
+
 # Expose the port (best practice, but doesn't actually publish it)
 EXPOSE 8085
 
@@ -34,4 +40,5 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
 USER appuser
 
 # Optimized JVM startup
-ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-Xms256m", "-Xmx512m", "-jar", "app.jar"]
+#ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-Xms256m", "-Xmx512m", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
