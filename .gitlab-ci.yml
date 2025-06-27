@@ -38,10 +38,9 @@ stages:
   services:
     - docker:20.10.16-dind
   variables:
+    # CORRECTED: Use the insecure port and disable TLS verification
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
-    DOCKER_TLS_VERIFY: 1
-    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
   before_script:
     - until docker info; do sleep 1; done
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
@@ -63,7 +62,6 @@ stages:
     - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" .
     - echo "Pushing Docker image..."
     - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA"
-
 # ===================================================================
 # JOBS FOR: user-management-service
 # ===================================================================
