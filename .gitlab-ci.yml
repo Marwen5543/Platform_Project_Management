@@ -1,5 +1,5 @@
 # ===================================================================
-# .gitlab-ci.yml - ALTERNATIVE VERSION USING DOCKER SOCKET
+# .gitlab-ci.yml - FIXED VERSION
 # ===================================================================
 default:
   tags:
@@ -26,7 +26,7 @@ stages:
       -Dsonar.qualitygate.wait=true
   allow_failure: false
 
-# Reusable template for pushing to Docker Hub - Using Host Docker Socket
+# Reusable template for pushing to Docker Hub - FIXED BUILD CONTEXT
 .build_and_push_template:
   stage: push
   image: docker:20.10.16
@@ -42,7 +42,9 @@ stages:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
     - echo "Building Docker image..."
-    - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" -f "$MICROSERVICE_PATH/Dockerfile" $MICROSERVICE_PATH
+    # FIXED: Change build context from . to $MICROSERVICE_PATH
+    - cd $MICROSERVICE_PATH
+    - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" -f "Dockerfile" .
     - echo "Pushing Docker image..."
     - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA"
 
