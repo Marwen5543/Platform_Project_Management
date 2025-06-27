@@ -1,20 +1,25 @@
 # ===================================================================
-# .gitlab-ci.yml - FINAL VERSION WITH SONARQUBE
+# .gitlab-ci.yml - FIXED VERSION FOR WINDOWS DOCKER
 # ===================================================================
 default:
   tags:
-    - windows
-    - docker
+    - docker  # Removed 'windows' tag to match your runner configuration
     
 stages:
   - build-and-test
-  - code-analysis  # New stage for SonarQube
+  - code-analysis
   - push
+
+variables:
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
 
 # Reusable template for SonarQube analysis
 .sonar_scanner_template:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
+  services:
+    - docker:20.10.16-dind
   script:
     - echo "Running SonarQube analysis for $MICROSERVICE_NAME..."
     - cd $MICROSERVICE_PATH
@@ -25,13 +30,21 @@ stages:
       -Dsonar.host.url=$SONAR_HOST_URL
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
-  allow_failure: false # Fail the pipeline if the Quality Gate fails
+  allow_failure: false
 
 # Reusable template for pushing to Docker Hub
 .build_and_push_template:
   stage: push
   image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_CERTDIR: "/certs"
+    DOCKER_TLS_VERIFY: 1
+    DOCKER_CERT_PATH: "$DOCKER_TLS_CERTDIR/client"
   before_script:
+    - until docker info; do sleep 1; done
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
     - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" -f "$MICROSERVICE_PATH/Dockerfile" .
@@ -62,7 +75,7 @@ sonar-analysis:user-service:
   variables:
     MICROSERVICE_NAME: user-management-service
     MICROSERVICE_PATH: user-management-service
-    SONAR_PROJECT_KEY: com.tunisys:user-management-service # The key you created in the SonarQube UI
+    SONAR_PROJECT_KEY: com.tunisys:user-management-service
   needs:
     - job: unit-tests:user-service
       artifacts: true
@@ -77,7 +90,7 @@ push:user-service:
     MICROSERVICE_NAME: user-management-service
     MICROSERVICE_PATH: user-management-service
   needs:
-    - job: sonar-analysis:user-service # Depends on SonarQube analysis passing
+    - job: sonar-analysis:user-service
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -105,7 +118,7 @@ sonar-analysis:document-service:
   variables:
     MICROSERVICE_NAME: document-management-service
     MICROSERVICE_PATH: Document-management-service
-    SONAR_PROJECT_KEY: com.tunisys:document-management-service # Create this project key in SonarQube
+    SONAR_PROJECT_KEY: com.tunisys:document-management-service
   needs:
     - job: build:document-service
       artifacts: true
@@ -148,7 +161,7 @@ sonar-analysis:leave-service:
   variables:
     MICROSERVICE_NAME: leave-management-service
     MICROSERVICE_PATH: leave-management-service
-    SONAR_PROJECT_KEY: com.tunisys:leave-management-service # Create this project key in SonarQube
+    SONAR_PROJECT_KEY: com.tunisys:leave-management-service
   needs:
     - job: build:leave-service
       artifacts: true
