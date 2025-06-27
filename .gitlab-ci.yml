@@ -1,25 +1,19 @@
 # ===================================================================
-# .gitlab-ci.yml - FIXED VERSION FOR WINDOWS DOCKER
+# .gitlab-ci.yml - ALTERNATIVE VERSION USING DOCKER SOCKET
 # ===================================================================
 default:
   tags:
-    - docker  # Removed 'windows' tag to match your runner configuration
+    - docker
     
 stages:
   - build-and-test
   - code-analysis
   - push
 
-variables:
-  DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: ""
-
 # Reusable template for SonarQube analysis
 .sonar_scanner_template:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
-  services:
-    - docker:20.10.16-dind
   script:
     - echo "Running SonarQube analysis for $MICROSERVICE_NAME..."
     - cd $MICROSERVICE_PATH
@@ -32,25 +26,24 @@ variables:
       -Dsonar.qualitygate.wait=true
   allow_failure: false
 
-# Reusable template for pushing to Docker Hub
+# Reusable template for pushing to Docker Hub - Using Host Docker Socket
 .build_and_push_template:
   stage: push
   image: docker:20.10.16
-  services:
-    - name: docker:20.10.16-dind
-      alias: docker
-      command: ["--tls=false"]
   variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
-    DOCKER_DRIVER: overlay2
+    DOCKER_HOST: unix:///var/run/docker.sock
   before_script:
-    - echo "Waiting for Docker daemon to start..."
-    - until docker info >/dev/null 2>&1; do echo "Docker daemon not ready, waiting..."; sleep 1; done
-    - echo "Docker daemon is ready!"
+    - echo "Testing Docker connection..."
+    - docker version
+    - docker info
+    - echo "Checking build artifacts..."
+    - ls -la $MICROSERVICE_PATH/
+    - ls -la $MICROSERVICE_PATH/target/ || echo "Target directory not found"
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
-    - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" -f "$MICROSERVICE_PATH/Dockerfile" .
+    - echo "Building Docker image..."
+    - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" -f "$MICROSERVICE_PATH/Dockerfile" $MICROSERVICE_PATH
+    - echo "Pushing Docker image..."
     - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA"
 
 # ===================================================================
@@ -94,6 +87,7 @@ push:user-service:
     MICROSERVICE_PATH: user-management-service
   needs:
     - job: sonar-analysis:user-service
+      artifacts: true  # Ensure artifacts are downloaded
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -137,6 +131,7 @@ push:document-service:
     MICROSERVICE_PATH: Document-management-service
   needs:
     - job: sonar-analysis:document-service
+      artifacts: true  # Ensure artifacts are downloaded
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -180,6 +175,7 @@ push:leave-service:
     MICROSERVICE_PATH: leave-management-service
   needs:
     - job: sonar-analysis:leave-service
+      artifacts: true  # Ensure artifacts are downloaded
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
