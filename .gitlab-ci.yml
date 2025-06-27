@@ -42,9 +42,14 @@ stages:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
     - echo "Building Docker image..."
-    # FIXED: Change build context from . to $MICROSERVICE_PATH
+    - echo "Changing to microservice directory: $MICROSERVICE_PATH"
     - cd $MICROSERVICE_PATH
-    - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" -f "Dockerfile" .
+    - echo "Current directory contents:"
+    - ls -la
+    - echo "Target directory contents:"
+    - ls -la target/ || echo "No target directory found"
+    - echo "Building Docker image from microservice directory..."
+    - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" .
     - echo "Pushing Docker image..."
     - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA"
 
