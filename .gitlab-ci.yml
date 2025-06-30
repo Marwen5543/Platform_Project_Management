@@ -38,11 +38,14 @@ stages:
   services:
     - docker:20.10.16-dind
   variables:
-    # CORRECTED: Use the insecure port and disable TLS verification
+    # CRITICAL: Disable TLS completely for dind connection
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
   before_script:
+    # Wait for Docker daemon to be ready
     - until docker info; do sleep 1; done
+    - echo "Docker daemon is ready"
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
     - echo "Building Docker image for $MICROSERVICE_NAME..."
