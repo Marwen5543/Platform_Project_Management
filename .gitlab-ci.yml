@@ -29,49 +29,23 @@ stages:
     expire_in: 1 hour
   allow_failure: false
 
-# Reusable template for pushing to Docker Hub
-.build_and_push_template:
+.build_and_push_kaniko:
   stage: push
-  image: docker:20.10.16
-  services:
-    - name: docker:20.10.16-dind
-      alias: docker
-      command: ["--tls=false", "--host=tcp://0.0.0.0:2375"]
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
-    DOCKER_DRIVER: overlay2
-  before_script:
-    # Wait for Docker daemon to start
-    - sleep 10
-    # Check Docker daemon status with proper timeout and interval
-    - timeout=60
-    - interval=5
-    - elapsed=0
-    - |
-      while ! docker info >/dev/null 2>&1; do
-        if [ $elapsed -ge $timeout ]; then
-          echo "Docker daemon failed to start within $timeout seconds"
-          exit 1
-        fi
-        echo "Waiting for Docker daemon... ($elapsed/$timeout seconds)"
-        sleep $interval
-        elapsed=$((elapsed + interval))
-      done
-    - echo "Docker daemon is ready"
-    # Verify Docker is working
-    - docker version
-    # Log in to Docker Hub
-    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+  image:
+    name: gcr.io/kaniko-project/executor:v1.9.0-debug
+    entrypoint: [""] # Important: We need a shell, so we override the default entrypoint.
   script:
-    - echo "Building Docker image for $MICROSERVICE_NAME..."
-    - cd $MICROSERVICE_PATH
-    - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" .
-    - docker tag "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:latest"
-    - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA"
-    - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:latest"
-  after_script:
-    - docker logout
+    - echo "Building with Kaniko (no Docker daemon required)..."
+    # Create the Docker config file for Kaniko to authenticate with Docker Hub.
+    # This is the secure way to handle credentials for Kaniko.
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    # Run the Kaniko executor to build and push the image.
+    - /kaniko/executor
+      --context $CI_PROJECT_DIR/$MICROSERVICE_PATH
+      --dockerfile $CI_PROJECT_DIR/$MICROSERVICE_PATH/Dockerfile
+      --destination $DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA
+      --destination $DOCKERHUB_USERNAME/$MICROSERVICE_NAME:latest
 
 # ===================================================================
 # JOBS FOR: user-management-service
