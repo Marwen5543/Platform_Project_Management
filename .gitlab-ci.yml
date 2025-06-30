@@ -1,5 +1,5 @@
 # ===================================================================
-# .gitlab-ci.yml - CORRECTED VERSION WITH PROPER ARTIFACT CHAIN
+# FINAL CORRECTED VERSION
 # ===================================================================
 default:
   tags:
@@ -17,14 +17,12 @@ stages:
   script:
     - echo "Running SonarQube analysis for $MICROSERVICE_NAME..."
     - cd $MICROSERVICE_PATH
-    # The 'verify' phase runs tests, and 'sonar:sonar' sends the results
     - >-
       mvn verify sonar:sonar
       -Dsonar.projectKey=$SONAR_PROJECT_KEY
       -Dsonar.host.url=$SONAR_HOST_URL
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
-  # IMPORTANT: Pass through the artifacts from the build stage
   artifacts:
     paths:
       - $MICROSERVICE_PATH/target/
@@ -45,9 +43,6 @@ stages:
     DOCKER_TLS_VERIFY: ""
   before_script:
     - echo "DEBUG: EXECUTING THE CORRECT CI FILE - INSECURE DIND"
-    - export DOCKER_HOST=tcp://docker:2375
-    - export DOCKER_TLS_CERTDIR=""
-    - export DOCKER_TLS_VERIFY=""
     - echo "Waiting for Docker daemon to start..."
     - for i in $(seq 1 30); do docker info >/dev/null 2>&1 && break || sleep 2; done
     - docker info
@@ -55,22 +50,12 @@ stages:
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
     - echo "Building Docker image for $MICROSERVICE_NAME..."
-    - echo "=== DEBUGGING ARTIFACTS ==="
-    - echo "Current working directory:"
-    - pwd
-    - echo "Contents of microservice directory:"
-    - ls -la $MICROSERVICE_PATH/ || echo "Microservice directory not found"
-    - echo "Contents of target directory:"
-    - ls -la $MICROSERVICE_PATH/target/ || echo "Target directory not found"
-    - echo "JAR files found:"
-    - find $MICROSERVICE_PATH/target/ -name "*.jar" -type f || echo "No JAR files found"
-    
-    # Build from the microservice directory with proper context
     - cd $MICROSERVICE_PATH
-    - echo "Building Docker image from microservice directory..."
+    - echo "Building Docker image from $MICROSERVICE_NAME directory..."
     - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" .
     - echo "Pushing Docker image..."
     - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA"
+
 # ===================================================================
 # JOBS FOR: user-management-service
 # ===================================================================
