@@ -44,10 +44,7 @@ stages:
     DOCKER_DRIVER: overlay2
     DOCKER_TLS_VERIFY: ""
   before_script:
-    # ADD THIS LINE FOR PROOF
     - echo "DEBUG: EXECUTING THE CORRECT CI FILE - INSECURE DIND"
-    
-    # The rest of the script is the same
     - export DOCKER_HOST=tcp://docker:2375
     - export DOCKER_TLS_CERTDIR=""
     - export DOCKER_TLS_VERIFY=""
