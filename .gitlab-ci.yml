@@ -39,18 +39,18 @@ stages:
   - name: docker:20.10.16-dind
     command: ["--tls=false", "--host=0.0.0.0:2375"]
   variables:
-    # CRITICAL: Disable TLS completely for dind connection
     DOCKER_HOST: tcp://docker:2375
     DOCKER_TLS_CERTDIR: ""
     DOCKER_DRIVER: overlay2
-    # Explicitly disable TLS verification
     DOCKER_TLS_VERIFY: ""
   before_script:
-    # Export environment variables to ensure they're properly set
+    # ADD THIS LINE FOR PROOF
+    - echo "DEBUG: EXECUTING THE CORRECT CI FILE - INSECURE DIND"
+    
+    # The rest of the script is the same
     - export DOCKER_HOST=tcp://docker:2375
     - export DOCKER_TLS_CERTDIR=""
     - export DOCKER_TLS_VERIFY=""
-    # Wait for Docker daemon to be ready with more detailed feedback
     - echo "Waiting for Docker daemon to start..."
     - for i in $(seq 1 30); do docker info >/dev/null 2>&1 && break || sleep 2; done
     - docker info
