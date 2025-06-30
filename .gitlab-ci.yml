@@ -128,7 +128,7 @@ sonar-analysis:document-service:
         - Document-management-service/**/*
 
 push:document-service:
-  extends: .build_and_push_template
+  extends: .build_and_push_kaniko
   variables:
     MICROSERVICE_NAME: document-management-service
     MICROSERVICE_PATH: Document-management-service
@@ -173,7 +173,7 @@ sonar-analysis:leave-service:
         - leave-management-service/**/*
 
 push:leave-service:
-  extends: .build_and_push_template
+  extends: .build_and_push_kaniko
   variables:
     MICROSERVICE_NAME: leave-management-service
     MICROSERVICE_PATH: leave-management-service
