@@ -83,7 +83,7 @@ sonar-analysis:user-service:
         - user-management-service/**/*
 
 push:user-service:
-  extends: .build_and_push_template
+  extends: .build_and_push_kaniko
   variables:
     MICROSERVICE_NAME: user-management-service
     MICROSERVICE_PATH: user-management-service
