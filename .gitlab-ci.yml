@@ -34,26 +34,19 @@ stages:
   stage: push
   image: docker:20.10.16
   services:
-  - name: docker:20.10.16-dind
-    command: ["--tls=false", "--host=0.0.0.0:2375"]
+    - name: docker:20.10.16-dind
+      command: ["--tls=false"]
   variables:
     DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
-    DOCKER_DRIVER: overlay2
-    DOCKER_TLS_VERIFY: ""
   before_script:
-    - echo "DEBUG: EXECUTING THE CORRECT CI FILE - INSECURE DIND"
-    - echo "Waiting for Docker daemon to start..."
-    - for i in $(seq 1 30); do docker info >/dev/null 2>&1 && break || sleep 2; done
-    - docker info
-    - echo "Docker daemon is ready"
+    # Wait for the dind service to be ready.
+    - until docker info; do sleep 1; done
+    # Log in to Docker Hub.
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
     - echo "Building Docker image for $MICROSERVICE_NAME..."
     - cd $MICROSERVICE_PATH
-    - echo "Building Docker image from $MICROSERVICE_NAME directory..."
     - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" .
-    - echo "Pushing Docker image..."
     - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA"
 
 # ===================================================================
