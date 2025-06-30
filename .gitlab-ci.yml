@@ -35,22 +35,43 @@ stages:
   image: docker:20.10.16
   services:
     - name: docker:20.10.16-dind
+      alias: docker
       command: ["--tls=false", "--host=tcp://0.0.0.0:2375"]
   variables:
     DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+    DOCKER_DRIVER: overlay2
   before_script:
-    # Wait for the dind service to be ready.
-    - sleep 15
-    # Now, check every 5 seconds until it's ready.
-    - until docker info; do echo "Waiting for docker..."; sleep 5; done
-    - echo "Docker is ready."
-    # Log in to Docker Hub.
+    # Wait for Docker daemon to start
+    - sleep 10
+    # Check Docker daemon status with proper timeout and interval
+    - timeout=60
+    - interval=5
+    - elapsed=0
+    - |
+      while ! docker info >/dev/null 2>&1; do
+        if [ $elapsed -ge $timeout ]; then
+          echo "Docker daemon failed to start within $timeout seconds"
+          exit 1
+        fi
+        echo "Waiting for Docker daemon... ($elapsed/$timeout seconds)"
+        sleep $interval
+        elapsed=$((elapsed + interval))
+      done
+    - echo "Docker daemon is ready"
+    # Verify Docker is working
+    - docker version
+    # Log in to Docker Hub
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
     - echo "Building Docker image for $MICROSERVICE_NAME..."
     - cd $MICROSERVICE_PATH
     - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" .
+    - docker tag "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:latest"
     - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA"
+    - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:latest"
+  after_script:
+    - docker logout
 
 # ===================================================================
 # JOBS FOR: user-management-service
