@@ -114,7 +114,6 @@ push:user-service:
   needs:
     - job: unit-tests:user-service
       artifacts: true
-    # NOTE: Changed from sonar-analysis to unit-tests to get the JAR artifacts
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
