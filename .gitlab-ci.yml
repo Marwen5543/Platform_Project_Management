@@ -35,7 +35,7 @@ stages:
   image: docker:20.10.16
   services:
     - name: docker:20.10.16-dind
-      command: ["--tls=false"]
+      command: ["--tls=false", "--host=tcp://0.0.0.0:2375"]
   variables:
     DOCKER_HOST: tcp://docker:2375
   before_script:
