@@ -40,7 +40,10 @@ stages:
     DOCKER_HOST: tcp://docker:2375
   before_script:
     # Wait for the dind service to be ready.
-    - until docker info; do sleep 1; done
+    - sleep 15
+    # Now, check every 5 seconds until it's ready.
+    - until docker info; do echo "Waiting for docker..."; sleep 5; done
+    - echo "Docker is ready."
     # Log in to Docker Hub.
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
