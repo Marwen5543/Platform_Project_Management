@@ -1,5 +1,5 @@
 # ===================================================================
-# .gitlab-ci.yml - CORRECTED VERSION WITH PROPER ARTIFACT CHAIN
+# FINAL CORRECTED VERSION
 # ===================================================================
 default:
   tags:
@@ -17,60 +17,36 @@ stages:
   script:
     - echo "Running SonarQube analysis for $MICROSERVICE_NAME..."
     - cd $MICROSERVICE_PATH
-    # The 'verify' phase runs tests, and 'sonar:sonar' sends the results
     - >-
       mvn verify sonar:sonar
       -Dsonar.projectKey=$SONAR_PROJECT_KEY
       -Dsonar.host.url=$SONAR_HOST_URL
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
-  # IMPORTANT: Pass through the artifacts from the build stage
   artifacts:
     paths:
       - $MICROSERVICE_PATH/target/
     expire_in: 1 hour
   allow_failure: false
 
-# Reusable template for pushing to Docker Hub
-.build_and_push_template:
+.build_and_push_kaniko:
   stage: push
-  image: docker:20.10.16
-  services:
-  - name: docker:20.10.16-dind
-    command: ["--tls=false", "--host=0.0.0.0:2375"]
-  variables:
-    DOCKER_HOST: tcp://docker:2375
-    DOCKER_TLS_CERTDIR: ""
-    DOCKER_DRIVER: overlay2
-    DOCKER_TLS_VERIFY: ""
-  before_script:
-    - echo "DEBUG: EXECUTING THE CORRECT CI FILE - INSECURE DIND"
-    - export DOCKER_HOST=tcp://docker:2375
-    - export DOCKER_TLS_CERTDIR=""
-    - export DOCKER_TLS_VERIFY=""
-    - echo "Waiting for Docker daemon to start..."
-    - for i in $(seq 1 30); do docker info >/dev/null 2>&1 && break || sleep 2; done
-    - docker info
-    - echo "Docker daemon is ready"
-    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+  image:
+    name: gcr.io/kaniko-project/executor:v1.9.0-debug
+    entrypoint: [""] # Important: We need a shell, so we override the default entrypoint.
   script:
-    - echo "Building Docker image for $MICROSERVICE_NAME..."
-    - echo "=== DEBUGGING ARTIFACTS ==="
-    - echo "Current working directory:"
-    - pwd
-    - echo "Contents of microservice directory:"
-    - ls -la $MICROSERVICE_PATH/ || echo "Microservice directory not found"
-    - echo "Contents of target directory:"
-    - ls -la $MICROSERVICE_PATH/target/ || echo "Target directory not found"
-    - echo "JAR files found:"
-    - find $MICROSERVICE_PATH/target/ -name "*.jar" -type f || echo "No JAR files found"
-    
-    # Build from the microservice directory with proper context
-    - cd $MICROSERVICE_PATH
-    - echo "Building Docker image from microservice directory..."
-    - docker build -t "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA" .
-    - echo "Pushing Docker image..."
-    - docker push "$DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA"
+    - echo "Building with Kaniko (no Docker daemon required)..."
+    # Create the Docker config file for Kaniko to authenticate with Docker Hub.
+    # This is the secure way to handle credentials for Kaniko.
+    - mkdir -p /kaniko/.docker
+    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    # Run the Kaniko executor to build and push the image.
+    - /kaniko/executor
+      --context $CI_PROJECT_DIR/$MICROSERVICE_PATH
+      --dockerfile $CI_PROJECT_DIR/$MICROSERVICE_PATH/Dockerfile
+      --destination $DOCKERHUB_USERNAME/$MICROSERVICE_NAME:$CI_COMMIT_SHORT_SHA
+      --destination $DOCKERHUB_USERNAME/$MICROSERVICE_NAME:latest
+
 # ===================================================================
 # JOBS FOR: user-management-service
 # ===================================================================
@@ -107,14 +83,13 @@ sonar-analysis:user-service:
         - user-management-service/**/*
 
 push:user-service:
-  extends: .build_and_push_template
+  extends: .build_and_push_kaniko
   variables:
     MICROSERVICE_NAME: user-management-service
     MICROSERVICE_PATH: user-management-service
   needs:
     - job: unit-tests:user-service
       artifacts: true
-    # NOTE: Changed from sonar-analysis to unit-tests to get the JAR artifacts
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -153,7 +128,7 @@ sonar-analysis:document-service:
         - Document-management-service/**/*
 
 push:document-service:
-  extends: .build_and_push_template
+  extends: .build_and_push_kaniko
   variables:
     MICROSERVICE_NAME: document-management-service
     MICROSERVICE_PATH: Document-management-service
@@ -198,7 +173,7 @@ sonar-analysis:leave-service:
         - leave-management-service/**/*
 
 push:leave-service:
-  extends: .build_and_push_template
+  extends: .build_and_push_kaniko
   variables:
     MICROSERVICE_NAME: leave-management-service
     MICROSERVICE_PATH: leave-management-service
