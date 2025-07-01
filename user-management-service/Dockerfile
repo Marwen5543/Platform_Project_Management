@@ -15,9 +15,9 @@ WORKDIR /app
 
 # Copy the JAR file (use a consistent name)
 # --- THIS IS THE CORRECTED LINE ---
-#COPY target/user-management-service-*.jar app.jar
+COPY target/user-management-service-*.jar app.jar
 # Copy the JAR file - Updated path for microservice structure
-COPY user-management-service/target/user-management-service-*.jar app.jar
+#COPY user-management-service/target/user-management-service-*.jar app.jar
 
 # Change ownership to appuser
 RUN chown appuser:appuser app.jar
