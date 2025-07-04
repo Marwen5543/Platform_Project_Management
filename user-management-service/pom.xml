@@ -105,7 +105,18 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-
+    <!-- =============================================================== -->
+    <distributionManagement>
+        <repository>
+            <!-- The ID 'nexus' MUST match the server ID in settings.xml -->
+            <id>nexus</id>
+            <url>${env.NEXUS_URL}/repository/maven-releases/</url>
+        </repository>
+        <snapshotRepository>
+            <id>nexus</id>
+            <url>${env.NEXUS_URL}/repository/maven-snapshots/</url>
+        </snapshotRepository>
+    </distributionManagement>
     <build>
         <plugins>
             <!-- Spring Boot Maven Plugin to package and run the app -->

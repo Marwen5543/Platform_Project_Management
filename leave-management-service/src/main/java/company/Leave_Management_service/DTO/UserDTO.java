@@ -18,6 +18,13 @@ public class UserDTO {
     private Long managerId;
     private String position;
 
+    public UserDTO(String user123, String s, Object o, Object o1, Object o2) {
+    }
+
+    public UserDTO() {
+
+    }
+
     public enum UserRole {
         EMPLOYEE, MANAGER, HR, ADMIN, SUPER_ADMIN
     }
