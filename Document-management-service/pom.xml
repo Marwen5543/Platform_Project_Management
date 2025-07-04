@@ -23,7 +23,7 @@
         <spring-cloud.version>2023.0.0</spring-cloud.version>
         <sonar.host.url>http://192.168.50.4:31000</sonar.host.url>
         <jacoco.version>0.8.12</jacoco.version>
-        <sonar.coverage.jacoco.xmlReportPaths>${project.reporting.outputDirectory}/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <!--<sonar.coverage.jacoco.xmlReportPaths>${project.reporting.outputDirectory}/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>-->
     </properties>
 
     <dependencies>
