@@ -1,4 +1,4 @@
-package org.example.documentmanagementservice.Config;
+package org.example.documentmanagementservice.config;
 
 import feign.RequestInterceptor;
 import org.springframework.context.annotation.Bean;

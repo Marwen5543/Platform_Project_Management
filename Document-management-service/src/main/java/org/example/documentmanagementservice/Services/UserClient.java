@@ -1,6 +1,6 @@
 package org.example.documentmanagementservice.Services;
 
-import org.example.documentmanagementservice.Config.FeignConfig;
+import org.example.documentmanagementservice.config.FeignConfig;
 import org.example.documentmanagementservice.DTO.UserDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
