@@ -1,6 +1,6 @@
 package company.Leave_Management_service.Services;
 
-import company.Leave_Management_service.Config.FeignConfig;
+import company.Leave_Management_service.config.FeignConfig;
 import company.Leave_Management_service.DTO.UserDTO;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;

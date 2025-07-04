@@ -1,4 +1,4 @@
-package company.Leave_Management_service.Config;
+package company.Leave_Management_service.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -30,6 +30,7 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -37,7 +38,16 @@ import java.util.stream.Collectors;
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
 public class SecurityConfig {
+    private static final class Roles {
+        private static final String EMPLOYEE = "ROLE_EMPLOYEE";
+        private static final String MANAGER = "ROLE_MANAGER";
+        private static final String HR = "ROLE_HR";
+    }
 
+    private static final class JwtClaims {
+        private static final String REALM_ACCESS = "realm_access";
+        private static final String ROLES = "roles";
+    }
     @Value("${keycloak.auth-server-url}")
     private String keycloakAuthServerUrl;
 
@@ -49,9 +59,9 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/api/leaves/request").access(new RoleHierarchyAuthoritiesMapper(roleHierarchy, "ROLE_EMPLOYEE"))
-                        .requestMatchers("/api/leaves/history").access(new RoleHierarchyAuthoritiesMapper(roleHierarchy, "ROLE_EMPLOYEE", "ROLE_MANAGER", "ROLE_HR"))
-                        .requestMatchers("/api/leaves/team").access(new RoleHierarchyAuthoritiesMapper(roleHierarchy, "ROLE_MANAGER", "ROLE_HR"))
-                        .requestMatchers("/api/leaves/*/status").access(new RoleHierarchyAuthoritiesMapper(roleHierarchy, "ROLE_MANAGER", "ROLE_HR"))
+                        .requestMatchers("/api/leaves/history").access(new RoleHierarchyAuthoritiesMapper(roleHierarchy, Roles.EMPLOYEE, Roles.MANAGER, Roles.HR))
+                        .requestMatchers("/api/leaves/team").access(new RoleHierarchyAuthoritiesMapper(roleHierarchy, Roles.MANAGER, Roles.HR))
+                        .requestMatchers("/api/leaves/*/status").access(new RoleHierarchyAuthoritiesMapper(roleHierarchy, Roles.MANAGER, Roles.HR))
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -64,9 +74,9 @@ public class SecurityConfig {
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
-            List<String> realmRoles = jwt.getClaimAsMap("realm_access") != null &&
-                    jwt.getClaimAsMap("realm_access").get("roles") != null
-                    ? (List<String>) jwt.getClaimAsMap("realm_access").get("roles")
+            Map<String, Object> realmAccess = jwt.getClaimAsMap(JwtClaims.REALM_ACCESS);
+            List<String> realmRoles = (realmAccess != null && realmAccess.get(JwtClaims.ROLES) != null)
+                    ? (List<String>) realmAccess.get(JwtClaims.ROLES)
                     : Collections.emptyList();
             System.out.println("JWT Roles: " + realmRoles);
             return realmRoles.stream()

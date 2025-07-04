@@ -1,4 +1,4 @@
-package company.Leave_Management_service.Config;
+package company.Leave_Management_service.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.servlet.config.annotation.CorsRegistry;

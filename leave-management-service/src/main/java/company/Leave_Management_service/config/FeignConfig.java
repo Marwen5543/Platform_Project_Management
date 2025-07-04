@@ -1,4 +1,4 @@
-package company.Leave_Management_service.Config;
+package company.Leave_Management_service.config;
 
 import feign.RequestInterceptor;
 import org.springframework.context.annotation.Bean;
