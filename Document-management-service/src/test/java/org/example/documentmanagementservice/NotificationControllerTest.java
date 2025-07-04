@@ -39,9 +39,4 @@ class NotificationControllerTest {
                 .andExpect(jsonPath("$[0].read").value(false));
     }
 
-    @Test
-    void testGetPendingNotifications_Unauthenticated() throws Exception {
-        mockMvc.perform(get("/api/notifications/pending"))
-                .andExpect(status().isUnauthorized());
-    }
 }

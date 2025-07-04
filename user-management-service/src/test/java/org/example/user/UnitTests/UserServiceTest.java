@@ -25,8 +25,7 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @Slf4j
-@ExtendWith(MockitoExt
-ension.class)
+@ExtendWith(MockitoExtension.class)
 class UserServiceTest {
 
     @Mock
