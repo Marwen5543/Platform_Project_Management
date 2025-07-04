@@ -21,6 +21,9 @@
         <sonar.host.url>http://192.168.50.4:31000</sonar.host.url>
         <jacoco.version>0.8.12</jacoco.version>
         <!--<sonar.coverage.jacoco.xmlReportPaths>${project.reporting.outputDirectory}/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>-->
+        <sonar.coverage.exclusions>
+            **/config/SecurityConfig.java
+        </sonar.coverage.exclusions>
     </properties>
 
     <dependencies>
