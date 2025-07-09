@@ -17,16 +17,13 @@ unit-tests:user-service:
   stage: build-and-test
   image: maven:3.8.5-openjdk-17
   script:
-    - echo "Preparing settings.xml for deployment..."
-    # This is the robust fix: copy the settings file and use 'sed' to replace placeholders.
+    - echo "Using settings.xml with environment variables..."
+    # The only step needed is to copy the file. No more 'sed'!
     - cp $SETTINGS_XML ./settings-temp.xml
-    - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
     
     - echo "Building, testing, and deploying user-management-service to Nexus..."
     - cd user-management-service
-    # Use the temporary settings file we just created
+    # Maven will automatically replace ${env.NEXUS_URL}, etc. with your GitLab CI variables
     - mvn clean deploy -s ../settings-temp.xml
   artifacts:
     paths:
