@@ -1,27 +1,21 @@
-<!-- settings.xml -->
+<!-- settings.xml TEMPLATE -->
 <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0"
           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
           xsi:schemaLocation="http://maven.apache.org/SETTINGS/1.0.0 http://maven.apache.org/xsd/settings-1.0.0.xsd">
-
   <servers>
-    <!-- Server credentials for deploying (uploading) to Nexus. -->
-    <!-- The ID 'nexus' MUST match the ID in your pom.xml's distributionManagement. -->
     <server>
       <id>nexus</id>
-      <username>admin</username>
-      <password>0000</password>
+      <!-- Placeholders for credentials -->
+      <username>${env.NEXUS_USERNAME}</username>
+      <password>${env.NEXUS_PASSWORD}</password>
     </server>
   </servers>
-
   <mirrors>
-    <!-- This forces all dependency downloads to go through our Nexus server, -->
-    <!-- which will cache them from the internet. -->
     <mirror>
       <id>nexus</id>
       <mirrorOf>*</mirrorOf>
-      <!-- This is the URL of the default repository group in Nexus -->
-      <url>http://192.168.50.4:8081/repository/maven-public/</url>
+      <!-- Placeholder for the URL -->
+      <url>NEXUS_URL_PLACEHOLDER/repository/maven-public/</url>
     </mirror>
   </mirrors>
-
 </settings>
