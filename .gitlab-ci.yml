@@ -67,7 +67,9 @@ push:user-service:
     - job: build-and-deploy:user-service
       artifacts: true
   rules:
-    - if: 'changes: ["user-management-service/**/*"]'
+  - if: '$CI_COMMIT_BRANCH == "main"'
+    changes:
+      - user-management-service/**/*
 
 # ===================================================================
 # JOBS FOR: document-management-service
@@ -125,7 +127,9 @@ push:document-service:
     - job: build-and-deploy:document-service
       artifacts: true
   rules:
-    - if: 'changes: ["Document-management-service/**/*"]'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - "Document-management-service/**/*"
 
 # ===================================================================
 # JOBS FOR: leave-management-service
@@ -183,4 +187,7 @@ push:leave-service:
     - job: build-and-deploy:leave-service
       artifacts: true
   rules:
-    - if: 'changes: ["leave-management-service/**/*"]'
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - "leave-management-service/**/*"
+
