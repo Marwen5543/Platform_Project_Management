@@ -8,8 +8,8 @@
     <!-- The ID 'nexus' MUST match the ID in your pom.xml's distributionManagement. -->
     <server>
       <id>nexus</id>
-      <username>${env.NEXUS_USERNAME}</username>
-      <password>${env.NEXUS_PASSWORD}</password>
+      <username>admin</username>
+      <password>0000</password>
     </server>
   </servers>
 
@@ -20,7 +20,7 @@
       <id>nexus</id>
       <mirrorOf>*</mirrorOf>
       <!-- This is the URL of the default repository group in Nexus -->
-      <url>${env.NEXUS_URL}/repository/maven-public/</url>
+      <url>http://192.168.50.4:8081/repository/maven-public/</url>
     </mirror>
   </mirrors>
 
