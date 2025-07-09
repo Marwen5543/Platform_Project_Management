@@ -1,9 +1,8 @@
 # ===================================================================
-# FINAL, PROFESSIONAL CI/CD PIPELINE
+# FIXED CI/CD PIPELINE WITH PROPER NEXUS CONFIGURATION
 # ===================================================================
 
 default:
-  # This tag ensures the job runs on your local runner, NOT on GitLab's shared runners.
   tags:
     - docker
 
@@ -12,53 +11,67 @@ stages:
   - sonarqube_analysis
   - package_and_push_to_dockerhub
 
-# Global cache for Maven dependencies to speed up all jobs
+# Global cache for Maven dependencies
 cache:
   key:
-    # A unique cache key based on the contents of all pom.xml files
     files:
       - "*/pom.xml"
   paths:
-    # This is the directory Maven downloads dependencies to
     - .m2/repository/
-  policy: pull-push # Download at start of job, re-upload at end if changed
+  policy: pull-push
 
 # ===================================================================
-# JOB TEMPLATES (Do Not Repeat Yourself)
+# JOB TEMPLATES
 # ===================================================================
 
-# Template for Maven build, test, and deploy to Nexus
 .nexus_build_template:
   stage: build_and_publish_to_nexus
   image: maven:3.8.5-openjdk-17
-  script:
-    - echo "Preparing settings.xml..."
+  before_script:
+    # Create .m2 directory for Maven settings
+    - mkdir -p ~/.m2
+    # Copy and configure settings.xml with actual values
     - cp $SETTINGS_XML ./settings-temp.xml
+    - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
+    - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
+    - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
+    # Copy configured settings to Maven home
+    - cp ./settings-temp.xml ~/.m2/settings.xml
+    # Debug: Show the final settings (without passwords)
+    - echo "=== Maven Settings Configuration ==="
+    - cat ~/.m2/settings.xml | grep -v '<password>' | head -20
+    - echo "=== End Settings ==="
+  script:
     - echo "Building, testing, and deploying ${SERVICE_NAME} to Nexus..."
     - cd ${SERVICE_DIR}
-    - mvn clean deploy -s ../settings-temp.xml
+    # Use the configured settings.xml
+    - mvn clean deploy -s ~/.m2/settings.xml -X
   artifacts:
     paths:
       - ${SERVICE_DIR}/target/
     expire_in: 1 hour
+    when: always
 
-# Template for SonarQube analysis
 .sonarqube_analysis_template:
   stage: sonarqube_analysis
   image: maven:3.8.5-openjdk-17
-  script:
-    - echo "Preparing settings.xml..."
+  before_script:
+    - mkdir -p ~/.m2
     - cp $SETTINGS_XML ./settings-temp.xml
+    - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
+    - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
+    - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
+    - cp ./settings-temp.xml ~/.m2/settings.xml
+  script:
     - echo "Running SonarQube analysis for ${SERVICE_NAME}..."
     - cd ${SERVICE_DIR}
     - >-
-      mvn verify sonar:sonar -s ../settings-temp.xml
+      mvn verify sonar:sonar -s ~/.m2/settings.xml
       -Dsonar.projectKey=${SONAR_PROJECT_KEY}
       -Dsonar.host.url=$SONAR_HOST_URL
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
 
-# Template for pushing images to Docker Hub with Kaniko
 .dockerhub_push_template:
   stage: package_and_push_to_dockerhub
   image:
