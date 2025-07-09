@@ -1,7 +1,9 @@
 # ===================================================================
-# PROFESSIONAL CI/CD PIPELINE - DESCRIPTIVE STAGES
+# FINAL, PROFESSIONAL CI/CD PIPELINE
 # ===================================================================
+
 default:
+  # This tag ensures the job runs on your local runner, NOT on GitLab's shared runners.
   tags:
     - docker
 
@@ -13,14 +15,16 @@ stages:
 # Global cache for Maven dependencies to speed up all jobs
 cache:
   key:
+    # A unique cache key based on the contents of all pom.xml files
     files:
       - "*/pom.xml"
   paths:
+    # This is the directory Maven downloads dependencies to
     - .m2/repository/
-  policy: pull-push
+  policy: pull-push # Download at start of job, re-upload at end if changed
 
 # ===================================================================
-# JOB TEMPLATES (Hidden jobs that start with a '.')
+# JOB TEMPLATES (Do Not Repeat Yourself)
 # ===================================================================
 
 # Template for Maven build, test, and deploy to Nexus
@@ -36,9 +40,6 @@ cache:
   artifacts:
     paths:
       - ${SERVICE_DIR}/target/
-    reports:
-      junit:
-        - ${SERVICE_DIR}/target/surefire-reports/TEST-*.xml
     expire_in: 1 hour
 
 # Template for SonarQube analysis
@@ -118,7 +119,7 @@ build:document-service:
   extends: .nexus_build_template
   variables:
     SERVICE_NAME: "document-management-service"
-    SERVICE_DIR: "Document-management-service" # Note the capital 'D'
+    SERVICE_DIR: "Document-management-service"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
