@@ -17,13 +17,22 @@ unit-tests:user-service:
   stage: build-and-test
   image: maven:3.8.5-openjdk-17
   script:
-    - echo "Using settings.xml with environment variables..."
-    # The only step needed is to copy the file. No more 'sed'!
-    - cp $SETTINGS_XML ./settings-temp.xml
+    - echo "--- STARTING DEBUG ---"
+    - echo "1. Verifying environment variables..."
+    - echo "NEXUS_URL is: '$NEXUS_URL'"
+    - echo "NEXUS_USERNAME is: '$NEXUS_USERNAME'"
+    - echo "----------------------"
     
+    - echo "2. Copying settings.xml from CI/CD variable..."
+    - cp $SETTINGS_XML ./settings-temp.xml
+    - echo "----------------------"
+
+    - echo "3. Displaying the content of the settings-temp.xml BEFORE Maven uses it:"
+    - cat ./settings-temp.xml
+    - echo "--- ENDING DEBUG ---"
+
     - echo "Building, testing, and deploying user-management-service to Nexus..."
     - cd user-management-service
-    # Maven will automatically replace ${env.NEXUS_URL}, etc. with your GitLab CI variables
     - mvn clean deploy -s ../settings-temp.xml
   artifacts:
     paths:
