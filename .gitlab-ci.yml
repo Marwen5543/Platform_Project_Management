@@ -1,5 +1,5 @@
 # ===================================================================
-# FINAL CORRECTED VERSION
+# FINAL, FULLY CORRECTED AND CONSISTENT VERSION
 # ===================================================================
 default:
   tags:
@@ -10,60 +10,48 @@ stages:
   - code-analysis
   - push-to-dockerhub
 
-  # ===================================================================
+# ===================================================================
 # REUSABLE TEMPLATES
 # ===================================================================
 
-# --- Template for Building and Deploying to Nexus ---
-# This is the standard, reusable way to build and deploy.
 .build_and_deploy_template:
   stage: build-and-deploy-to-nexus
   image: maven:3.8.5-openjdk-17
   script:
     - echo "Building, testing, and deploying $MICROSERVICE_NAME to Nexus..."
-    # This script assumes $SETTINGS_XML is a FILE-type variable in GitLab CI/CD settings.
-    # We directly pass the path of the settings file to Maven. No 'echo' needed.
     - cd $MICROSERVICE_PATH
     - mvn clean deploy -s $SETTINGS_XML
   artifacts:
     paths:
-      - $MICROSERVICE_PATH/target/ # Keep artifacts for subsequent jobs
+      - $MICROSERVICE_PATH/target/
     reports:
       junit:
         - $MICROSERVICE_PATH/target/surefire-reports/TEST-*.xml
     expire_in: 1 hour
 
-# Reusable template for SonarQube analysis
 .sonar_scanner_template:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
   script:
     - echo "Running SonarQube analysis for $MICROSERVICE_NAME..."
     - cd $MICROSERVICE_PATH
-    - >-
-      mvn verify sonar:sonar
+    - mvn verify sonar:sonar -s $SETTINGS_XML
       -Dsonar.projectKey=$SONAR_PROJECT_KEY
       -Dsonar.host.url=$SONAR_HOST_URL
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
-  artifacts:
-    paths:
-      - $MICROSERVICE_PATH/target/
-    expire_in: 1 hour
-  allow_failure: false
+  allow_failure: false # The job will fail if the SonarQube Quality Gate fails
 
 .build_and_push_kaniko:
-  stage: push
+  # FIX: The stage name for this template was wrong. It should be push-to-dockerhub.
+  stage: push-to-dockerhub 
   image:
     name: gcr.io/kaniko-project/executor:v1.9.0-debug
-    entrypoint: [""] # Important: We need a shell, so we override the default entrypoint.
+    entrypoint: [""]
   script:
-    - echo "Building with Kaniko (no Docker daemon required)..."
-    # Create the Docker config file for Kaniko to authenticate with Docker Hub.
-    # This is the secure way to handle credentials for Kaniko.
+    - echo "Building Docker image for $MICROSERVICE_NAME..."
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    # Run the Kaniko executor to build and push the image.
     - /kaniko/executor
       --context $CI_PROJECT_DIR/$MICROSERVICE_PATH
       --dockerfile $CI_PROJECT_DIR/$MICROSERVICE_PATH/Dockerfile
@@ -71,23 +59,14 @@ stages:
       --destination $DOCKERHUB_USERNAME/$MICROSERVICE_NAME:latest
 
 # ===================================================================
-# JOBS FOR: user-management-service
+# JOBS FOR: user-management-service (NOW USING TEMPLATES)
 # ===================================================================
 build-and-deploy:user-service:
-  stage: build-and-test
-  image: maven:3.8.5-openjdk-17
-  script:
-  - echo "Building, testing, and deploying user-management-service to Nexus..."
-  # No more 'echo'. We pass the file path from the variable directly to Maven.
-  - cd user-management-service
-  - mvn clean deploy -s $SETTINGS_XML
-  artifacts:
-    paths:
-      - user-management-service/target/*.jar
-    reports:
-      junit:
-        - user-management-service/target/surefire-reports/TEST-*.xml
-    expire_in: 1 hour
+  # FIX: Use the reusable template to ensure consistency.
+  extends: .build_and_deploy_template
+  variables:
+    MICROSERVICE_NAME: user-management-service
+    MICROSERVICE_PATH: user-management-service
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -100,12 +79,11 @@ sonar-analysis:user-service:
     MICROSERVICE_PATH: user-management-service
     SONAR_PROJECT_KEY: com.tunisys:user-management-service
   needs:
-    - job: unit-tests:user-service
+    # FIX: Point to the new, correct job name for the 'needs' dependency.
+    - job: build-and-deploy:user-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - user-management-service/**/*
 
 push:user-service:
   extends: .build_and_push_kaniko
@@ -113,21 +91,19 @@ push:user-service:
     MICROSERVICE_NAME: user-management-service
     MICROSERVICE_PATH: user-management-service
   needs:
-    - job: unit-tests:user-service
+    # FIX: Also point to the correct job name here.
+    - job: build-and-deploy:user-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - user-management-service/**/*
 
 # ===================================================================
-# JOBS FOR: document-management-service (CORRECTED VERSION)
+# JOBS FOR: document-management-service (Already Correct)
 # ===================================================================
 build-and-deploy:document-service:
-  extends: .build_and_deploy_template # Use the reusable template
+  extends: .build_and_deploy_template
   variables:
     MICROSERVICE_NAME: document-management-service
-    # IMPORTANT: Your folder name has a capital 'D'. This must match exactly.
     MICROSERVICE_PATH: Document-management-service
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
@@ -141,13 +117,10 @@ sonar-analysis:document-service:
     MICROSERVICE_PATH: Document-management-service
     SONAR_PROJECT_KEY: com.tunisys:document-management-service
   needs:
-    # Point to the new, correct job name
     - job: build-and-deploy:document-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - Document-management-service/**/*
 
 push:document-service:
   extends: .build_and_push_kaniko
@@ -155,19 +128,16 @@ push:document-service:
     MICROSERVICE_NAME: document-management-service
     MICROSERVICE_PATH: Document-management-service
   needs:
-    # Point to the new, correct job name
     - job: build-and-deploy:document-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - Document-management-service/**/*
 
 # ===================================================================
-# JOBS FOR: leave-management-service (CORRECTED VERSION)
+# JOBS FOR: leave-management-service (Already Correct)
 # ===================================================================
 build-and-deploy:leave-service:
-  extends: .build_and_deploy_template # Use the reusable template
+  extends: .build_and_deploy_template
   variables:
     MICROSERVICE_NAME: leave-management-service
     MICROSERVICE_PATH: leave-management-service
@@ -183,13 +153,10 @@ sonar-analysis:leave-service:
     MICROSERVICE_PATH: leave-management-service
     SONAR_PROJECT_KEY: com.tunisys:leave-management-service
   needs:
-    # Point to the new, correct job name
     - job: build-and-deploy:leave-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - leave-management-service/**/*
 
 push:leave-service:
   extends: .build_and_push_kaniko
@@ -197,10 +164,7 @@ push:leave-service:
     MICROSERVICE_NAME: leave-management-service
     MICROSERVICE_PATH: leave-management-service
   needs:
-    # Point to the new, correct job name
     - job: build-and-deploy:leave-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - leave-management-service/**/*
