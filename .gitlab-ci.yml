@@ -1,6 +1,9 @@
 # ===================================================================
 # PROFESSIONAL CI/CD PIPELINE - DESCRIPTIVE STAGES
 # ===================================================================
+default:
+  tags:
+    - docker
 
 stages:
   - build_and_publish_to_nexus
