@@ -1,91 +1,108 @@
 # ===================================================================
-# FINAL, SIMPLE, AND CORRECT VERSION (NO TEMPLATES)
+# PROFESSIONAL CI/CD PIPELINE - DESCRIPTIVE STAGES
 # ===================================================================
-default:
-  tags:
-    - docker
-    
+
 stages:
-  - build-and-test
-  - code-analysis
-  - push
+  - build_and_publish_to_nexus
+  - sonarqube_analysis
+  - package_and_push_to_dockerhub
+
+# Global cache for Maven dependencies to speed up all jobs
+cache:
+  key:
+    files:
+      - "*/pom.xml"
+  paths:
+    - .m2/repository/
+  policy: pull-push
 
 # ===================================================================
-# JOBS FOR: user-management-service
+# JOB TEMPLATES (Hidden jobs that start with a '.')
 # ===================================================================
-unit-tests:user-service:
-  stage: build-and-test
+
+# Template for Maven build, test, and deploy to Nexus
+.nexus_build_template:
+  stage: build_and_publish_to_nexus
   image: maven:3.8.5-openjdk-17
   script:
-    - echo "--- STARTING DEBUG ---"
-    - echo "1. Verifying environment variables..."
-    - echo "'$NEXUS_URL'"
-    - echo "'$NEXUS_USERNAME'"
-    - echo "----------------------"
-    - echo "2. Copying settings.xml from CI/CD variable..."
+    - echo "Preparing settings.xml..."
     - cp $SETTINGS_XML ./settings-temp.xml
-    - echo "----------------------"
-    - echo "3. Displaying the content of the settings-temp.xml BEFORE Maven uses it:"
-    - cat ./settings-temp.xml
-    - echo "--- ENDING DEBUG ---"
-    - echo "Building, testing, and deploying user-management-service to Nexus..."
-    - cd user-management-service
+    - echo "Building, testing, and deploying ${SERVICE_NAME} to Nexus..."
+    - cd ${SERVICE_DIR}
     - mvn clean deploy -s ../settings-temp.xml
   artifacts:
     paths:
-      - user-management-service/target/
+      - ${SERVICE_DIR}/target/
     reports:
       junit:
-        - user-management-service/target/surefire-reports/TEST-*.xml
+        - ${SERVICE_DIR}/target/surefire-reports/TEST-*.xml
     expire_in: 1 hour
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - user-management-service/**/*
 
-sonar-analysis:user-service:
-  stage: code-analysis
+# Template for SonarQube analysis
+.sonarqube_analysis_template:
+  stage: sonarqube_analysis
   image: maven:3.8.5-openjdk-17
   script:
-    - echo "Preparing settings.xml for SonarQube analysis..."
+    - echo "Preparing settings.xml..."
     - cp $SETTINGS_XML ./settings-temp.xml
-    - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
-
-    - echo "Running SonarQube analysis for user-management-service..."
-    - cd user-management-service
+    - echo "Running SonarQube analysis for ${SERVICE_NAME}..."
+    - cd ${SERVICE_DIR}
     - >-
       mvn verify sonar:sonar -s ../settings-temp.xml
-      -Dsonar.projectKey=com.tunisys:user-management-service
+      -Dsonar.projectKey=${SONAR_PROJECT_KEY}
       -Dsonar.host.url=$SONAR_HOST_URL
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
-  needs:
-    - job: unit-tests:user-service
-      artifacts: true
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - user-management-service/**/*
 
-push:user-service:
-  stage: push
+# Template for pushing images to Docker Hub with Kaniko
+.dockerhub_push_template:
+  stage: package_and_push_to_dockerhub
   image:
     name: gcr.io/kaniko-project/executor:v1.9.0-debug
     entrypoint: [""]
   script:
-    - echo "Building Docker image for user-management-service..."
+    - echo "Packaging and pushing Docker image for ${SERVICE_NAME} to Docker Hub..."
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    - /kaniko/executor
-      --context $CI_PROJECT_DIR/user-management-service
-      --dockerfile $CI_PROJECT_DIR/user-management-service/Dockerfile
-      --destination $DOCKERHUB_USERNAME/user-management-service:$CI_COMMIT_SHORT_SHA
-      --destination $DOCKERHUB_USERNAME/user-management-service:latest
-  needs:
-    - job: unit-tests:user-service
-      artifacts: true
+    - >-
+      /kaniko/executor
+      --context ${CI_PROJECT_DIR}/${SERVICE_DIR}
+      --dockerfile ${CI_PROJECT_DIR}/${SERVICE_DIR}/Dockerfile
+      --destination ${DOCKERHUB_USERNAME}/${DOCKER_IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}
+      --destination ${DOCKERHUB_USERNAME}/${DOCKER_IMAGE_NAME}:latest
+
+# ===================================================================
+# JOBS FOR: user-management-service
+# ===================================================================
+build:user-service:
+  extends: .nexus_build_template
+  variables:
+    SERVICE_NAME: "user-management-service"
+    SERVICE_DIR: "user-management-service"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - user-management-service/**/*
+
+analyze:user-service:
+  extends: .sonarqube_analysis_template
+  needs: ["build:user-service"]
+  variables:
+    SERVICE_NAME: "user-management-service"
+    SERVICE_DIR: "user-management-service"
+    SONAR_PROJECT_KEY: "com.tunisys:user-management-service"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - user-management-service/**/*
+
+package:user-service:
+  extends: .dockerhub_push_template
+  needs: ["build:user-service"]
+  variables:
+    SERVICE_NAME: "user-management-service"
+    SERVICE_DIR: "user-management-service"
+    DOCKER_IMAGE_NAME: "user-management-service"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -95,66 +112,34 @@ push:user-service:
 # JOBS FOR: document-management-service
 # ===================================================================
 build:document-service:
-  stage: build-and-test
-  image: maven:3.8.5-openjdk-17
-  script:
-    - echo "Preparing settings.xml..."
-    - cp $SETTINGS_XML ./settings-temp.xml
-    - echo "Building, testing, and deploying document-management-service..."
-    - cd Document-management-service  # <-- Note the capital D
-    - mvn clean deploy -s ../settings-temp.xml
-  artifacts:
-    paths:
-      - Document-management-service/target/
-    expire_in: 1 hour
+  extends: .nexus_build_template
+  variables:
+    SERVICE_NAME: "document-management-service"
+    SERVICE_DIR: "Document-management-service" # Note the capital 'D'
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - Document-management-service/**/*
 
-sonar-analysis:document-service:
-  stage: code-analysis
-  image: maven:3.8.5-openjdk-17
-  script:
-    - echo "Preparing settings.xml for SonarQube analysis..."
-    - cp $SETTINGS_XML ./settings-temp.xml
-    - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
-
-    - echo "Running SonarQube analysis for document-management-service..."
-    - cd Document-management-service
-    - >-
-      mvn verify sonar:sonar -s ../settings-temp.xml
-      -Dsonar.projectKey=com.tunisys:document-management-service
-      -Dsonar.host.url=$SONAR_HOST_URL
-      -Dsonar.login=$SONAR_TOKEN
-      -Dsonar.qualitygate.wait=true
-  needs:
-    - job: build:document-service
-      artifacts: true
+analyze:document-service:
+  extends: .sonarqube_analysis_template
+  needs: ["build:document-service"]
+  variables:
+    SERVICE_NAME: "document-management-service"
+    SERVICE_DIR: "Document-management-service"
+    SONAR_PROJECT_KEY: "com.tunisys:document-management-service"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - Document-management-service/**/*
 
-push:document-service:
-  stage: push
-  image:
-    name: gcr.io/kaniko-project/executor:v1.9.0-debug
-    entrypoint: [""]
-  script:
-    - echo "Building Docker image for document-management-service..."
-    - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    - /kaniko/executor
-      --context $CI_PROJECT_DIR/Document-management-service
-      --dockerfile $CI_PROJECT_DIR/Document-management-service/Dockerfile
-      --destination $DOCKERHUB_USERNAME/document-management-service:$CI_COMMIT_SHORT_SHA
-      --destination $DOCKERHUB_USERNAME/document-management-service:latest
-  needs:
-    - job: build:document-service
-      artifacts: true
+package:document-service:
+  extends: .dockerhub_push_template
+  needs: ["build:document-service"]
+  variables:
+    SERVICE_NAME: "document-management-service"
+    SERVICE_DIR: "Document-management-service"
+    DOCKER_IMAGE_NAME: "document-management-service"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -164,66 +149,34 @@ push:document-service:
 # JOBS FOR: leave-management-service
 # ===================================================================
 build:leave-service:
-  stage: build-and-test
-  image: maven:3.8.5-openjdk-17
-  script:
-    - echo "Preparing settings.xml..."
-    - cp $SETTINGS_XML ./settings-temp.xml
-    - echo "Building, testing, and deploying leave-management-service..."
-    - cd leave-management-service
-    - mvn clean deploy -s ../settings-temp.xml
-  artifacts:
-    paths:
-      - leave-management-service/target/
-    expire_in: 1 hour
+  extends: .nexus_build_template
+  variables:
+    SERVICE_NAME: "leave-management-service"
+    SERVICE_DIR: "leave-management-service"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - leave-management-service/**/*
 
-sonar-analysis:leave-service:
-  stage: code-analysis
-  image: maven:3.8.5-openjdk-17
-  script:
-    - echo "Preparing settings.xml for SonarQube analysis..."
-    - cp $SETTINGS_XML ./settings-temp.xml
-    - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
-
-    - echo "Running SonarQube analysis for leave-management-service..."
-    - cd leave-management-service
-    - >-
-      mvn verify sonar:sonar -s ../settings-temp.xml
-      -Dsonar.projectKey=com.tunisys:leave-management-service
-      -Dsonar.host.url=$SONAR_HOST_URL
-      -Dsonar.login=$SONAR_TOKEN
-      -Dsonar.qualitygate.wait=true
-  needs:
-    - job: build:leave-service
-      artifacts: true
+analyze:leave-service:
+  extends: .sonarqube_analysis_template
+  needs: ["build:leave-service"]
+  variables:
+    SERVICE_NAME: "leave-management-service"
+    SERVICE_DIR: "leave-management-service"
+    SONAR_PROJECT_KEY: "com.tunisys:leave-management-service"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - leave-management-service/**/*
 
-push:leave-service:
-  stage: push
-  image:
-    name: gcr.io/kaniko-project/executor:v1.9.0-debug
-    entrypoint: [""]
-  script:
-    - echo "Building Docker image for leave-management-service..."
-    - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    - /kaniko/executor
-      --context $CI_PROJECT_DIR/leave-management-service
-      --dockerfile $CI_PROJECT_DIR/leave-management-service/Dockerfile
-      --destination $DOCKERHUB_USERNAME/leave-management-service:$CI_COMMIT_SHORT_SHA
-      --destination $DOCKERHUB_USERNAME/leave-management-service:latest
-  needs:
-    - job: build:leave-service
-      artifacts: true
+package:leave-service:
+  extends: .dockerhub_push_template
+  needs: ["build:leave-service"]
+  variables:
+    SERVICE_NAME: "leave-management-service"
+    SERVICE_DIR: "leave-management-service"
+    DOCKER_IMAGE_NAME: "leave-management-service"
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
