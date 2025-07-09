@@ -27,6 +27,11 @@ cache:
 .nexus_build_template:
   stage: build_and_publish_to_nexus
   image: maven:3.8.5-openjdk-17
+  services:
+    - name: docker:dind
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: ""
   before_script:
     # Create .m2 directory for Maven settings
     - mkdir -p ~/.m2
