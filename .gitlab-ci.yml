@@ -32,15 +32,19 @@ cache:
     - mkdir -p ~/.m2
     # Copy and configure settings.xml with actual values
     - cp $SETTINGS_XML ./settings-temp.xml
-    - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
+    # Replace environment variable placeholders with actual values
+    - sed -i "s|\${env.NEXUS_URL}|$NEXUS_URL|g" ./settings-temp.xml
+    - sed -i "s|\${env.NEXUS_USERNAME}|$NEXUS_USERNAME|g" ./settings-temp.xml
+    - sed -i "s|\${env.NEXUS_PASSWORD}|$NEXUS_PASSWORD|g" ./settings-temp.xml
     # Copy configured settings to Maven home
     - cp ./settings-temp.xml ~/.m2/settings.xml
     # Debug: Show the final settings (without passwords)
     - echo "=== Maven Settings Configuration ==="
     - cat ~/.m2/settings.xml | grep -v '<password>' | head -20
     - echo "=== End Settings ==="
+    # Test network connectivity to Nexus
+    - echo "=== Testing Nexus Connectivity ==="
+    - curl -v --connect-timeout 10 $NEXUS_URL/repository/maven-public/ || echo "WARNING: Cannot reach Nexus repository"
   script:
     - echo "Building, testing, and deploying ${SERVICE_NAME} to Nexus..."
     - cd ${SERVICE_DIR}
@@ -58,9 +62,9 @@ cache:
   before_script:
     - mkdir -p ~/.m2
     - cp $SETTINGS_XML ./settings-temp.xml
-    - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
+    - sed -i "s|\${env.NEXUS_URL}|$NEXUS_URL|g" ./settings-temp.xml
+    - sed -i "s|\${env.NEXUS_USERNAME}|$NEXUS_USERNAME|g" ./settings-temp.xml
+    - sed -i "s|\${env.NEXUS_PASSWORD}|$NEXUS_PASSWORD|g" ./settings-temp.xml
     - cp ./settings-temp.xml ~/.m2/settings.xml
   script:
     - echo "Running SonarQube analysis for ${SERVICE_NAME}..."
