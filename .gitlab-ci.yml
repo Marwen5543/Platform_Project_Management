@@ -98,14 +98,10 @@ build:document-service:
   stage: build-and-test
   image: maven:3.8.5-openjdk-17
   script:
-    - echo "Preparing settings.xml for deployment..."
+    - echo "Preparing settings.xml..."
     - cp $SETTINGS_XML ./settings-temp.xml
-    - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
-
-    - echo "Building, testing, and deploying document-management-service to Nexus..."
-    - cd Document-management-service
+    - echo "Building, testing, and deploying document-management-service..."
+    - cd Document-management-service  # <-- Note the capital D
     - mvn clean deploy -s ../settings-temp.xml
   artifacts:
     paths:
@@ -171,13 +167,9 @@ build:leave-service:
   stage: build-and-test
   image: maven:3.8.5-openjdk-17
   script:
-    - echo "Preparing settings.xml for deployment..."
+    - echo "Preparing settings.xml..."
     - cp $SETTINGS_XML ./settings-temp.xml
-    - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
-
-    - echo "Building, testing, and deploying leave-management-service to Nexus..."
+    - echo "Building, testing, and deploying leave-management-service..."
     - cd leave-management-service
     - mvn clean deploy -s ../settings-temp.xml
   artifacts:
