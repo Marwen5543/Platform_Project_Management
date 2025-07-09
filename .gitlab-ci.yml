@@ -1,5 +1,5 @@
 # ===================================================================
-# FINAL, FULLY CORRECTED AND CONSISTENT VERSION
+# FINAL, FULLY CORRECTED AND LOGICALLY CONSISTENT VERSION
 # ===================================================================
 default:
   tags:
@@ -11,7 +11,7 @@ stages:
   - push-to-dockerhub
 
 # ===================================================================
-# REUSABLE TEMPLATES
+# REUSABLE TEMPLATES (No changes here)
 # ===================================================================
 
 .build_and_deploy_template:
@@ -40,11 +40,10 @@ stages:
       -Dsonar.host.url=$SONAR_HOST_URL
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
-  allow_failure: false # The job will fail if the SonarQube Quality Gate fails
+  allow_failure: false
 
 .build_and_push_kaniko:
-  # FIX: The stage name for this template was wrong. It should be push-to-dockerhub.
-  stage: push-to-dockerhub 
+  stage: push-to-dockerhub
   image:
     name: gcr.io/kaniko-project/executor:v1.9.0-debug
     entrypoint: [""]
@@ -59,10 +58,11 @@ stages:
       --destination $DOCKERHUB_USERNAME/$MICROSERVICE_NAME:latest
 
 # ===================================================================
-# JOBS FOR: user-management-service (NOW USING TEMPLATES)
+# JOBS FOR EACH MICROSERVICE
 # ===================================================================
+
+# --- user-management-service ---
 build-and-deploy:user-service:
-  # FIX: Use the reusable template to ensure consistency.
   extends: .build_and_deploy_template
   variables:
     MICROSERVICE_NAME: user-management-service
@@ -79,11 +79,13 @@ sonar-analysis:user-service:
     MICROSERVICE_PATH: user-management-service
     SONAR_PROJECT_KEY: com.tunisys:user-management-service
   needs:
-    # FIX: Point to the new, correct job name for the 'needs' dependency.
     - job: build-and-deploy:user-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
+      # FIX: Add the same 'changes' rule to ensure this job only runs when its 'needs' job runs.
+      changes:
+        - user-management-service/**/*
 
 push:user-service:
   extends: .build_and_push_kaniko
@@ -91,15 +93,15 @@ push:user-service:
     MICROSERVICE_NAME: user-management-service
     MICROSERVICE_PATH: user-management-service
   needs:
-    # FIX: Also point to the correct job name here.
     - job: build-and-deploy:user-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
+      # FIX: Add the same 'changes' rule here as well.
+      changes:
+        - user-management-service/**/*
 
-# ===================================================================
-# JOBS FOR: document-management-service (Already Correct)
-# ===================================================================
+# --- document-management-service ---
 build-and-deploy:document-service:
   extends: .build_and_deploy_template
   variables:
@@ -121,6 +123,9 @@ sonar-analysis:document-service:
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
+      # FIX: Add the 'changes' rule for consistency.
+      changes:
+        - Document-management-service/**/*
 
 push:document-service:
   extends: .build_and_push_kaniko
@@ -132,10 +137,11 @@ push:document-service:
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
+      # FIX: Add the 'changes' rule here as well.
+      changes:
+        - Document-management-service/**/*
 
-# ===================================================================
-# JOBS FOR: leave-management-service (Already Correct)
-# ===================================================================
+# --- leave-management-service ---
 build-and-deploy:leave-service:
   extends: .build_and_deploy_template
   variables:
@@ -157,6 +163,9 @@ sonar-analysis:leave-service:
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
+      # FIX: Add the 'changes' rule for consistency.
+      changes:
+        - leave-management-service/**/*
 
 push:leave-service:
   extends: .build_and_push_kaniko
@@ -168,3 +177,6 @@ push:leave-service:
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
+      # FIX: Add the 'changes' rule here as well.
+      changes:
+        - leave-management-service/**/*
