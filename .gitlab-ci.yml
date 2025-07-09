@@ -6,9 +6,32 @@ default:
     - docker
     
 stages:
-  - build-and-test
+  - build-and-deploy-to-nexus
   - code-analysis
-  - push
+  - push-to-dockerhub
+
+  # ===================================================================
+# REUSABLE TEMPLATES
+# ===================================================================
+
+# --- Template for Building and Deploying to Nexus ---
+# This is the standard, reusable way to build and deploy.
+.build_and_deploy_template:
+  stage: build-and-deploy-to-nexus
+  image: maven:3.8.5-openjdk-17
+  script:
+    - echo "Building, testing, and deploying $MICROSERVICE_NAME to Nexus..."
+    # This script assumes $SETTINGS_XML is a FILE-type variable in GitLab CI/CD settings.
+    # We directly pass the path of the settings file to Maven. No 'echo' needed.
+    - cd $MICROSERVICE_PATH
+    - mvn clean deploy -s $SETTINGS_XML
+  artifacts:
+    paths:
+      - $MICROSERVICE_PATH/target/ # Keep artifacts for subsequent jobs
+    reports:
+      junit:
+        - $MICROSERVICE_PATH/target/surefire-reports/TEST-*.xml
+    expire_in: 1 hour
 
 # Reusable template for SonarQube analysis
 .sonar_scanner_template:
@@ -50,15 +73,17 @@ stages:
 # ===================================================================
 # JOBS FOR: user-management-service
 # ===================================================================
-unit-tests:user-service:
+build-and-deploy:user-service:
   stage: build-and-test
   image: maven:3.8.5-openjdk-17
   script:
-    - cd user-management-service
-    - mvn clean package
+  - echo "Building, testing, and deploying user-management-service to Nexus..."
+  # No more 'echo'. We pass the file path from the variable directly to Maven.
+  - cd user-management-service
+  - mvn clean deploy -s $SETTINGS_XML
   artifacts:
     paths:
-      - user-management-service/target/
+      - user-management-service/target/*.jar
     reports:
       junit:
         - user-management-service/target/surefire-reports/TEST-*.xml
@@ -96,18 +121,14 @@ push:user-service:
         - user-management-service/**/*
 
 # ===================================================================
-# JOBS FOR: document-management-service
+# JOBS FOR: document-management-service (CORRECTED VERSION)
 # ===================================================================
-build:document-service:
-  stage: build-and-test
-  image: maven:3.8.5-openjdk-17
-  script:
-    - cd Document-management-service
-    - mvn clean package
-  artifacts:
-    paths:
-      - Document-management-service/target/
-    expire_in: 1 hour
+build-and-deploy:document-service:
+  extends: .build_and_deploy_template # Use the reusable template
+  variables:
+    MICROSERVICE_NAME: document-management-service
+    # IMPORTANT: Your folder name has a capital 'D'. This must match exactly.
+    MICROSERVICE_PATH: Document-management-service
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -120,7 +141,8 @@ sonar-analysis:document-service:
     MICROSERVICE_PATH: Document-management-service
     SONAR_PROJECT_KEY: com.tunisys:document-management-service
   needs:
-    - job: build:document-service
+    # Point to the new, correct job name
+    - job: build-and-deploy:document-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
@@ -133,7 +155,8 @@ push:document-service:
     MICROSERVICE_NAME: document-management-service
     MICROSERVICE_PATH: Document-management-service
   needs:
-    - job: build:document-service
+    # Point to the new, correct job name
+    - job: build-and-deploy:document-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
@@ -141,18 +164,13 @@ push:document-service:
         - Document-management-service/**/*
 
 # ===================================================================
-# JOBS FOR: leave-management-service
+# JOBS FOR: leave-management-service (CORRECTED VERSION)
 # ===================================================================
-build:leave-service:
-  stage: build-and-test
-  image: maven:3.8.5-openjdk-17
-  script:
-    - cd leave-management-service
-    - mvn clean package
-  artifacts:
-    paths:
-      - leave-management-service/target/
-    expire_in: 1 hour
+build-and-deploy:leave-service:
+  extends: .build_and_deploy_template # Use the reusable template
+  variables:
+    MICROSERVICE_NAME: leave-management-service
+    MICROSERVICE_PATH: leave-management-service
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -165,7 +183,8 @@ sonar-analysis:leave-service:
     MICROSERVICE_PATH: leave-management-service
     SONAR_PROJECT_KEY: com.tunisys:leave-management-service
   needs:
-    - job: build:leave-service
+    # Point to the new, correct job name
+    - job: build-and-deploy:leave-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
@@ -178,7 +197,8 @@ push:leave-service:
     MICROSERVICE_NAME: leave-management-service
     MICROSERVICE_PATH: leave-management-service
   needs:
-    - job: build:leave-service
+    # Point to the new, correct job name
+    - job: build-and-deploy:leave-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'

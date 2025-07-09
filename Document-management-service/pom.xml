@@ -149,8 +149,18 @@
             <artifactId>layout</artifactId>
             <version>8.0.2</version>
         </dependency>
-
-
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>2.13.12</version> <!-- This version is compatible with Gatling 3.10.x -->
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.gatling.highcharts</groupId>
+            <artifactId>gatling-charts-highcharts</artifactId>
+            <version>3.10.3</version> <!-- Use a recent version -->
+            <scope>test</scope>
+        </dependency>
 
     </dependencies>
 
@@ -179,6 +189,7 @@
 
     <build>
         <plugins>
+            <!-- Your existing Spring Boot plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -191,6 +202,8 @@
                     </excludes>
                 </configuration>
             </plugin>
+
+            <!-- Your existing JaCoCo plugin -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -210,6 +223,44 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+
+            <!--
+                THIS IS THE NEW PLUGIN YOU NEED TO ADD
+                It compiles your Scala code so Gatling can find it.
+            -->
+            <plugin>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
+                <version>4.8.1</version>
+                <executions>
+                    <execution>
+                        <id>scala-compile-first</id>
+                        <phase>process-resources</phase>
+                        <goals>
+                            <goal>add-source</goal>
+                            <goal>compile</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>scala-test-compile</id>
+                        <phase>process-test-resources</phase>
+                        <goals>
+                            <goal>testCompile</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Your existing Gatling plugin -->
+            <plugin>
+                <groupId>io.gatling</groupId>
+                <artifactId>gatling-maven-plugin</artifactId>
+                <version>4.8.2</version>
+                <configuration>
+                    <!-- This tells Gatling where to find your simulation classes -->
+                    <simulationClass>org.example.documentmanagementservice.simulations.DocumentSimulation</simulationClass>
+                </configuration>
             </plugin>
         </plugins>
     </build>
