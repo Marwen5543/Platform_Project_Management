@@ -70,6 +70,30 @@ sonar-analysis:user-service:
       changes:
         - user-management-service/**/*
 
+
+performance-test:user-service:
+  stage: performance-test
+  image: maven:3.8.5-openjdk-17
+  needs: ["unit-tests:user-service"] # Depends on the build job for this service
+  script:
+    - echo "Preparing to run Gatling tests for user-management-service..."
+    - echo "Targeting application at:${STAGING_APP_URL}" 
+    - cp $SETTINGS_XML ./settings-temp.xml
+    - cd user-management-service
+    - >-
+      mvn gatling:test -s ../settings-temp.xml
+      -Dgatling.simulationClass=company.user_management_service.simulations.UserManagementSimulation
+      -DAPP_URL=${STAGING_APP_URL}
+  artifacts:
+    when: always # Save reports even if the test fails
+    paths:
+      - user-management-service/target/gatling/
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - user-management-service/**/*
+
 push:user-service:
   stage: push
   image:
