@@ -8,6 +8,7 @@ default:
 stages:
   - build-and-test
   - code-analysis
+  - performance-test
   - push
 
 # ===================================================================
@@ -138,6 +139,31 @@ sonar-analysis:document-service:
       changes:
         - Document-management-service/**/*
 
+# In your .gitlab-ci.yml
+
+performance-test:document-service:
+  stage: performance-test
+  image: maven:3.8.5-openjdk-17
+  needs: ["build:document-service"]
+  script:
+    - echo "Preparing to run Gatling tests for document-management-service..."
+    - echo "Targeting application at:${STAGING_APP_URL}"
+    - cp $SETTINGS_XML ./settings-temp.xml
+    - cd Document-management-service
+    - >-
+      mvn gatling:test -s ../settings-temp.xml
+      -Dgatling.simulationClass=org.example.documentmanagementservice.simulations.DocumentSimulation
+      -DAPP_URL=${STAGING_APP_URL}
+  artifacts:
+    # This is the simple, guaranteed-to-work syntax.
+    # It saves the entire Gatling output folder.
+    when: always
+    paths:
+      - Document-management-service/target/gatling/
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
 push:document-service:
   stage: push
   image:
@@ -206,6 +232,31 @@ sonar-analysis:leave-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - leave-management-service/**/*
+
+# In your .gitlab-ci.yml
+
+performance-test:leave-service:
+  stage: performance-test
+  image: maven:3.8.5-openjdk-17
+  needs: ["build:leave-service"]
+  script:
+    - echo "Preparing to run Gatling tests for leave-management-service..."
+    - echo "Targeting application at:${STAGING_APP_URL}"
+    - cp $SETTINGS_XML ./settings-temp.xml
+    - cd leave-management-service
+    - >-
+      mvn gatling:test -s ../settings-temp.xml
+      -Dgatling.simulationClass=company.leave_management_service.simulations.LeaveSimulation
+      -DAPP_URL=${STAGING_APP_URL}
+  artifacts:
+    # This is the simple, guaranteed-to-work syntax.
+    # It saves the entire Gatling output folder.
+    when: always
+    paths:
+      - leave-management-service/target/gatling/
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
 
 push:leave-service:
   stage: push
