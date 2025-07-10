@@ -155,14 +155,15 @@ performance-test:document-service:
       -Dgatling.simulationClass=org.example.documentmanagementservice.simulations.DocumentSimulation
       -DAPP_URL=${STAGING_APP_URL}
   artifacts:
-    # This is the simple, guaranteed-to-work syntax.
-    # It saves the entire Gatling output folder.
     when: always
     paths:
       - Document-management-service/target/gatling/
     expire_in: 1 week
   rules:
+    # THIS BLOCK IS NOW CORRECT
     - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - Document-management-service/**/* # It now mirrors the build job's rule
 
 push:document-service:
   stage: push
@@ -249,14 +250,15 @@ performance-test:leave-service:
       -Dgatling.simulationClass=company.leave_management_service.simulations.LeaveSimulation
       -DAPP_URL=${STAGING_APP_URL}
   artifacts:
-    # This is the simple, guaranteed-to-work syntax.
-    # It saves the entire Gatling output folder.
     when: always
     paths:
       - leave-management-service/target/gatling/
     expire_in: 1 week
   rules:
+    # THIS BLOCK IS NOW CORRECT
     - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - leave-management-service/**/* # It now mirrors the build job's rule
 
 push:leave-service:
   stage: push
