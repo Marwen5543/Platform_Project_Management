@@ -4,42 +4,45 @@ import io.gatling.core.Predef._
 import io.gatling.http.Predef._
 import scala.concurrent.duration._
 import java.time.LocalDate
+import scala.util.Random
 
 class LeaveSimulation extends Simulation {
 
   // --- Configuration ---
-  // 2. FIX: Correct the port to match your application.properties
-  val backendBaseUrl = "http://localhost:8088"
-  val keycloakUrl = "http://localhost:8080"
-  val keycloakRealm = "Tunisys"
-  // 3. FIX: Use the frontend client ID for user login
-  val keycloakClientId = "angular-app"
+  val appUrl = System.getProperty("APP_URL", "http://localhost:8088") // Default for local runs
+  val servicePrefix = "/leave-service" // API Gateway route for this service
+
+  // NOTE: This assumes the user-service is also available via the gateway for login
+  val userLoginUrl = System.getProperty("APP_URL", "http://localhost:8085")
+  val userLoginPrefix = "/user-service"
+
   val testUser = "demo"
   val testPassword = "demo"
 
   // --- HTTP Protocol Setup ---
   val httpProtocol = http
-    .baseUrl(backendBaseUrl)
+    .baseUrl(appUrl) // Uses the gateway URL from CI
     .acceptHeader("application/json")
     .contentTypeHeader("application/json")
 
-  // --- Automated Token Fetch Logic ---
+  // --- Automated Token Fetch Logic (via user-service on the gateway) ---
   val getJwtToken = exec(
-    http("Get Keycloak Token")
-      .post(s"$keycloakUrl/realms/$keycloakRealm/protocol/openid-connect/token")
-      .asFormUrlEncoded
-      .formParam("client_id", keycloakClientId)
-      .formParam("username", testUser)
-      .formParam("password", testPassword)
-      .formParam("grant_type", "password")
+    http("Get User Token via Gateway")
+      .post(s"$userLoginUrl$userLoginPrefix/api/users/login")
+      .body(StringBody(
+        s"""{
+           |  "username": "$testUser",
+           |  "password": "$testPassword"
+           |}""".stripMargin
+      )).asJson
       .check(status.is(200))
-      .check(jsonPath("$.access_token").saveAs("jwtToken"))
+      .check(jsonPath("$.accessToken").saveAs("jwtToken"))
   )
 
   // --- Feeder for Dynamic Dates ---
   val dateFeeder = Iterator.continually {
-    val startDate = LocalDate.now().plusDays(scala.util.Random.nextInt(30) + 10)
-    val endDate = startDate.plusDays(scala.util.Random.nextInt(5) + 1)
+    val startDate = LocalDate.now().plusDays(Random.nextInt(30) + 10)
+    val endDate = startDate.plusDays(Random.nextInt(5) + 1)
     Map(
       "startDate" -> startDate.toString,
       "endDate" -> endDate.toString
@@ -48,30 +51,27 @@ class LeaveSimulation extends Simulation {
 
   // --- SCENARIO DEFINITION ---
   val employeeLeaveScenario = scenario("Employee Requests Leave")
-    .exec(getJwtToken) // Get a fresh token for each user
-    .feed(dateFeeder) // Get unique dates for this user's request
+    .exec(getJwtToken) // Get a token by logging into user-service
+    .feed(dateFeeder)
     .exec(
-      http("Create Leave Request")
-        .post("/api/leaves/request")
-        .header("Authorization", "Bearer ${jwtToken}")
+      http("Create Leave Request via Gateway")
+        .post(s"$servicePrefix/api/leaves/request")
+        .header("Authorization", "Bearer #{jwtToken}")
         .body(StringBody(
-          // Using a more robust string format for the body
-          s"""
-             |{
-             |  "startDate": "${"$"}{startDate}",
-             |  "endDate": "${"$"}{endDate}",
-             |  "type": { "name": "VACATION" },
-             |  "reason": "Gatling performance test"
-             |}
-             |""".stripMargin
+          """{
+            |  "startDate": "#{startDate}",
+            |  "endDate": "#{endDate}",
+            |  "type": { "name": "VACATION" },
+            |  "reason": "Gatling performance test"
+            |}""".stripMargin
         )).asJson
         .check(status.is(200))
     )
     .pause(3.seconds)
     .exec(
-      http("Get Leave History")
-        .get("/api/leaves/history")
-        .header("Authorization", "Bearer ${jwtToken}")
+      http("Get Leave History via Gateway")
+        .get(s"$servicePrefix/api/leaves/history")
+        .header("Authorization", "Bearer #{jwtToken}")
         .check(status.is(200))
     )
 

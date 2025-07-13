@@ -5,28 +5,29 @@ spring:
     gateway:
       discovery:
         locator:
-          enabled: false
+          enabled: true
+          lower-case-service-id: true #Good practice for consistency
       routes:
-        - id: user-management-service
-          uri: lb://user-management-service
+        - id: user-service-route
+          uri: lb://user-management-service # Route to the user service in Eureka
           predicates:
-            - Path=/api/users/**
+            - Path=/user-service/**      # IF the request starts with /user-service/...
           filters:
-            - StripPrefix=2  # Changed to strip /api/users to match service endpoint
-            - AddRequestHeader=X-Service-Name,user-management
+            - StripPrefix=1              # THEN strip that prefix before forwarding.
+
         - id: leave-management-service
           uri: lb://leave-management-service
           predicates:
             - Path=/api/leaves/**
           filters:
-            - StripPrefix=2  # Changed to strip /api/leaves to match service endpoint
+            - StripPrefix=1  # Changed to strip /api/leaves to match service endpoint
             - AddRequestHeader=X-Service-Name,leave-management
         - id: document-management-service
           uri: lb://document-management-service
           predicates:
             - Path=/api/documents/**
           filters:
-            - StripPrefix=2  # Changed to strip /api/documents to match service endpoint
+            - StripPrefix=1  # Changed to strip /api/documents to match service endpoint
             - AddRequestHeader=X-Service-Name,document-management
         # Added route for Actuator endpoints to allow direct access
         - id: actuator-route
@@ -37,18 +38,18 @@ spring:
             - StripPrefix=1
       default-filters:
         - AddResponseHeader=X-Gateway-Version,1.0.0
-  security:
-    oauth2:
-      resourceserver:
-        jwt:
-          issuer-uri: http://localhost:8080/realms/Tunisys
-          jwk-set-uri: http://localhost:8080/realms/Tunisys/protocol/openid-connect/certs
+  #security:
+   # oauth2:
+    #  resourceserver:
+     #   jwt:
+      #    issuer-uri: http://localhost:8080/realms/Tunisys
+       #   jwk-set-uri: http://localhost:8080/realms/Tunisys/protocol/openid-connect/certs
 server:
   port: 8081
 eureka:
   client:
     service-url:
-      defaultZone: http://localhost:8761/eureka/
+      defaultZone: http://eureka-server:8761/eureka/
     fetch-registry: true
     register-with-eureka: true
   instance:
