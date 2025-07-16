@@ -1,21 +1,21 @@
 # ===================================================================
-# FINAL, SIMPLE, AND CORRECT VERSION (NO TEMPLATES)
+# FINAL, COMPLETE VERSION WITH YOUR NAMING & TRIVY SCAN
 # ===================================================================
 default:
   tags:
     - docker
     
 stages:
-  - build-and-test
+  - build-and-push-to-nexus  # CORRECTED STAGE NAME
   - code-analysis
   - performance-test
-  - push
+  - push-and-scan-image      # NEW, DESCRIPTIVE STAGE NAME
 
 # ===================================================================
 # JOBS FOR: user-management-service
 # ===================================================================
-unit-tests:user-service:
-  stage: build-and-test
+build-and-push:user-service: # CORRECTED JOB NAME
+  stage: build-and-push-to-nexus
   image: maven:3.8.5-openjdk-17
   script:
     - echo "--- STARTING DEBUG ---"
@@ -53,7 +53,6 @@ sonar-analysis:user-service:
     - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
     - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
     - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
-
     - echo "Running SonarQube analysis for user-management-service..."
     - cd user-management-service
     - >-
@@ -63,18 +62,17 @@ sonar-analysis:user-service:
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
   needs:
-    - job: unit-tests:user-service
+    - job: build-and-push:user-service # Depends on the newly named job
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
 
-
 performance-test:user-service:
   stage: performance-test
   image: maven:3.8.5-openjdk-17
-  needs: ["unit-tests:user-service"] # Depends on the build job for this service
+  needs: ["build-and-push:user-service"] # Depends on the newly named job
   script:
     - echo "Preparing to run Gatling tests for user-management-service..."
     - echo "Targeting application at:${STAGING_APP_URL}" 
@@ -85,7 +83,7 @@ performance-test:user-service:
       -Dgatling.simulationClass=company.user_management_service.simulations.UserManagementSimulation
       -DAPP_URL=${STAGING_APP_URL}
   artifacts:
-    when: always # Save reports even if the test fails
+    when: always
     paths:
       - user-management-service/target/gatling/
     expire_in: 1 week
@@ -94,23 +92,33 @@ performance-test:user-service:
       changes:
         - user-management-service/**/*
 
-push:user-service:
-  stage: push
-  image:
-    name: gcr.io/kaniko-project/executor:v1.9.0-debug
-    entrypoint: [""]
+push-and-scan:user-service:
+  stage: push-and-scan-image
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_TLS_CERTDIR: ""
+    IMAGE_NAME: "$DOCKERHUB_USERNAME/user-management-service"
   script:
-    - echo "Building Docker image for user-management-service..."
-    - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    - /kaniko/executor
-      --context $CI_PROJECT_DIR/user-management-service
-      --dockerfile $CI_PROJECT_DIR/user-management-service/Dockerfile
-      --destination $DOCKERHUB_USERNAME/user-management-service:$CI_COMMIT_SHORT_SHA
-      --destination $DOCKERHUB_USERNAME/user-management-service:latest
+    - echo "Logging into Docker Hub..."
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - echo "Building Docker image..."
+    - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" ./user-management-service
+    - echo "Installing Trivy..."
+    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    - echo "Scanning image with Trivy..."
+    - trivy image --exit-code 1 --severity CRITICAL,HIGH --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - echo "Trivy scan passed. Pushing images..."
+    - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - docker push "$IMAGE_NAME:latest"
   needs:
-    - job: unit-tests:user-service
+    - job: build-and-push:user-service # Depends on the newly named job
       artifacts: true
+  artifacts:
+    reports:
+      container_scanning: gl-container-scanning-report.json
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -119,14 +127,14 @@ push:user-service:
 # ===================================================================
 # JOBS FOR: document-management-service
 # ===================================================================
-build:document-service:
-  stage: build-and-test
+build-and-push:document-service: # Corrected Job Name
+  stage: build-and-push-to-nexus
   image: maven:3.8.5-openjdk-17
   script:
     - echo "Preparing settings.xml..."
     - cp $SETTINGS_XML ./settings-temp.xml
     - echo "Building, testing, and deploying document-management-service..."
-    - cd Document-management-service  # <-- Note the capital D
+    - cd Document-management-service
     - mvn clean deploy -s ../settings-temp.xml
   artifacts:
     paths:
@@ -146,7 +154,6 @@ sonar-analysis:document-service:
     - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
     - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
     - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
-
     - echo "Running SonarQube analysis for document-management-service..."
     - cd Document-management-service
     - >-
@@ -156,19 +163,17 @@ sonar-analysis:document-service:
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
   needs:
-    - job: build:document-service
+    - job: build-and-push:document-service # Depends on the newly named job
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - Document-management-service/**/*
 
-# In your .gitlab-ci.yml
-
 performance-test:document-service:
   stage: performance-test
   image: maven:3.8.5-openjdk-17
-  needs: ["build:document-service"]
+  needs: ["build-and-push:document-service"] # Depends on the newly named job
   script:
     - echo "Preparing to run Gatling tests for document-management-service..."
     - echo "Targeting application at:${STAGING_APP_URL}"
@@ -184,28 +189,33 @@ performance-test:document-service:
       - Document-management-service/target/gatling/
     expire_in: 1 week
   rules:
-    # THIS BLOCK IS NOW CORRECT
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
-        - Document-management-service/**/* # It now mirrors the build job's rule
+        - Document-management-service/**/*
 
-push:document-service:
-  stage: push
-  image:
-    name: gcr.io/kaniko-project/executor:v1.9.0-debug
-    entrypoint: [""]
+push-and-scan:document-service:
+  stage: push-and-scan-image
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_TLS_CERTDIR: ""
+    IMAGE_NAME: "$DOCKERHUB_USERNAME/document-management-service"
   script:
-    - echo "Building Docker image for document-management-service..."
-    - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    - /kaniko/executor
-      --context $CI_PROJECT_DIR/Document-management-service
-      --dockerfile $CI_PROJECT_DIR/Document-management-service/Dockerfile
-      --destination $DOCKERHUB_USERNAME/document-management-service:$CI_COMMIT_SHORT_SHA
-      --destination $DOCKERHUB_USERNAME/document-management-service:latest
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" ./Document-management-service
+    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    - trivy image --exit-code 1 --severity CRITICAL,HIGH --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - echo "Trivy scan passed. Pushing images..."
+    - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - docker push "$IMAGE_NAME:latest"
   needs:
-    - job: build:document-service
+    - job: build-and-push:document-service # Depends on the newly named job
       artifacts: true
+  artifacts:
+    reports:
+      container_scanning: gl-container-scanning-report.json
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -214,8 +224,8 @@ push:document-service:
 # ===================================================================
 # JOBS FOR: leave-management-service
 # ===================================================================
-build:leave-service:
-  stage: build-and-test
+build-and-push:leave-service: # Corrected Job Name
+  stage: build-and-push-to-nexus
   image: maven:3.8.5-openjdk-17
   script:
     - echo "Preparing settings.xml..."
@@ -241,7 +251,6 @@ sonar-analysis:leave-service:
     - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
     - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
     - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
-
     - echo "Running SonarQube analysis for leave-management-service..."
     - cd leave-management-service
     - >-
@@ -251,19 +260,17 @@ sonar-analysis:leave-service:
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
   needs:
-    - job: build:leave-service
+    - job: build-and-push:leave-service # Depends on the newly named job
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - leave-management-service/**/*
 
-# In your .gitlab-ci.yml
-
 performance-test:leave-service:
   stage: performance-test
   image: maven:3.8.5-openjdk-17
-  needs: ["build:leave-service"]
+  needs: ["build-and-push:leave-service"] # Depends on the newly named job
   script:
     - echo "Preparing to run Gatling tests for leave-management-service..."
     - echo "Targeting application at:${STAGING_APP_URL}"
@@ -279,28 +286,33 @@ performance-test:leave-service:
       - leave-management-service/target/gatling/
     expire_in: 1 week
   rules:
-    # THIS BLOCK IS NOW CORRECT
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
-        - leave-management-service/**/* # It now mirrors the build job's rule
+        - leave-management-service/**/*
 
-push:leave-service:
-  stage: push
-  image:
-    name: gcr.io/kaniko-project/executor:v1.9.0-debug
-    entrypoint: [""]
+push-and-scan:leave-service:
+  stage: push-and-scan-image
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_TLS_CERTDIR: ""
+    IMAGE_NAME: "$DOCKERHUB_USERNAME/leave-management-service"
   script:
-    - echo "Building Docker image for leave-management-service..."
-    - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    - /kaniko/executor
-      --context $CI_PROJECT_DIR/leave-management-service
-      --dockerfile $CI_PROJECT_DIR/leave-management-service/Dockerfile
-      --destination $DOCKERHUB_USERNAME/leave-management-service:$CI_COMMIT_SHORT_SHA
-      --destination $DOCKERHUB_USERNAME/leave-management-service:latest
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" ./leave-management-service
+    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    - trivy image --exit-code 1 --severity CRITICAL,HIGH --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - echo "Trivy scan passed. Pushing images..."
+    - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - docker push "$IMAGE_NAME:latest"
   needs:
-    - job: build:leave-service
+    - job: build-and-push:leave-service # Depends on the newly named job
       artifacts: true
+  artifacts:
+    reports:
+      container_scanning: gl-container-scanning-report.json
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
