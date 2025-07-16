@@ -258,9 +258,17 @@
                 <artifactId>gatling-maven-plugin</artifactId>
                 <version>4.8.2</version>
                 <configuration>
-                    <!-- This tells Gatling where to find your simulation classes -->
-                    <simulationClass>org.example.documentmanagementservice.simulations.DocumentSimulation</simulationClass>
+                    <simulationClass>org.example.documentmanagementservice.simulations.DocumentManagementSimulation</simulationClass>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>gatling-integration-test</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
         </plugins>
     </build>

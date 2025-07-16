@@ -20,6 +20,9 @@
         <spring-cloud.version>2023.0.0</spring-cloud.version>
         <sonar.host.url>http://192.168.50.4:31000</sonar.host.url>
         <jacoco.version>0.8.12</jacoco.version>
+        <gatling.version>3.10.3</gatling.version>
+        <gatling-maven-plugin.version>4.5.0</gatling-maven-plugin.version>
+        <scala.version>2.13.12</scala.version> <!-- Added Scala version -->
     </properties>
 
     <dependencies>
@@ -91,12 +94,7 @@
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-library</artifactId>
-            <version>2.13.12</version>
-            <scope>test</scope>
-        </dependency>
+
         <dependency>
             <groupId>io.gatling.highcharts</groupId>
             <artifactId>gatling-charts-highcharts</artifactId>
@@ -165,10 +163,25 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <plugin>
+                <groupId>io.gatling</groupId>
+                <artifactId>gatling-maven-plugin</artifactId>
+                <version>4.8.2</version>
+                <executions>
+                    <execution>
+                        <id>gatling-integration-test</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
-                <version>4.8.1</version>
+                <version>4.9.2</version>
                 <executions>
                     <execution>
                         <id>scala-compile-first</id>
@@ -186,15 +199,6 @@
                         </goals>
                     </execution>
                 </executions>
-            </plugin>
-            <plugin>
-                <groupId>io.gatling</groupId>
-                <artifactId>gatling-maven-plugin</artifactId>
-                <version>4.8.2</version>
-                <configuration>
-                    <!-- This MUST match the new, corrected package name -->
-                    <simulationClass>company.user_management_service.simulations.UserManagementSimulation</simulationClass>
-                </configuration>
             </plugin>
         </plugins>
     </build>

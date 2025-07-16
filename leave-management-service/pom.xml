@@ -20,102 +20,75 @@
         <spring-cloud.version>2023.0.0</spring-cloud.version>
         <sonar.host.url>http://192.168.50.4:31000</sonar.host.url>
         <jacoco.version>0.8.12</jacoco.version>
-        <!--<sonar.coverage.jacoco.xmlReportPaths>${project.reporting.outputDirectory}/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>-->
-        <sonar.coverage.exclusions>
-            **/config/SecurityConfig.java
-        </sonar.coverage.exclusions>
+        <sonar.coverage.exclusions>**/config/SecurityConfig.java</sonar.coverage.exclusions>
+
+        <!-- Gatling versions -->
+        <gatling.version>3.9.5</gatling.version>
+        <gatling-maven-plugin.version>4.5.0</gatling-maven-plugin.version>
+        <scala.version>2.13.12</scala.version>
+        <scala-maven-plugin.version>4.8.1</scala-maven-plugin.version>
     </properties>
 
     <dependencies>
-        <!-- Spring Boot Web -->
+        <!-- Spring Boot Dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
-
-        <!-- Spring Boot Data JPA -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
         </dependency>
-
-        <!-- PostgreSQL Driver -->
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
             <scope>runtime</scope>
         </dependency>
-
-        <!-- Spring Boot Actuator -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-
-        <!-- Spring Cloud Netflix Eureka Client -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-netflix-eureka-client</artifactId>
         </dependency>
-
-        <!-- Spring Cloud OpenFeign -->
         <dependency>
             <groupId>org.springframework.cloud</groupId>
             <artifactId>spring-cloud-starter-openfeign</artifactId>
         </dependency>
-
-        <!-- Spring Security -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
         </dependency>
-
-        <!-- Keycloak Spring Boot Starter -->
         <dependency>
             <groupId>org.keycloak</groupId>
             <artifactId>keycloak-spring-boot-starter</artifactId>
             <version>22.0.5</version>
         </dependency>
-
-        <!-- Spring Security OAuth2 for JWT -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
         </dependency>
-
-        <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
             <scope>provided</scope>
         </dependency>
-
-        <!-- Jakarta Validation -->
         <dependency>
             <groupId>jakarta.validation</groupId>
             <artifactId>jakarta.validation-api</artifactId>
             <version>3.0.2</version>
         </dependency>
-        <dependency>
-            <groupId>junit</groupId>
-            <artifactId>junit</artifactId>
-            <scope>test</scope>
-        </dependency>
 
-        <dependency>
-            <groupId>org.junit.jupiter</groupId>
-            <artifactId>junit-jupiter</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <!-- ✅ Spring Security Test (for @WithMockUser) -->
-        <dependency>
-            <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-test</artifactId>
-            <scope>test</scope>
-        </dependency>
+        <!-- Test Dependencies -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -125,16 +98,17 @@
             <scope>test</scope>
         </dependency>
 
-        <dependency>
-            <groupId>org.scala-lang</groupId>
-            <artifactId>scala-library</artifactId>
-            <version>2.13.12</version>
-            <scope>test</scope>
-        </dependency>
+        <!-- Gatling Dependencies -->
         <dependency>
             <groupId>io.gatling.highcharts</groupId>
             <artifactId>gatling-charts-highcharts</artifactId>
-            <version>3.10.3</version>
+            <version>${gatling.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.scala-lang</groupId>
+            <artifactId>scala-library</artifactId>
+            <version>${scala.version}</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
@@ -153,7 +127,6 @@
 
     <distributionManagement>
         <repository>
-            <!-- The ID 'nexus' MUST match the server ID in settings.xml -->
             <id>nexus</id>
             <url>${env.NEXUS_URL}/repository/maven-releases/</url>
         </repository>
@@ -165,7 +138,7 @@
 
     <build>
         <plugins>
-            <!-- Your existing Spring Boot plugin -->
+            <!-- Spring Boot Plugin -->
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
@@ -179,7 +152,7 @@
                 </configuration>
             </plugin>
 
-            <!-- Your existing JaCoCo plugin -->
+            <!-- JaCoCo Plugin -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
@@ -201,11 +174,14 @@
                 </executions>
             </plugin>
 
-            <!-- === ADD THESE NEW PLUGINS FOR GATLING === -->
+            <!-- Scala Maven Plugin for compiling Scala files -->
             <plugin>
                 <groupId>net.alchim31.maven</groupId>
                 <artifactId>scala-maven-plugin</artifactId>
-                <version>4.8.1</version>
+                <version>${scala-maven-plugin.version}</version>
+                <configuration>
+                    <scalaVersion>${scala.version}</scalaVersion>
+                </configuration>
                 <executions>
                     <execution>
                         <id>scala-compile-first</id>
@@ -224,16 +200,26 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- Gatling Maven Plugin -->
             <plugin>
                 <groupId>io.gatling</groupId>
                 <artifactId>gatling-maven-plugin</artifactId>
-                <version>4.8.2</version>
+                <version>${gatling-maven-plugin.version}</version>
                 <configuration>
-                    <!-- This MUST match the new, corrected package name -->
-                    <simulationClass>company.leave_management_service.simulations.LeaveSimulation</simulationClass>
+                    <simulationClass>simulations.EnhancedLeaveSimulation</simulationClass>
+                    <failOnError>false</failOnError>
                 </configuration>
+                <executions>
+                    <execution>
+                        <id>gatling-integration-test</id>
+                        <phase>integration-test</phase>
+                        <goals>
+                            <goal>test</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
-
         </plugins>
     </build>
 </project>

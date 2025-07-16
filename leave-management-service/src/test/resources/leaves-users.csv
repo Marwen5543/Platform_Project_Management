@@ -1,0 +1,6 @@
+username,password,role,type
+john_doe,password123,ROLE_EMPLOYEE,VACATION
+mary_jane,azerty12345,ROLE_EMPLOYEE,SICK
+demo,demo,ROLE_EMPLOYEE,PERSONAL
+manager1,ManagerPass123!,ROLE_MANAGER,VACATION
+hr_admin,Secure@Admin#2025,ROLE_HR,VACATION

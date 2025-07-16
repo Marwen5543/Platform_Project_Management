@@ -1,0 +1,6 @@
+username,password,role
+john_doe,password123,EMPLOYEE
+mary_jane,azerty12345,EMPLOYEE
+demo,demo,EMPLOYEE
+astra_admin007,Secure@Admin#2025,ADMIN
+superadmin2,NewSecurePass123!,SUPER_ADMIN
