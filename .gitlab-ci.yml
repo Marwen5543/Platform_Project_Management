@@ -109,7 +109,7 @@ push-and-scan:user-service:
     - echo "Installing Trivy..."
     - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
     - echo "Scanning image with Trivy..."
-    - trivy image --exit-code 1 --severity CRITICAL,HIGH --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - trivy image --exit-code 1 --severity CRITICAL,HIGH --timeout 10m --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
     - echo "Trivy scan passed. Pushing images..."
     - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
     - docker push "$IMAGE_NAME:latest"
