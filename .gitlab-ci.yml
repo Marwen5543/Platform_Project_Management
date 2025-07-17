@@ -61,9 +61,12 @@ update-trivy-db:
     
     # Install Kaniko
     - echo "Installing Kaniko..."
-    - wget -O /kaniko.tar.gz https://github.com/GoogleContainerTools/kaniko/releases/latest/download/kaniko-linux-amd64.tar.gz
-    - tar -xzf /kaniko.tar.gz -C /usr/local/bin/ kaniko/executor
-    - mv /usr/local/bin/kaniko/executor /usr/local/bin/kaniko-executor
+    - KANIKO_VERSION=$(wget -qO- https://api.github.com/repos/GoogleContainerTools/kaniko/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
+    - echo "Latest Kaniko version:" $KANIKO_VERSION"
+    - wget -O /kaniko.tar.gz "https://github.com/GoogleContainerTools/kaniko/releases/download/${KANIKO_VERSION}/kaniko-linux-amd64.tar.gz"
+    - mkdir -p /kaniko
+    - tar -xzf /kaniko.tar.gz -C /kaniko
+    - cp /kaniko/executor /usr/local/bin/kaniko-executor
     - chmod +x /usr/local/bin/kaniko-executor
     
     # Verify installations
