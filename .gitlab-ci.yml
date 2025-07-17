@@ -44,19 +44,21 @@ update-trivy-db:
 .kaniko_and_trivy_template: &kaniko_and_trivy_template
   stage: push-and-scan-image
   # Use a Trivy image that also includes shell tools
-  image: 
-    name: gcr.io/kaniko-project/executor:v1.9.0-debug
+  image:
+    name: docker.io/hadolint/hadolint:latest-alpine
     entrypoint: [""]
+  # --- END OF CORRECTION ---
   cache:
     key: trivy-global-cache-v2
     paths:
       - .trivycache/
     policy: pull
-  # --- THIS IS THE MISSING BLOCK TO ADD ---
   before_script:
-    # The Kaniko debug image includes wget and sh, so this will work.
-    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-  # --- END OF ADDITION ---
+    # We no longer need to install Trivy, but we might need to add Kaniko if it's not in the path.
+    # Let's check for both.
+    - echo "Checking for tools..."
+    # The 'hadolint' image is based on Alpine, so we use 'apk'.
+    - apk add --no-cache trivy kaniko
   script:
     # 1. SCAN THE DOCKERFILE AND DEPENDENCIES FIRST
     - echo "Scanning filesystem for vulnerabilities..."
