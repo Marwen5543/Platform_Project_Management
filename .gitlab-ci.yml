@@ -39,26 +39,37 @@ update-trivy-db:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
 
 # ===================================================================
-# THE NEW, COMBINED KANIKO + TRIVY TEMPLATE
+# THE CORRECTED KANIKO + TRIVY TEMPLATE
 # ===================================================================
 .kaniko_and_trivy_template: &kaniko_and_trivy_template
   stage: push-and-scan-image
-  # Use a Trivy image that also includes shell tools
-  image:
-    name: docker.io/hadolint/hadolint:latest-alpine
-    entrypoint: [""]
-  # --- END OF CORRECTION ---
+  # Use Alpine as base image since we need to install tools
+  image: alpine:3.18
   cache:
     key: trivy-global-cache-v2
     paths:
       - .trivycache/
     policy: pull
   before_script:
-    # We no longer need to install Trivy, but we might need to add Kaniko if it's not in the path.
-    # Let's check for both.
-    - echo "Checking for tools..."
-    # The 'hadolint' image is based on Alpine, so we use 'apk'.
-    - apk add --no-cache trivy kaniko
+    - echo "Installing required tools..."
+    # Install basic tools
+    - apk add --no-cache wget curl tar gzip
+    
+    # Install Trivy
+    - echo "Installing Trivy..."
+    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    
+    # Install Kaniko
+    - echo "Installing Kaniko..."
+    - wget -O /kaniko.tar.gz https://github.com/GoogleContainerTools/kaniko/releases/latest/download/kaniko-linux-amd64.tar.gz
+    - tar -xzf /kaniko.tar.gz -C /usr/local/bin/ kaniko/executor
+    - mv /usr/local/bin/kaniko/executor /usr/local/bin/kaniko-executor
+    - chmod +x /usr/local/bin/kaniko-executor
+    
+    # Verify installations
+    - trivy --version
+    - kaniko-executor version
+    
   script:
     # 1. SCAN THE DOCKERFILE AND DEPENDENCIES FIRST
     - echo "Scanning filesystem for vulnerabilities..."
@@ -70,7 +81,7 @@ update-trivy-db:
     
     # 3. BUILD THE IMAGE AND SAVE AS A TARBALL
     - echo "Building image with Kaniko and saving as a tarball..."
-    - /kaniko/executor
+    - kaniko-executor
         --context "$BUILD_CONTEXT"
         --dockerfile "$BUILD_CONTEXT/Dockerfile"
         --destination "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
@@ -83,7 +94,7 @@ update-trivy-db:
 
     # 5. PUSH THE IMAGE (Only happens if scan succeeds)
     - echo "Trivy scan passed. Pushing image to registry..."
-    - /kaniko/executor
+    - kaniko-executor
         --context "$BUILD_CONTEXT"
         --dockerfile "$BUILD_CONTEXT/Dockerfile"
         --destination "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
@@ -93,7 +104,6 @@ update-trivy-db:
     reports:
       container_scanning: gl-container-scanning-report.json
     expire_in: 1 week
-
 
 # ===================================================================
 # JOBS FOR: user-management-service
