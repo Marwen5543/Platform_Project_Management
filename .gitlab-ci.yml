@@ -52,21 +52,19 @@ update-trivy-db:
       - .trivycache/
     policy: pull
   before_script:
-    # Install Trivy in the Kaniko image
+    - echo "Updating CA certificates and installing curl..."
+    - apk update
+    - apk add curl ca-certificates
     - echo "Installing Trivy..."
-    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    - curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.30.0/trivy_0.30.0_Linux-64bit.tar.gz -o trivy.tar.gz
+    - tar -xzf trivy.tar.gz
+    - mv trivy /usr/local/bin/
     - trivy --version
-    
   script:
-    # 1. SCAN THE DOCKERFILE AND DEPENDENCIES FIRST
     - echo "Scanning filesystem for vulnerabilities..."
     - trivy fs --exit-code 0 --severity CRITICAL,HIGH --cache-dir "$TRIVY_CACHE_DIR" --skip-db-update "$BUILD_CONTEXT"
-
-    # 2. SETUP KANIKO AUTHENTICATION
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    
-    # 3. BUILD THE IMAGE AND SAVE AS A TARBALL
     - echo "Building image with Kaniko and saving as a tarball..."
     - /kaniko/executor
         --context "$BUILD_CONTEXT"
@@ -74,12 +72,8 @@ update-trivy-db:
         --destination "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
         --tarPath image.tar
         --no-push
-        
-    # 4. SCAN THE BUILT IMAGE TARBALL
     - echo "Scanning the final container image..."
     - trivy image --input image.tar --exit-code 1 --severity CRITICAL,HIGH --cache-dir "$TRIVY_CACHE_DIR" --skip-db-update --skip-java-db-update --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json
-
-    # 5. PUSH THE IMAGE (Only happens if scan succeeds)
     - echo "Trivy scan passed. Pushing image to registry..."
     - /kaniko/executor
         --context "$BUILD_CONTEXT"
