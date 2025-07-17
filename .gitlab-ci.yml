@@ -101,22 +101,37 @@ push-and-scan:user-service:
     DOCKER_HOST: tcp://docker:2375/
     DOCKER_TLS_CERTDIR: ""
     IMAGE_NAME: "$DOCKERHUB_USERNAME/user-management-service"
+    # --- THIS IS THE KEY ---
+    # Tell Trivy to store its cache in a directory we can control
+    TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache/"
+  # --- THIS IS THE OTHER KEY ---
+  # Tell GitLab to cache this directory between pipeline runs
+  cache:
+    key: trivy-cache # A unique key for this cache
+    paths:
+      - .trivycache/
   script:
-    - echo "Logging into Docker Hub..."
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-    - echo "Building Docker image..."
     - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" ./user-management-service
-    - echo "Installing Trivy..."
     - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    
+    # First, try to download the DB. The first pipeline run will be slow.
+    # Subsequent runs will be fast because of the GitLab cache.
+    - trivy image --download-db-only --cache-dir "$TRIVY_CACHE_DIR"
+    - trivy image --download-java-db-only --cache-dir "$TRIVY_CACHE_DIR"
+    
+    # Now, run the scan. It will use the cache we just populated.
     - echo "Scanning image with Trivy..."
-    - trivy image --exit-code 1 --severity CRITICAL,HIGH --timeout 10m --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - trivy image --exit-code 1 --severity CRITICAL,HIGH --timeout 15m --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    
     - echo "Trivy scan passed. Pushing images..."
     - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
     - docker push "$IMAGE_NAME:latest"
   needs:
-    - job: build-and-push:user-service # Depends on the newly named job
+    - job: build-and-push:user-service
       artifacts: true
   artifacts:
+    when: always
     reports:
       container_scanning: gl-container-scanning-report.json
   rules:
