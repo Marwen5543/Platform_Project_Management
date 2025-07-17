@@ -52,40 +52,34 @@ update-trivy-db:
       - .trivycache/
     policy: pull
   before_script:
-    - echo "Updating CA certificates and installing curl..."
+    - echo "DEBUG:Starting before_script"
+    - echo "DEBUG:Testing network connectivity to GitHub"
+    - curl -I https://github.com || echo "ERROR:Failed to reach GitHub"
+    - echo "DEBUG:Updating CA certificates and installing curl"
     - apk update
     - apk add curl ca-certificates
-    - echo "Installing Trivy..."
-    - curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.30.0/trivy_0.30.0_Linux-64bit.tar.gz -o trivy.tar.gz
+    - echo "DEBUG:Installing Trivy"
+    - curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.58.0/trivy_0.58.0_Linux-64bit.tar.gz -o trivy.tar.gz
     - tar -xzf trivy.tar.gz
     - mv trivy /usr/local/bin/
+    - echo "DEBUG:Verifying Trivy installation"
     - trivy --version
   script:
-    - echo "Scanning filesystem for vulnerabilities..."
+    - echo "Scanning filesystem for vulnerabilities"
     - trivy fs --exit-code 0 --severity CRITICAL,HIGH --cache-dir "$TRIVY_CACHE_DIR" --skip-db-update "$BUILD_CONTEXT"
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    - echo "Building image with Kaniko and saving as a tarball..."
-    - /kaniko/executor
-        --context "$BUILD_CONTEXT"
-        --dockerfile "$BUILD_CONTEXT/Dockerfile"
-        --destination "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-        --tarPath image.tar
-        --no-push
-    - echo "Scanning the final container image..."
+    - echo "Building image with Kaniko and saving as a tarball"
+    - /kaniko/executor --context "$BUILD_CONTEXT" --dockerfile "$BUILD_CONTEXT/Dockerfile" --destination "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" --tarPath image.tar --no-push
+    - echo "Scanning the final container image"
     - trivy image --input image.tar --exit-code 1 --severity CRITICAL,HIGH --cache-dir "$TRIVY_CACHE_DIR" --skip-db-update --skip-java-db-update --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json
-    - echo "Trivy scan passed. Pushing image to registry..."
-    - /kaniko/executor
-        --context "$BUILD_CONTEXT"
-        --dockerfile "$BUILD_CONTEXT/Dockerfile"
-        --destination "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-        --destination "$IMAGE_NAME:latest"
+    - echo "Trivy scan passed. Pushing image to registry"
+    - /kaniko/executor --context "$BUILD_CONTEXT" --dockerfile "$BUILD_CONTEXT/Dockerfile" --destination "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" --destination "$IMAGE_NAME:latest"
   artifacts:
     when: always
     reports:
       container_scanning: gl-container-scanning-report.json
     expire_in: 1 week
-
 
 # ===================================================================
 # JOBS FOR: user-management-service
