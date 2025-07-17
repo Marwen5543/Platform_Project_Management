@@ -11,6 +11,68 @@ stages:
   - performance-test
   - push-and-scan-image      # NEW, DESCRIPTIVE STAGE NAME
 
+
+# ===================================================================
+# GLOBAL VARIABLES AND CACHE FOR TRIVY
+# ===================================================================
+variables:
+  TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache/"
+  DOCKER_BUILDKIT: 1
+  BUILDKIT_PROGRESS: plain
+
+# Global cache for Trivy - shared across all jobs
+.trivy_cache: &trivy_cache
+  cache:
+    key: trivy-global-cache
+    paths:
+      - .trivycache/
+    policy: pull-push
+
+# ===================================================================
+# TEMPLATE FOR TRIVY SCAN
+# ===================================================================
+.trivy_scan_template: &trivy_scan_template
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_TLS_CERTDIR: ""
+  <<: *trivy_cache
+  before_script:
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - apk add --no-cache wget
+    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    - mkdir -p "$TRIVY_CACHE_DIR"
+    # Download databases once with longer timeout
+    - trivy image --download-db-only --cache-dir "$TRIVY_CACHE_DIR" --timeout 30m
+    - trivy image --download-java-db-only --cache-dir "$TRIVY_CACHE_DIR" --timeout 30m
+  script:
+    - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" "$BUILD_CONTEXT"
+    # Run scan with optimized settings
+    - echo "Scanning image with Trivy..."
+    - trivy image 
+        --exit-code 1 
+        --severity CRITICAL,HIGH 
+        --timeout 60m 
+        --cache-dir "$TRIVY_CACHE_DIR"
+        --skip-db-update 
+        --skip-java-db-update
+        --format template 
+        --template "@contrib/gitlab.tpl" 
+        -o gl-container-scanning-report.json 
+        "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - echo "Trivy scan passed. Pushing images..."
+    - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - docker push "$IMAGE_NAME:latest"
+  artifacts:
+    when: always
+    reports:
+      container_scanning: gl-container-scanning-report.json
+    expire_in: 1 week
+
+
+
 # ===================================================================
 # JOBS FOR: user-management-service
 # ===================================================================
@@ -94,46 +156,15 @@ performance-test:user-service:
 
 push-and-scan:user-service:
   stage: push-and-scan-image
-  image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
+  <<: *trivy_scan_template
   variables:
+    IMAGE_NAME: "$DOCKERHUB_USERNAME/user-management-service"
+    BUILD_CONTEXT: "./user-management-service"
     DOCKER_HOST: tcp://docker:2375/
     DOCKER_TLS_CERTDIR: ""
-    IMAGE_NAME: "$DOCKERHUB_USERNAME/user-management-service"
-    # --- THIS IS THE KEY ---
-    # Tell Trivy to store its cache in a directory we can control
-    TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache/"
-  # --- THIS IS THE OTHER KEY ---
-  # Tell GitLab to cache this directory between pipeline runs
-  cache:
-    key: trivy-cache # A unique key for this cache
-    paths:
-      - .trivycache/
-  script:
-    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-    - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" ./user-management-service
-    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-    
-    # First, try to download the DB. The first pipeline run will be slow.
-    # Subsequent runs will be fast because of the GitLab cache.
-    - trivy image --download-db-only --cache-dir "$TRIVY_CACHE_DIR"
-    - trivy image --download-java-db-only --cache-dir "$TRIVY_CACHE_DIR"
-    
-    # Now, run the scan. It will use the cache we just populated.
-    - echo "Scanning image with Trivy..."
-    - trivy image --exit-code 1 --severity CRITICAL,HIGH --timeout 15m --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-    
-    - echo "Trivy scan passed. Pushing images..."
-    - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-    - docker push "$IMAGE_NAME:latest"
   needs:
     - job: build-and-push:user-service
       artifacts: true
-  artifacts:
-    when: always
-    reports:
-      container_scanning: gl-container-scanning-report.json
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
