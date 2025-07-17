@@ -39,39 +39,23 @@ update-trivy-db:
     - if: '$CI_PIPELINE_SOURCE == "schedule"'
 
 # ===================================================================
-# THE CORRECTED KANIKO + TRIVY TEMPLATE
+# SIMPLIFIED KANIKO + TRIVY TEMPLATE (Using Official Kaniko Image)
 # ===================================================================
 .kaniko_and_trivy_template: &kaniko_and_trivy_template
   stage: push-and-scan-image
-  # Use Alpine as base image since we need to install tools
-  image: alpine:3.18
+  image:
+    name: gcr.io/kaniko-project/executor:v1.9.0-debug
+    entrypoint: [""]
   cache:
     key: trivy-global-cache-v2
     paths:
       - .trivycache/
     policy: pull
   before_script:
-    - echo "Installing required tools..."
-    # Install basic tools
-    - apk add --no-cache wget curl tar gzip
-    
-    # Install Trivy
+    # Install Trivy in the Kaniko image
     - echo "Installing Trivy..."
     - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-    
-    # Install Kaniko
-    - echo "Installing Kaniko..."
-    - KANIKO_VERSION=$(wget -qO- https://api.github.com/repos/GoogleContainerTools/kaniko/releases/latest | grep '"tag_name"' | cut -d'"' -f4)
-    - echo "Latest Kaniko version:" $KANIKO_VERSION
-    - wget -O /kaniko.tar.gz "https://github.com/GoogleContainerTools/kaniko/releases/download/${KANIKO_VERSION}/kaniko-linux-amd64.tar.gz"
-    - mkdir -p /kaniko
-    - tar -xzf /kaniko.tar.gz -C /kaniko
-    - cp /kaniko/executor /usr/local/bin/kaniko-executor
-    - chmod +x /usr/local/bin/kaniko-executor
-    
-    # Verify installations
     - trivy --version
-    - kaniko-executor version
     
   script:
     # 1. SCAN THE DOCKERFILE AND DEPENDENCIES FIRST
@@ -80,11 +64,11 @@ update-trivy-db:
 
     # 2. SETUP KANIKO AUTHENTICATION
     - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(printf "%s:%s" "$DOCKERHUB_USERNAME" "$DOCKERHUB_TOKEN" | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
+    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
     
     # 3. BUILD THE IMAGE AND SAVE AS A TARBALL
     - echo "Building image with Kaniko and saving as a tarball..."
-    - kaniko-executor
+    - /kaniko/executor
         --context "$BUILD_CONTEXT"
         --dockerfile "$BUILD_CONTEXT/Dockerfile"
         --destination "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
@@ -97,7 +81,7 @@ update-trivy-db:
 
     # 5. PUSH THE IMAGE (Only happens if scan succeeds)
     - echo "Trivy scan passed. Pushing image to registry..."
-    - kaniko-executor
+    - /kaniko/executor
         --context "$BUILD_CONTEXT"
         --dockerfile "$BUILD_CONTEXT/Dockerfile"
         --destination "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
@@ -107,6 +91,7 @@ update-trivy-db:
     reports:
       container_scanning: gl-container-scanning-report.json
     expire_in: 1 week
+
 
 # ===================================================================
 # JOBS FOR: user-management-service
@@ -199,7 +184,7 @@ push-and-scan:user-service:
   <<: *kaniko_and_trivy_template
   variables:
     IMAGE_NAME: "$DOCKERHUB_USERNAME/user-management-service"
-    BUILD_CONTEXT: "$CI_PROJECT_DIR/user-management-service" # Use absolute path
+    BUILD_CONTEXT: "$CI_PROJECT_DIR/user-management-service"
   needs:
     - job: build-and-push:user-service
       artifacts: true
