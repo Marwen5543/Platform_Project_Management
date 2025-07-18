@@ -1,17 +1,29 @@
 # ===================================================================
-# FINAL, SIMPLE, AND CORRECT VERSION (NO TEMPLATES)
+# IMPROVED GITLAB CI WITH TRIVY SECURITY SCANNING
 # ===================================================================
 default:
   tags:
     - docker
-    
+
 stages:
-  - build-and-test
+  - setup
+  - build-and-push-to-nexus
   - code-analysis
   - performance-test
-  - push
+  - push-and-scan-image
+
+variables:
+  DOCKER_VERSION: "20.10.16"
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache"
+  # Add these variables to control Trivy behavior
+  TRIVY_SEVERITY: "HIGH,CRITICAL"
+  TRIVY_IGNORE_UNFIXED: "true"
+  TRIVY_TIMEOUT: "30m"
 
 # ===================================================================
+<<<<<<< HEAD
 # GLOBAL VARIABLES AND CACHE FOR TRIVY
 # ===================================================================
 variables:
@@ -73,32 +85,185 @@ variables:
     
 # ===================================================================
 # JOBS FOR: user-management-service
+=======
+# SCHEDULED JOB FOR UPDATING THE CACHE
+>>>>>>> fe903f1fbf914cdb44c268689726f9e25c176a27
 # ===================================================================
-unit-tests:user-service:
-  stage: build-and-test
+update-trivy-db:
+  stage: setup
+  image: alpine:3.18
+  cache:
+    key: trivy-db-v4
+    paths:
+      - .trivycache/
+    policy: pull-push
+  script:
+    - echo "Updating Trivy database cache..."
+    - apk add --no-cache wget ca-certificates
+    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    - mkdir -p $TRIVY_CACHE_DIR
+    - echo "Downloading OS vulnerability database..."
+    - trivy image --download-db-only --cache-dir $TRIVY_CACHE_DIR --timeout 30m
+    - echo "Downloading Java index database..."
+    - trivy image --download-java-db-only --cache-dir $TRIVY_CACHE_DIR --timeout 45m
+    - echo "Trivy cache updated successfully."
+    - ls -la $TRIVY_CACHE_DIR
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web"'
+
+# ===================================================================
+# IMPROVED DOCKER BUILD AND SCAN TEMPLATE
+# ===================================================================
+.docker_build_and_scan_template: &docker_build_and_scan_template
+  stage: push-and-scan-image
+  image: docker:${DOCKER_VERSION}
+  services:
+    - name: docker:${DOCKER_VERSION}-dind
+      alias: docker
+  cache:
+    key: trivy-db-v4
+    paths:
+      - .trivycache/
+    policy: pull
+  before_script:
+    - while ! docker info; do sleep 1; done
+    - apk update && apk add --no-cache curl ca-certificates jq
+    - curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.58.0/trivy_0.58.0_Linux-64bit.tar.gz | tar -C /usr/local/bin -xzf - trivy
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - mkdir -p $TRIVY_CACHE_DIR
+  script:
+    - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" "$BUILD_CONTEXT"
+    - echo "Scanning the container image for vulnerabilities..."
+    
+    # First, run a scan without exit-code to generate the report
+    - |
+      if [ -d "$TRIVY_CACHE_DIR" ] && [ "$(ls -A $TRIVY_CACHE_DIR)" ]; then
+        echo "Using pre-warmed cache..."
+        trivy image --severity ${TRIVY_SEVERITY} \
+          --cache-dir $TRIVY_CACHE_DIR \
+          --skip-db-update \
+          --skip-java-db-update \
+          --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} \
+          --format json \
+          --output trivy-report.json \
+          "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+      else
+        echo "Cache not found or empty. Downloading database..."
+        trivy image --severity ${TRIVY_SEVERITY} \
+          --cache-dir $TRIVY_CACHE_DIR \
+          --timeout ${TRIVY_TIMEOUT} \
+          --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} \
+          --format json \
+          --output trivy-report.json \
+          "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+      fi
+    
+    # Generate human-readable report
+    - trivy image --severity ${TRIVY_SEVERITY} --cache-dir $TRIVY_CACHE_DIR --skip-db-update --skip-java-db-update --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} --format table "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" | tee trivy-report.txt
+    
+    # Check if there are any HIGH or CRITICAL vulnerabilities
+    - |
+      VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length' trivy-report.json || echo "0")
+      echo "Found $VULN_COUNT HIGH/CRITICAL vulnerabilities"
+      
+      if [ "$VULN_COUNT" -gt 0 ]; then
+        echo "❌ Security scan failed: Found $VULN_COUNT HIGH/CRITICAL vulnerabilities"
+        echo "Please review the trivy-report.json and trivy-report.txt artifacts"
+        
+        # Option 1: Fail the pipeline (current behavior)
+        # exit 1
+        
+        # Option 2: Allow pipeline to continue but mark as warning
+        echo "⚠️  Continuing pipeline despite vulnerabilities (review required)"
+        
+        # Option 3: Only fail on CRITICAL vulnerabilities
+        CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-report.json || echo "0")
+        if [ "$CRITICAL_COUNT" -gt 0 ]; then
+          echo "❌ Found $CRITICAL_COUNT CRITICAL vulnerabilities - failing pipeline"
+          exit 1
+        else
+          echo "⚠️  Only HIGH vulnerabilities found - continuing pipeline"
+        fi
+      else
+        echo "✅ No HIGH/CRITICAL vulnerabilities found"
+      fi
+    
+    - echo "Pushing images to registry..."
+    - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - docker push "$IMAGE_NAME:latest"
+    
+  artifacts:
+    paths:
+      - trivy-report.json
+      - trivy-report.txt
+    reports:
+      # This creates a security report in GitLab
+      container_scanning: trivy-report.json
+    when: always
+    expire_in: 1 week
+  # Change this based on your preference
+  allow_failure: true  # Set to false if you want to fail the pipeline on vulnerabilities
+
+# ===================================================================
+# ALTERNATIVE: SEPARATE SCAN JOB (NON-BLOCKING)
+# ===================================================================
+.security_scan_template: &security_scan_template
+  stage: push-and-scan-image
+  image: alpine:3.18
+  cache:
+    key: trivy-db-v4
+    paths:
+      - .trivycache/
+    policy: pull
+  before_script:
+    - apk add --no-cache wget ca-certificates jq
+    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    - mkdir -p $TRIVY_CACHE_DIR
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+  script:
+    - echo "Scanning $IMAGE_NAME:$CI_COMMIT_SHORT_SHA for vulnerabilities..."
+    - |
+      trivy image --severity ${TRIVY_SEVERITY} \
+        --cache-dir $TRIVY_CACHE_DIR \
+        --skip-db-update \
+        --skip-java-db-update \
+        --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} \
+        --format json \
+        --output trivy-report.json \
+        "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    
+    - trivy image --severity ${TRIVY_SEVERITY} --cache-dir $TRIVY_CACHE_DIR --skip-db-update --skip-java-db-update --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} --format table "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" | tee trivy-report.txt
+    
+    - |
+      VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length' trivy-report.json || echo "0")
+      echo "Security scan completed. Found $VULN_COUNT HIGH/CRITICAL vulnerabilities"
+      
+      if [ "$VULN_COUNT" -gt 0 ]; then
+        echo "⚠️  Please review the security report in the job artifacts"
+      else
+        echo "✅ No HIGH/CRITICAL vulnerabilities found"
+      fi
+  artifacts:
+    paths:
+      - trivy-report.json
+      - trivy-report.txt
+    reports:
+      container_scanning: trivy-report.json
+    when: always
+    expire_in: 1 week
+  allow_failure: true
+
+# --- USER-MANAGEMENT-SERVICE ---
+build-and-push:user-service:
+  stage: build-and-push-to-nexus
   image: maven:3.8.5-openjdk-17
   script:
-    - echo "--- STARTING DEBUG ---"
-    - echo "1. Verifying environment variables..."
-    - echo "'$NEXUS_URL'"
-    - echo "'$NEXUS_USERNAME'"
-    - echo "----------------------"
-    - echo "2. Copying settings.xml from CI/CD variable..."
     - cp $SETTINGS_XML ./settings-temp.xml
-    - echo "----------------------"
-    - echo "3. Displaying the content of the settings-temp.xml BEFORE Maven uses it:"
-    - cat ./settings-temp.xml
-    - echo "--- ENDING DEBUG ---"
-    - echo "Building, testing, and deploying user-management-service to Nexus..."
     - cd user-management-service
     - mvn clean deploy -s ../settings-temp.xml
   artifacts:
     paths:
       - user-management-service/target/
-    reports:
-      junit:
-        - user-management-service/target/surefire-reports/TEST-*.xml
-    expire_in: 1 hour
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -108,13 +273,7 @@ sonar-analysis:user-service:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
   script:
-    - echo "Preparing settings.xml for SonarQube analysis..."
     - cp $SETTINGS_XML ./settings-temp.xml
-    - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
-
-    - echo "Running SonarQube analysis for user-management-service..."
     - cd user-management-service
     - >-
       mvn verify sonar:sonar -s ../settings-temp.xml
@@ -123,21 +282,18 @@ sonar-analysis:user-service:
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
   needs:
-    - job: unit-tests:user-service
+    - job: build-and-push:user-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
 
-
 performance-test:user-service:
   stage: performance-test
   image: maven:3.8.5-openjdk-17
-  needs: ["unit-tests:user-service"] # Depends on the build job for this service
+  needs: ["build-and-push:user-service"]
   script:
-    - echo "Preparing to run Gatling tests for user-management-service..."
-    - echo "Targeting application at:${STAGING_APP_URL}" 
     - cp $SETTINGS_XML ./settings-temp.xml
     - cd user-management-service
     - >-
@@ -145,53 +301,50 @@ performance-test:user-service:
       -Dgatling.simulationClass=company.user_management_service.simulations.UserManagementSimulation
       -DAPP_URL=${STAGING_APP_URL}
   artifacts:
-    when: always # Save reports even if the test fails
+    when: always
     paths:
       - user-management-service/target/gatling/
-    expire_in: 1 week
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
 
-push:user-service:
-  stage: push
-  image:
-    name: gcr.io/kaniko-project/executor:v1.9.0-debug
-    entrypoint: [""]
-  script:
-    - echo "Building Docker image for user-management-service..."
-    - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    - /kaniko/executor
-      --context $CI_PROJECT_DIR/user-management-service
-      --dockerfile $CI_PROJECT_DIR/user-management-service/Dockerfile
-      --destination $DOCKERHUB_USERNAME/user-management-service:$CI_COMMIT_SHORT_SHA
-      --destination $DOCKERHUB_USERNAME/user-management-service:latest
+push-and-scan:user-service:
+  <<: *docker_build_and_scan_template
+  variables:
+    IMAGE_NAME: "$DOCKERHUB_USERNAME/user-management-service"
+    BUILD_CONTEXT: "user-management-service"
   needs:
-    - job: unit-tests:user-service
+    - job: build-and-push:user-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
 
-# ===================================================================
-# JOBS FOR: document-management-service
-# ===================================================================
-build:document-service:
-  stage: build-and-test
+# Alternative separate security scan job (uncomment if preferred)
+# security-scan:user-service:
+#   <<: *security_scan_template
+#   variables:
+#     IMAGE_NAME: "$DOCKERHUB_USERNAME/user-management-service"
+#   needs:
+#     - job: push-and-scan:user-service
+#   rules:
+#     - if: '$CI_COMMIT_BRANCH == "main"'
+#       changes:
+#         - user-management-service/**/*
+
+# --- DOCUMENT-MANAGEMENT-SERVICE ---
+build-and-push:document-service:
+  stage: build-and-push-to-nexus
   image: maven:3.8.5-openjdk-17
   script:
-    - echo "Preparing settings.xml..."
     - cp $SETTINGS_XML ./settings-temp.xml
-    - echo "Building, testing, and deploying document-management-service..."
-    - cd Document-management-service  # <-- Note the capital D
+    - cd Document-management-service
     - mvn clean deploy -s ../settings-temp.xml
   artifacts:
     paths:
       - Document-management-service/target/
-    expire_in: 1 hour
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -201,13 +354,7 @@ sonar-analysis:document-service:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
   script:
-    - echo "Preparing settings.xml for SonarQube analysis..."
     - cp $SETTINGS_XML ./settings-temp.xml
-    - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
-
-    - echo "Running SonarQube analysis for document-management-service..."
     - cd Document-management-service
     - >-
       mvn verify sonar:sonar -s ../settings-temp.xml
@@ -216,22 +363,18 @@ sonar-analysis:document-service:
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
   needs:
-    - job: build:document-service
+    - job: build-and-push:document-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - Document-management-service/**/*
 
-# In your .gitlab-ci.yml
-
 performance-test:document-service:
   stage: performance-test
   image: maven:3.8.5-openjdk-17
-  needs: ["build:document-service"]
+  needs: ["build-and-push:document-service"]
   script:
-    - echo "Preparing to run Gatling tests for document-management-service..."
-    - echo "Targeting application at:${STAGING_APP_URL}"
     - cp $SETTINGS_XML ./settings-temp.xml
     - cd Document-management-service
     - >-
@@ -242,51 +385,35 @@ performance-test:document-service:
     when: always
     paths:
       - Document-management-service/target/gatling/
-    expire_in: 1 week
   rules:
-    # THIS BLOCK IS NOW CORRECT
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
-        - Document-management-service/**/* # It now mirrors the build job's rule
+        - Document-management-service/**/*
 
-push:document-service:
-  stage: push
-  image:
-    name: gcr.io/kaniko-project/executor:v1.9.0-debug
-    entrypoint: [""]
-  script:
-    - echo "Building Docker image for document-management-service..."
-    - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    - /kaniko/executor
-      --context $CI_PROJECT_DIR/Document-management-service
-      --dockerfile $CI_PROJECT_DIR/Document-management-service/Dockerfile
-      --destination $DOCKERHUB_USERNAME/document-management-service:$CI_COMMIT_SHORT_SHA
-      --destination $DOCKERHUB_USERNAME/document-management-service:latest
+push-and-scan:document-service:
+  <<: *docker_build_and_scan_template
+  variables:
+    IMAGE_NAME: "$DOCKERHUB_USERNAME/document-management-service"
+    BUILD_CONTEXT: "Document-management-service"
   needs:
-    - job: build:document-service
+    - job: build-and-push:document-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - Document-management-service/**/*
 
-# ===================================================================
-# JOBS FOR: leave-management-service
-# ===================================================================
-build:leave-service:
-  stage: build-and-test
+# --- LEAVE-MANAGEMENT-SERVICE ---
+build-and-push:leave-service:
+  stage: build-and-push-to-nexus
   image: maven:3.8.5-openjdk-17
   script:
-    - echo "Preparing settings.xml..."
     - cp $SETTINGS_XML ./settings-temp.xml
-    - echo "Building, testing, and deploying leave-management-service..."
     - cd leave-management-service
     - mvn clean deploy -s ../settings-temp.xml
   artifacts:
     paths:
       - leave-management-service/target/
-    expire_in: 1 hour
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -296,37 +423,27 @@ sonar-analysis:leave-service:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
   script:
-    - echo "Preparing settings.xml for SonarQube analysis..."
     - cp $SETTINGS_XML ./settings-temp.xml
-    - sed -i "s|NEXUS_URL_PLACEHOLDER|$NEXUS_URL|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_USERNAME_PLACEHOLDER|$NEXUS_USERNAME|g" ./settings-temp.xml
-    - sed -i "s|NEXUS_PASSWORD_PLACEHOLDER|$NEXUS_PASSWORD|g" ./settings-temp.xml
-
-    - echo "Running SonarQube analysis for leave-management-service..."
     - cd leave-management-service
     - >-
       mvn verify sonar:sonar -s ../settings-temp.xml
       -Dsonar.projectKey=com.tunisys:leave-management-service
-      -Dsonar.host.url=$SONAR_HOST_URL
+      -Dsonar.host.url=$SONAR_TOKEN
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
   needs:
-    - job: build:leave-service
+    - job: build-and-push:leave-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - leave-management-service/**/*
 
-# In your .gitlab-ci.yml
-
 performance-test:leave-service:
   stage: performance-test
   image: maven:3.8.5-openjdk-17
-  needs: ["build:leave-service"]
+  needs: ["build-and-push:leave-service"]
   script:
-    - echo "Preparing to run Gatling tests for leave-management-service..."
-    - echo "Targeting application at:${STAGING_APP_URL}"
     - cp $SETTINGS_XML ./settings-temp.xml
     - cd leave-management-service
     - >-
@@ -337,29 +454,18 @@ performance-test:leave-service:
     when: always
     paths:
       - leave-management-service/target/gatling/
-    expire_in: 1 week
   rules:
-    # THIS BLOCK IS NOW CORRECT
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
-        - leave-management-service/**/* # It now mirrors the build job's rule
+        - leave-management-service/**/*
 
-push:leave-service:
-  stage: push
-  image:
-    name: gcr.io/kaniko-project/executor:v1.9.0-debug
-    entrypoint: [""]
-  script:
-    - echo "Building Docker image for leave-management-service..."
-    - mkdir -p /kaniko/.docker
-    - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    - /kaniko/executor
-      --context $CI_PROJECT_DIR/leave-management-service
-      --dockerfile $CI_PROJECT_DIR/leave-management-service/Dockerfile
-      --destination $DOCKERHUB_USERNAME/leave-management-service:$CI_COMMIT_SHORT_SHA
-      --destination $DOCKERHUB_USERNAME/leave-management-service:latest
+push-and-scan:leave-service:
+  <<: *docker_build_and_scan_template
+  variables:
+    IMAGE_NAME: "$DOCKERHUB_USERNAME/leave-management-service"
+    BUILD_CONTEXT: "leave-management-service"
   needs:
-    - job: build:leave-service
+    - job: build-and-push:leave-service
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
