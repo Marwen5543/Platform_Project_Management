@@ -1,5 +1,5 @@
 # ===================================================================
-# GITLAB CI WITH TRIVY SECURITY SCANNING
+# GITLAB CI WITH TRIVY SECURITY SCANNING & MAVEN CACHING
 # ===================================================================
 default:
   tags:
@@ -14,20 +14,33 @@ stages:
 
 # ===================================================================
 # GLOBAL VARIABLES
-# All variables are combined into a single block to avoid YAML errors.
 # ===================================================================
 variables:
   DOCKER_VERSION: "20.10.16"
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: ""
   TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache"
-  # Variables to control Trivy behavior in scan jobs
   TRIVY_SEVERITY: "HIGH,CRITICAL"
   TRIVY_IGNORE_UNFIXED: "true"
   TRIVY_TIMEOUT: "30m"
-  # Enable Docker BuildKit for more efficient builds
   DOCKER_BUILDKIT: 1
   BUILDKIT_PROGRESS: plain
+  # Set Maven options to use the local .m2 repository
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+
+# ===================================================================
+# REUSABLE CACHE TEMPLATE FOR MAVEN
+# Caches the .m2 repository to avoid re-downloading dependencies on every run.
+# ===================================================================
+.maven_cache_template: &maven_cache_template
+  cache:
+    key:
+      files:
+        - "*/pom.xml" # Create a new cache if any pom.xml changes
+      prefix: "maven-${CI_JOB_NAME}"
+    paths:
+      - .m2/repository/
+    policy: pull-push
 
 # ===================================================================
 # SCHEDULED JOB FOR UPDATING THE TRIVY DATABASE CACHE
@@ -36,7 +49,7 @@ update-trivy-db:
   stage: setup
   image: alpine:3.18
   cache:
-    key: trivy-db-v4 # This key must match the key used in the scan job
+    key: trivy-db-v4
     paths:
       - .trivycache/
     policy: pull-push
@@ -64,7 +77,7 @@ update-trivy-db:
     - name: docker:${DOCKER_VERSION}-dind
       alias: docker
   cache:
-    key: trivy-db-v4 # This key must match the key used in the update-trivy-db job
+    key: trivy-db-v4
     paths:
       - .trivycache/
     policy: pull
@@ -78,29 +91,15 @@ update-trivy-db:
     - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" "$BUILD_CONTEXT"
     - echo "Scanning the container image for vulnerabilities..."
     - |
-      if [ -d "$TRIVY_CACHE_DIR" ] && [ "$(ls -A $TRIVY_CACHE_DIR)" ]; then
-        echo "Using pre-warmed cache..."
-        trivy image --severity ${TRIVY_SEVERITY} \
-          --cache-dir $TRIVY_CACHE_DIR \
-          --skip-db-update \
-          --skip-java-db-update \
-          --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} \
-          --format json \
-          --output trivy-report.json \
-          "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-      else
-        echo "Cache not found or empty. Downloading database..."
-        trivy image --severity ${TRIVY_SEVERITY} \
-          --cache-dir $TRIVY_CACHE_DIR \
-          --timeout ${TRIVY_TIMEOUT} \
-          --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} \
-          --format json \
-          --output trivy-report.json \
-          "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-      fi
-    # Generate human-readable report for the logs
+      trivy image --severity ${TRIVY_SEVERITY} \
+        --cache-dir $TRIVY_CACHE_DIR \
+        --skip-db-update \
+        --skip-java-db-update \
+        --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} \
+        --format json \
+        --output trivy-report.json \
+        "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
     - trivy image --severity ${TRIVY_SEVERITY} --cache-dir $TRIVY_CACHE_DIR --skip-db-update --skip-java-db-update --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} --format table "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" | tee trivy-report.txt
-    # Check if there are any CRITICAL vulnerabilities to enforce a security gate
     - |
       CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-report.json || echo "0")
       if [ "$CRITICAL_COUNT" -gt 0 ]; then
@@ -121,9 +120,8 @@ update-trivy-db:
       container_scanning: trivy-report.json
     when: always
     expire_in: 1 week
-  # This job will now FAIL if CRITICAL vulnerabilities are found.
-  # Set to 'true' if you only want a warning.
-  allow_failure: true 
+  # The security gate is now properly re-enabled.
+  allow_failure: false
 
 # ===================================================================
 # JOBS FOR EACH MICROSERVICE
@@ -133,6 +131,7 @@ update-trivy-db:
 build-and-push:user-service:
   stage: build-and-push-to-nexus
   image: maven:3.8.5-openjdk-17
+  <<: *maven_cache_template
   script:
     - cp $SETTINGS_XML ./settings-temp.xml
     - cd user-management-service
@@ -148,6 +147,7 @@ build-and-push:user-service:
 sonar-analysis:user-service:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
+  <<: *maven_cache_template
   script:
     - cp $SETTINGS_XML ./settings-temp.xml
     - cd user-management-service
@@ -168,6 +168,7 @@ sonar-analysis:user-service:
 performance-test:user-service:
   stage: performance-test
   image: maven:3.8.5-openjdk-17
+  <<: *maven_cache_template
   needs: ["build-and-push:user-service"]
   script:
     - cp $SETTINGS_XML ./settings-temp.xml
@@ -184,6 +185,7 @@ performance-test:user-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
+      when: manual
 
 push-and-scan:user-service:
   <<: *docker_build_and_scan_template
@@ -202,6 +204,7 @@ push-and-scan:user-service:
 build-and-push:document-service:
   stage: build-and-push-to-nexus
   image: maven:3.8.5-openjdk-17
+  <<: *maven_cache_template
   script:
     - cp $SETTINGS_XML ./settings-temp.xml
     - cd Document-management-service
@@ -217,6 +220,7 @@ build-and-push:document-service:
 sonar-analysis:document-service:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
+  <<: *maven_cache_template
   script:
     - cp $SETTINGS_XML ./settings-temp.xml
     - cd Document-management-service
@@ -237,6 +241,7 @@ sonar-analysis:document-service:
 performance-test:document-service:
   stage: performance-test
   image: maven:3.8.5-openjdk-17
+  <<: *maven_cache_template
   needs: ["build-and-push:document-service"]
   script:
     - cp $SETTINGS_XML ./settings-temp.xml
@@ -253,6 +258,7 @@ performance-test:document-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - Document-management-service/**/*
+      when: manual
 
 push-and-scan:document-service:
   <<: *docker_build_and_scan_template
@@ -271,6 +277,7 @@ push-and-scan:document-service:
 build-and-push:leave-service:
   stage: build-and-push-to-nexus
   image: maven:3.8.5-openjdk-17
+  <<: *maven_cache_template
   script:
     - cp $SETTINGS_XML ./settings-temp.xml
     - cd leave-management-service
@@ -286,6 +293,7 @@ build-and-push:leave-service:
 sonar-analysis:leave-service:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
+  <<: *maven_cache_template
   script:
     - cp $SETTINGS_XML ./settings-temp.xml
     - cd leave-management-service
@@ -306,6 +314,7 @@ sonar-analysis:leave-service:
 performance-test:leave-service:
   stage: performance-test
   image: maven:3.8.5-openjdk-17
+  <<: *maven_cache_template
   needs: ["build-and-push:leave-service"]
   script:
     - cp $SETTINGS_XML ./settings-temp.xml
@@ -322,6 +331,7 @@ performance-test:leave-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - leave-management-service/**/*
+      when: manual
 
 push-and-scan:leave-service:
   <<: *docker_build_and_scan_template
