@@ -55,7 +55,7 @@ update-trivy-db:
   before_script:
     - echo "Waiting for Docker daemon to be ready..."
     - while ! docker info; do sleep 1; done
-    - echo "Installing dependencies: curl, ca-certificates, and trivy..."
+    - echo "Installing dependencies:curl, ca-certificates, and trivy..."
     - apk update
     - apk add --no-cache curl ca-certificates
     - curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.58.0/trivy_0.58.0_Linux-64bit.tar.gz -o trivy.tar.gz
