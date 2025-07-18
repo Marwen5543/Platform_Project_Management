@@ -22,31 +22,15 @@ variables:
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "" # Disable TLS for dind service
 
-# update-trivy-db job remains the same and is correct.
-update-trivy-db:
-  stage: setup
-  image: alpine:3.18
-  cache:
-    key: trivy-global-cache-v2
-    paths:
-      - .trivycache/
-    policy: pull-push
-  script:
-    - apk add --no-cache wget ca-certificates
-    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-    - trivy image --download-db-only --cache-dir "$CI_PROJECT_DIR/.trivycache/" --timeout 30m
-    - trivy image --download-java-db-only --cache-dir "$CI_PROJECT_DIR/.trivycache/" --timeout 30m
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
-
 # ===================================================================
-# NEW UNIFIED DOCKER + TRIVY TEMPLATE (THE FINAL FIX)
+# UNIFIED DOCKER + TRIVY TEMPLATE (THE FINAL FIX)
 # ===================================================================
 .docker_build_and_scan_template: &docker_build_and_scan_template
   stage: push-and-scan-image
-  image: docker:${DOCKER_VERSION}
+  image: docker:${DOCKER_VERSION} # This image CONTAINS 'apk'
   services:
-    - docker:${DOCKER_VERSION}-dind
+    - name: docker:${DOCKER_VERSION}-dind
+      alias: docker # This service provides the Docker daemon
   cache:
     key: trivy-global-cache-v2
     paths:
@@ -55,28 +39,25 @@ update-trivy-db:
   before_script:
     - echo "Waiting for Docker daemon to be ready..."
     - while ! docker info; do sleep 1; done
-    - echo "Installing dependencies:curl, ca-certificates, and trivy..."
+    - echo "Installing dependencies:trivy..."
     - apk update
-    - apk add --no-cache curl ca-certificates
+    - apk add --no-cache curl ca-certificates # This will now work
     - curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.58.0/trivy_0.58.0_Linux-64bit.tar.gz -o trivy.tar.gz
     - tar -xzf trivy.tar.gz
     - mv trivy /usr/local/bin/
-    - trivy --version
     - echo "Logging in to Docker Hub..."
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
     - echo "Building Docker image..."
     - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" "$BUILD_CONTEXT"
-    - echo "Scanning the final container image for vulnerabilities..."
-    - trivy image --exit-code 1 --severity CRITICAL,HIGH --cache-dir "$CI_PROJECT_DIR/.trivycache/" --skip-db-update --skip-java-db-update --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-    - echo "Trivy scan passed. Pushing images to registry..."
+    - echo "Scanning the container image..."
+    - trivy image --exit-code 1 --severity CRITICAL,HIGH --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - echo "Trivy scan passed. Pushing images..."
     - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
     - docker push "$IMAGE_NAME:latest"
   artifacts:
-    when: always
     reports:
       container_scanning: gl-container-scanning-report.json
-    expire_in: 1 week
 
 # ===================================================================
 # JOBS FOR ALL SERVICES
