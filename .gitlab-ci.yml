@@ -30,7 +30,7 @@ update-trivy-db:
     policy: pull-push
   script:
     - echo "Updating Trivy database cache..."
-    - apk add --no-cache wget
+    - apk add --no-cache wget ca-certificates # Added ca-certificates for safety
     - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
     - mkdir -p "$TRIVY_CACHE_DIR"
     - trivy image --download-db-only --cache-dir "$TRIVY_CACHE_DIR" --timeout 30m
@@ -47,33 +47,31 @@ update-trivy-db:
     name: gcr.io/kaniko-project/executor:v1.9.0-debug
     entrypoint: [""]
   cache:
-    key: trivy-global-cache-v2
+    key:
+      files:
+        - .trivy-db.version
+      prefix: trivy-v2
     paths:
       - .trivycache/
     policy: pull
   before_script:
-    - echo "DEBUG:Starting before_script"
-    - echo "DEBUG:Testing network connectivity to GitHub"
-    - curl -I https://github.com || echo "ERROR:Failed to reach GitHub"
-    - echo "DEBUG:Updating CA certificates and installing curl"
+    - echo "Installing dependencies..."
     - apk update
-    - apk add curl ca-certificates
-    - echo "DEBUG:Installing Trivy"
+    - apk add curl ca-certificates # <<< THIS IS THE MOST IMPORTANT FIX FOR THE TLS ERROR
+    - echo "Installing Trivy..."
     - curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.58.0/trivy_0.58.0_Linux-64bit.tar.gz -o trivy.tar.gz
     - tar -xzf trivy.tar.gz
     - mv trivy /usr/local/bin/
-    - echo "DEBUG:Verifying Trivy installation"
     - trivy --version
-  script:
-    - echo "Scanning filesystem for vulnerabilities"
-    - trivy fs --exit-code 0 --severity CRITICAL,HIGH --cache-dir "$TRIVY_CACHE_DIR" --skip-db-update "$BUILD_CONTEXT"
+    - echo "Preparing Kaniko authentication..."
     - mkdir -p /kaniko/.docker
     - echo "{\"auths\":{\"https://index.docker.io/v1/\":{\"auth\":\"$(echo -n ${DOCKERHUB_USERNAME}:${DOCKERHUB_TOKEN} | base64 | tr -d '\n')\"}}}" > /kaniko/.docker/config.json
-    - echo "Building image with Kaniko and saving as a tarball"
+  script:
+    - echo "Building image with Kaniko and saving as a tarball..."
     - /kaniko/executor --context "$BUILD_CONTEXT" --dockerfile "$BUILD_CONTEXT/Dockerfile" --destination "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" --tarPath image.tar --no-push
-    - echo "Scanning the final container image"
+    - echo "Scanning the final container image for vulnerabilities..."
     - trivy image --input image.tar --exit-code 1 --severity CRITICAL,HIGH --cache-dir "$TRIVY_CACHE_DIR" --skip-db-update --skip-java-db-update --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json
-    - echo "Trivy scan passed. Pushing image to registry"
+    - echo "Trivy scan passed. Pushing image to registry..."
     - /kaniko/executor --context "$BUILD_CONTEXT" --dockerfile "$BUILD_CONTEXT/Dockerfile" --destination "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" --destination "$IMAGE_NAME:latest"
   artifacts:
     when: always
@@ -253,28 +251,13 @@ performance-test:document-service:
         - Document-management-service/**/*
 
 push-and-scan:document-service:
-  stage: push-and-scan-image
-  image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
+  <<: *kaniko_and_trivy_template # <<< USE THE TEMPLATE
   variables:
-    DOCKER_HOST: tcp://docker:2375/
-    DOCKER_TLS_CERTDIR: ""
     IMAGE_NAME: "$DOCKERHUB_USERNAME/document-management-service"
-  script:
-    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-    - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" ./Document-management-service
-    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-    - trivy image --exit-code 1 --severity CRITICAL,HIGH --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-    - echo "Trivy scan passed. Pushing images..."
-    - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-    - docker push "$IMAGE_NAME:latest"
+    BUILD_CONTEXT: "$CI_PROJECT_DIR/Document-management-service" # <<< Set context for this service
   needs:
-    - job: build-and-push:document-service # Depends on the newly named job
+    - job: build-and-push:document-service
       artifacts: true
-  artifacts:
-    reports:
-      container_scanning: gl-container-scanning-report.json
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -350,28 +333,13 @@ performance-test:leave-service:
         - leave-management-service/**/*
 
 push-and-scan:leave-service:
-  stage: push-and-scan-image
-  image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
+  <<: *kaniko_and_trivy_template # <<< USE THE TEMPLATE
   variables:
-    DOCKER_HOST: tcp://docker:2375/
-    DOCKER_TLS_CERTDIR: ""
     IMAGE_NAME: "$DOCKERHUB_USERNAME/leave-management-service"
-  script:
-    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-    - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" ./leave-management-service
-    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-    - trivy image --exit-code 1 --severity CRITICAL,HIGH --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-    - echo "Trivy scan passed. Pushing images..."
-    - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-    - docker push "$IMAGE_NAME:latest"
+    BUILD_CONTEXT: "$CI_PROJECT_DIR/leave-management-service" # <<< Set context for this service
   needs:
-    - job: build-and-push:leave-service # Depends on the newly named job
+    - job: build-and-push:leave-service
       artifacts: true
-  artifacts:
-    reports:
-      container_scanning: gl-container-scanning-report.json
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
