@@ -1,5 +1,5 @@
 # ===================================================================
-# IMPROVED GITLAB CI WITH TRIVY SECURITY SCANNING
+# GITLAB CI WITH TRIVY SECURITY SCANNING
 # ===================================================================
 default:
   tags:
@@ -12,88 +12,31 @@ stages:
   - performance-test
   - push-and-scan-image
 
+# ===================================================================
+# GLOBAL VARIABLES
+# All variables are combined into a single block to avoid YAML errors.
+# ===================================================================
 variables:
   DOCKER_VERSION: "20.10.16"
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: ""
   TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache"
-  # Add these variables to control Trivy behavior
+  # Variables to control Trivy behavior in scan jobs
   TRIVY_SEVERITY: "HIGH,CRITICAL"
   TRIVY_IGNORE_UNFIXED: "true"
   TRIVY_TIMEOUT: "30m"
-
-# ===================================================================
-<<<<<<< HEAD
-# GLOBAL VARIABLES AND CACHE FOR TRIVY
-# ===================================================================
-variables:
-  TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache/"
+  # Enable Docker BuildKit for more efficient builds
   DOCKER_BUILDKIT: 1
   BUILDKIT_PROGRESS: plain
 
-# Global cache for Trivy - shared across all jobs
-.trivy_cache: &trivy_cache
-  cache:
-    key: trivy-global-cache
-    paths:
-      - .trivycache/
-    policy: pull-push
-
 # ===================================================================
-# TEMPLATE FOR TRIVY SCAN
-# ===================================================================
-.trivy_scan_template: &trivy_scan_template
-  image: docker:20.10.16
-  services:
-    - docker:20.10.16-dind
-  variables:
-    DOCKER_HOST: tcp://docker:2375/
-    DOCKER_TLS_CERTDIR: ""
-  <<: *trivy_cache
-  before_script:
-    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-    - apk add --no-cache wget
-    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-    - mkdir -p "$TRIVY_CACHE_DIR"
-    # Download databases once with longer timeout
-    - trivy image --download-db-only --cache-dir "$TRIVY_CACHE_DIR" --timeout 30m
-    - trivy image --download-java-db-only --cache-dir "$TRIVY_CACHE_DIR" --timeout 30m
-  script:
-    - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" "$BUILD_CONTEXT"
-    # Run scan with optimized settings
-    - echo "Scanning image with Trivy..."
-    - trivy image 
-        --exit-code 1 
-        --severity CRITICAL,HIGH 
-        --timeout 60m 
-        --cache-dir "$TRIVY_CACHE_DIR"
-        --skip-db-update 
-        --skip-java-db-update
-        --format template 
-        --template "@contrib/gitlab.tpl" 
-        -o gl-container-scanning-report.json 
-        "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-    - echo "Trivy scan passed. Pushing images..."
-    - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-    - docker push "$IMAGE_NAME:latest"
-  artifacts:
-    when: always
-    reports:
-      container_scanning: gl-container-scanning-report.json
-    expire_in: 1 week
-
-    
-# ===================================================================
-# JOBS FOR: user-management-service
-=======
-# SCHEDULED JOB FOR UPDATING THE CACHE
->>>>>>> fe903f1fbf914cdb44c268689726f9e25c176a27
+# SCHEDULED JOB FOR UPDATING THE TRIVY DATABASE CACHE
 # ===================================================================
 update-trivy-db:
   stage: setup
   image: alpine:3.18
   cache:
-    key: trivy-db-v4
+    key: trivy-db-v4 # This key must match the key used in the scan job
     paths:
       - .trivycache/
     policy: pull-push
@@ -112,7 +55,7 @@ update-trivy-db:
     - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web"'
 
 # ===================================================================
-# IMPROVED DOCKER BUILD AND SCAN TEMPLATE
+# REUSABLE DOCKER BUILD AND SCAN TEMPLATE
 # ===================================================================
 .docker_build_and_scan_template: &docker_build_and_scan_template
   stage: push-and-scan-image
@@ -121,7 +64,7 @@ update-trivy-db:
     - name: docker:${DOCKER_VERSION}-dind
       alias: docker
   cache:
-    key: trivy-db-v4
+    key: trivy-db-v4 # This key must match the key used in the update-trivy-db job
     paths:
       - .trivycache/
     policy: pull
@@ -134,8 +77,6 @@ update-trivy-db:
   script:
     - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" "$BUILD_CONTEXT"
     - echo "Scanning the container image for vulnerabilities..."
-    
-    # First, run a scan without exit-code to generate the report
     - |
       if [ -d "$TRIVY_CACHE_DIR" ] && [ "$(ls -A $TRIVY_CACHE_DIR)" ]; then
         echo "Using pre-warmed cache..."
@@ -157,101 +98,36 @@ update-trivy-db:
           --output trivy-report.json \
           "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
       fi
-    
-    # Generate human-readable report
+    # Generate human-readable report for the logs
     - trivy image --severity ${TRIVY_SEVERITY} --cache-dir $TRIVY_CACHE_DIR --skip-db-update --skip-java-db-update --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} --format table "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" | tee trivy-report.txt
-    
-    # Check if there are any HIGH or CRITICAL vulnerabilities
+    # Check if there are any CRITICAL vulnerabilities to enforce a security gate
     - |
-      VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length' trivy-report.json || echo "0")
-      echo "Found $VULN_COUNT HIGH/CRITICAL vulnerabilities"
-      
-      if [ "$VULN_COUNT" -gt 0 ]; then
-        echo "❌ Security scan failed: Found $VULN_COUNT HIGH/CRITICAL vulnerabilities"
-        echo "Please review the trivy-report.json and trivy-report.txt artifacts"
-        
-        # Option 1: Fail the pipeline (current behavior)
-        # exit 1
-        
-        # Option 2: Allow pipeline to continue but mark as warning
-        echo "⚠️  Continuing pipeline despite vulnerabilities (review required)"
-        
-        # Option 3: Only fail on CRITICAL vulnerabilities
-        CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-report.json || echo "0")
-        if [ "$CRITICAL_COUNT" -gt 0 ]; then
-          echo "❌ Found $CRITICAL_COUNT CRITICAL vulnerabilities - failing pipeline"
-          exit 1
-        else
-          echo "⚠️  Only HIGH vulnerabilities found - continuing pipeline"
-        fi
+      CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-report.json || echo "0")
+      if [ "$CRITICAL_COUNT" -gt 0 ]; then
+        echo "❌ Security gate FAILED: Found $CRITICAL_COUNT CRITICAL vulnerabilities. Halting pipeline."
+        echo "Please review the trivy-report.json and trivy-report.txt artifacts."
+        exit 1
       else
-        echo "✅ No HIGH/CRITICAL vulnerabilities found"
+        echo "✅ Security gate PASSED: No CRITICAL vulnerabilities found."
       fi
-    
     - echo "Pushing images to registry..."
     - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
     - docker push "$IMAGE_NAME:latest"
-    
   artifacts:
     paths:
       - trivy-report.json
       - trivy-report.txt
     reports:
-      # This creates a security report in GitLab
       container_scanning: trivy-report.json
     when: always
     expire_in: 1 week
-  # Change this based on your preference
-  allow_failure: true  # Set to false if you want to fail the pipeline on vulnerabilities
+  # This job will now FAIL if CRITICAL vulnerabilities are found.
+  # Set to 'true' if you only want a warning.
+  allow_failure: false
 
 # ===================================================================
-# ALTERNATIVE: SEPARATE SCAN JOB (NON-BLOCKING)
+# JOBS FOR EACH MICROSERVICE
 # ===================================================================
-.security_scan_template: &security_scan_template
-  stage: push-and-scan-image
-  image: alpine:3.18
-  cache:
-    key: trivy-db-v4
-    paths:
-      - .trivycache/
-    policy: pull
-  before_script:
-    - apk add --no-cache wget ca-certificates jq
-    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-    - mkdir -p $TRIVY_CACHE_DIR
-    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-  script:
-    - echo "Scanning $IMAGE_NAME:$CI_COMMIT_SHORT_SHA for vulnerabilities..."
-    - |
-      trivy image --severity ${TRIVY_SEVERITY} \
-        --cache-dir $TRIVY_CACHE_DIR \
-        --skip-db-update \
-        --skip-java-db-update \
-        --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} \
-        --format json \
-        --output trivy-report.json \
-        "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-    
-    - trivy image --severity ${TRIVY_SEVERITY} --cache-dir $TRIVY_CACHE_DIR --skip-db-update --skip-java-db-update --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} --format table "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" | tee trivy-report.txt
-    
-    - |
-      VULN_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "HIGH" or .Severity == "CRITICAL")] | length' trivy-report.json || echo "0")
-      echo "Security scan completed. Found $VULN_COUNT HIGH/CRITICAL vulnerabilities"
-      
-      if [ "$VULN_COUNT" -gt 0 ]; then
-        echo "⚠️  Please review the security report in the job artifacts"
-      else
-        echo "✅ No HIGH/CRITICAL vulnerabilities found"
-      fi
-  artifacts:
-    paths:
-      - trivy-report.json
-      - trivy-report.txt
-    reports:
-      container_scanning: trivy-report.json
-    when: always
-    expire_in: 1 week
-  allow_failure: true
 
 # --- USER-MANAGEMENT-SERVICE ---
 build-and-push:user-service:
@@ -321,18 +197,6 @@ push-and-scan:user-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
-
-# Alternative separate security scan job (uncomment if preferred)
-# security-scan:user-service:
-#   <<: *security_scan_template
-#   variables:
-#     IMAGE_NAME: "$DOCKERHUB_USERNAME/user-management-service"
-#   needs:
-#     - job: push-and-scan:user-service
-#   rules:
-#     - if: '$CI_COMMIT_BRANCH == "main"'
-#       changes:
-#         - user-management-service/**/*
 
 # --- DOCUMENT-MANAGEMENT-SERVICE ---
 build-and-push:document-service:
@@ -428,7 +292,7 @@ sonar-analysis:leave-service:
     - >-
       mvn verify sonar:sonar -s ../settings-temp.xml
       -Dsonar.projectKey=com.tunisys:leave-management-service
-      -Dsonar.host.url=$SONAR_TOKEN
+      -Dsonar.host.url=$SONAR_HOST_URL
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
   needs:
