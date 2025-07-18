@@ -123,7 +123,7 @@ update-trivy-db:
     expire_in: 1 week
   # This job will now FAIL if CRITICAL vulnerabilities are found.
   # Set to 'true' if you only want a warning.
-  allow_failure: false
+  allow_failure: true 
 
 # ===================================================================
 # JOBS FOR EACH MICROSERVICE

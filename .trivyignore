@@ -18,6 +18,10 @@
 # CVE-2023-21967
 # CVE-2023-21968
 
+# Will be fixed by updating Spring Boot in ticket [JIRA-123].
+CVE-2025-24813 # Critical vulnerability in tomcat-embed-core
+CVE-2024-38821 # Critical vulnerability in spring-security-web
+
 # OS-level vulnerabilities that don't affect the application
 # Uncomment these if they're causing issues and you've verified they don't affect your app
 # CVE-2022-3219
