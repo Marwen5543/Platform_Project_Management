@@ -1,5 +1,5 @@
 # ===================================================================
-# FINAL VERSION - USING DOCKER-IN-DOCKER
+# FINAL, PROFESSIONAL, AND FAST VERSION
 # ===================================================================
 default:
   tags:
@@ -12,46 +12,72 @@ stages:
   - performance-test
   - push-and-scan-image
 
-# ===================================================================
-# GLOBAL VARIABLES AND TEMPLATES
-# ===================================================================
 variables:
-  # Define a stable docker version to use
   DOCKER_VERSION: "20.10.16"
-  # Set the driver for Docker-in-Docker
   DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: "" # Disable TLS for dind service
+  DOCKER_TLS_CERTDIR: ""
+  # Define the cache directory as a variable
+  TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache"
 
 # ===================================================================
-# UNIFIED DOCKER + TRIVY TEMPLATE (THE FINAL FIX)
+# CHANGE 1: THE NEW SCHEDULED JOB FOR UPDATING THE CACHE
+# This job runs slowly on a schedule to pre-warm the cache.
+# ===================================================================
+update-trivy-db:
+  stage: setup
+  image: alpine:3.18
+  cache:
+    key: trivy-db-v3 # Use a consistent key
+    paths:
+      - .trivycache/
+    policy: pull-push # This job UPDATES the cache
+  script:
+    - echo "Updating Trivy database cache..."
+    - apk add --no-cache wget ca-certificates
+    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    - mkdir -p $TRIVY_CACHE_DIR
+    # This is allowed to be slow. We give it a long timeout.
+    - echo "Downloading OS vulnerability database..."
+    - trivy image --download-db-only --cache-dir $TRIVY_CACHE_DIR --timeout 30m
+    - echo "Downloading Java index database (this can take a long time)..."
+    - trivy image --download-java-db-only --cache-dir $TRIVY_CACHE_DIR --timeout 45m
+    - echo "Trivy cache updated successfully."
+  rules:
+    # This job ONLY runs when you trigger it on a schedule.
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+
+# ===================================================================
+# CHANGE 2: THE UPDATED TEMPLATE FOR THE MAIN PIPELINE
+# This template is now configured to NEVER download the DB.
 # ===================================================================
 .docker_build_and_scan_template: &docker_build_and_scan_template
   stage: push-and-scan-image
-  image: docker:${DOCKER_VERSION} # This image CONTAINS 'apk'
+  image: docker:${DOCKER_VERSION}
   services:
     - name: docker:${DOCKER_VERSION}-dind
-      alias: docker # This service provides the Docker daemon
+      alias: docker
   cache:
-    key: trivy-global-cache-v2
+    key: trivy-db-v3 # Use the same key
     paths:
       - .trivycache/
-    policy: pull
+    policy: pull # This job ONLY READS the cache
   before_script:
-    - echo "Waiting for Docker daemon to be ready..."
+    # ... (the before_script is mostly the same)
     - while ! docker info; do sleep 1; done
-    - echo "Installing dependencies:trivy..."
-    - apk update
-    - apk add --no-cache curl ca-certificates # This will now work
-    - curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.58.0/trivy_0.58.0_Linux-64bit.tar.gz -o trivy.tar.gz
-    - tar -xzf trivy.tar.gz
-    - mv trivy /usr/local/bin/
-    - echo "Logging in to Docker Hub..."
+    - apk update && apk add --no-cache curl ca-certificates
+    - curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.58.0/trivy_0.58.0_Linux-64bit.tar.gz | tar -C /usr/local/bin -xzf - trivy
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   script:
-    - echo "Building Docker image..."
     - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" "$BUILD_CONTEXT"
-    - echo "Scanning the container image..."
-    - trivy image --exit-code 1 --severity CRITICAL,HIGH --format template --template "@contrib/gitlab.tpl" -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - echo "Scanning the container image using pre-warmed cache..."
+    # THESE FLAGS ARE THE KEY TO MAKING IT FAST
+    - >
+      trivy image --exit-code 1 --severity CRITICAL,HIGH
+      --cache-dir $TRIVY_CACHE_DIR
+      --skip-db-update
+      --skip-java-db-update
+      --format template --template "@contrib/gitlab.tpl"
+      -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
     - echo "Trivy scan passed. Pushing images..."
     - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
     - docker push "$IMAGE_NAME:latest"
@@ -59,10 +85,9 @@ variables:
     reports:
       container_scanning: gl-container-scanning-report.json
 
-# ===================================================================
-# JOBS FOR ALL SERVICES
-# The build, sonar, and performance jobs are unchanged.
-# Only the push-and-scan jobs are updated to use the new template.
+# --- PASTE ALL YOUR OTHER JOBS BELOW. They do not need to change. ---
+# (build-and-push:user-service, sonar-analysis:user-service, push-and-scan:user-service, etc.)
+# The push-and-scan jobs will automatically use the new, fast template.
 # ===================================================================
 
 # --- USER-MANAGEMENT-SERVICE ---
