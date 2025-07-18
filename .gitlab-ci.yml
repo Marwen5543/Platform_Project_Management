@@ -1,5 +1,5 @@
 # ===================================================================
-# FINAL, PROFESSIONAL, AND FAST VERSION
+# FINAL, PROFESSIONAL, AND FAST VERSION - WINDOWS COMPATIBLE
 # ===================================================================
 default:
   tags:
@@ -27,7 +27,7 @@ update-trivy-db:
   stage: setup
   image: alpine:3.18
   cache:
-    key: trivy-db-v3 # Use a consistent key
+    key: trivy-db-v4 # Increment version to force fresh cache
     paths:
       - .trivycache/
     policy: pull-push # This job UPDATES the cache
@@ -42,13 +42,14 @@ update-trivy-db:
     - echo "Downloading Java index database (this can take a long time)..."
     - trivy image --download-java-db-only --cache-dir $TRIVY_CACHE_DIR --timeout 45m
     - echo "Trivy cache updated successfully."
+    - ls -la $TRIVY_CACHE_DIR
   rules:
-    # This job ONLY runs when you trigger it on a schedule.
+    # This job ONLY runs when you trigger it on a schedule or manually
     - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web"'
 
 # ===================================================================
 # CHANGE 2: THE UPDATED TEMPLATE FOR THE MAIN PIPELINE
-# This template is now configured to NEVER download the DB.
+# This template now handles the case where cache might not exist
 # ===================================================================
 .docker_build_and_scan_template: &docker_build_and_scan_template
   stage: push-and-scan-image
@@ -57,38 +58,46 @@ update-trivy-db:
     - name: docker:${DOCKER_VERSION}-dind
       alias: docker
   cache:
-    key: trivy-db-v3 # Use the same key
+    key: trivy-db-v4 # Use the same key as update job
     paths:
       - .trivycache/
     policy: pull # This job ONLY READS the cache
   before_script:
-    # ... (the before_script is mostly the same)
     - while ! docker info; do sleep 1; done
     - apk update && apk add --no-cache curl ca-certificates
     - curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.58.0/trivy_0.58.0_Linux-64bit.tar.gz | tar -C /usr/local/bin -xzf - trivy
     - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - mkdir -p $TRIVY_CACHE_DIR
   script:
     - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" "$BUILD_CONTEXT"
-    - echo "Scanning the container image using pre-warmed cache..."
-    # THESE FLAGS ARE THE KEY TO MAKING IT FAST
-    - >
-      trivy image --exit-code 1 --severity CRITICAL,HIGH
-      --cache-dir $TRIVY_CACHE_DIR
-      --skip-db-update
-      --skip-java-db-update
-      --format template --template "@contrib/gitlab.tpl"
-      -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - echo "Scanning the container image..."
+    # Check if cache exists and has content
+    - |
+      if [ -d "$TRIVY_CACHE_DIR" ] && [ "$(ls -A $TRIVY_CACHE_DIR)" ]; then
+        echo "Using pre-warmed cache..."
+        trivy image --exit-code 1 --severity CRITICAL,HIGH \
+          --cache-dir $TRIVY_CACHE_DIR \
+          --skip-db-update \
+          --skip-java-db-update \
+          --format template --template "@contrib/gitlab.tpl" \
+          -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+      else
+        echo "Cache not found or empty. Downloading database (this will be slow)..."
+        trivy image --exit-code 1 --severity CRITICAL,HIGH \
+          --cache-dir $TRIVY_CACHE_DIR \
+          --timeout 30m \
+          --format template --template "@contrib/gitlab.tpl" \
+          -o gl-container-scanning-report.json "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+      fi
     - echo "Trivy scan passed. Pushing images..."
     - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
     - docker push "$IMAGE_NAME:latest"
   artifacts:
     reports:
       container_scanning: gl-container-scanning-report.json
-
-# --- PASTE ALL YOUR OTHER JOBS BELOW. They do not need to change. ---
-# (build-and-push:user-service, sonar-analysis:user-service, push-and-scan:user-service, etc.)
-# The push-and-scan jobs will automatically use the new, fast template.
-# ===================================================================
+    paths:
+      - gl-container-scanning-report.json
+    when: always
 
 # --- USER-MANAGEMENT-SERVICE ---
 build-and-push:user-service:
@@ -105,7 +114,7 @@ build-and-push:user-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
-# Sonar and Performance jobs for user-service are fine, no change needed.
+
 sonar-analysis:user-service:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
@@ -125,6 +134,7 @@ sonar-analysis:user-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
+
 performance-test:user-service:
   stage: performance-test
   image: maven:3.8.5-openjdk-17
@@ -173,7 +183,7 @@ build-and-push:document-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - Document-management-service/**/*
-# Sonar and Performance jobs for document-service are fine, no change needed.
+
 sonar-analysis:document-service:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
@@ -193,6 +203,7 @@ sonar-analysis:document-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - Document-management-service/**/*
+
 performance-test:document-service:
   stage: performance-test
   image: maven:3.8.5-openjdk-17
@@ -241,7 +252,7 @@ build-and-push:leave-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - leave-management-service/**/*
-# Sonar and Performance jobs for leave-service are fine, no change needed.
+
 sonar-analysis:leave-service:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
@@ -251,7 +262,7 @@ sonar-analysis:leave-service:
     - >-
       mvn verify sonar:sonar -s ../settings-temp.xml
       -Dsonar.projectKey=com.tunisys:leave-management-service
-      -Dsonar.host.url=$SONAR_HOST_URL
+      -Dsonar.host.url=$SONAR_TOKEN
       -Dsonar.login=$SONAR_TOKEN
       -Dsonar.qualitygate.wait=true
   needs:
@@ -261,6 +272,7 @@ sonar-analysis:leave-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - leave-management-service/**/*
+
 performance-test:leave-service:
   stage: performance-test
   image: maven:3.8.5-openjdk-17
