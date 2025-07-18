@@ -44,7 +44,7 @@ update-trivy-db:
     - echo "Trivy cache updated successfully."
   rules:
     # This job ONLY runs when you trigger it on a schedule.
-    - if: '$CI_PIPELINE_SOURCE == "schedule"'
+    - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web"'
 
 # ===================================================================
 # CHANGE 2: THE UPDATED TEMPLATE FOR THE MAIN PIPELINE
