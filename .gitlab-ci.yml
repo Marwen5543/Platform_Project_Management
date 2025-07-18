@@ -68,7 +68,7 @@ update-trivy-db:
     - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web"'
 
 # ===================================================================
-# REUSABLE DOCKER BUILD AND SCAN TEMPLATE
+# REUSABLE DOCKER BUILD AND SCAN TEMPLATE - *** THIS SECTION IS FIXED ***
 # ===================================================================
 .docker_build_and_scan_template: &docker_build_and_scan_template
   stage: push-and-scan-image
@@ -77,10 +77,10 @@ update-trivy-db:
     - name: docker:${DOCKER_VERSION}-dind
       alias: docker
   cache:
-    key: trivy-db-v4
+    key: trivy-scan-cache-${CI_JOB_NAME} # Job-specific cache for trivy DB
     paths:
       - .trivycache/
-    policy: pull
+    policy: pull-push
   before_script:
     - while ! docker info; do sleep 1; done
     - apk update && apk add --no-cache curl ca-certificates jq
@@ -89,17 +89,24 @@ update-trivy-db:
     - mkdir -p $TRIVY_CACHE_DIR
   script:
     - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" "$BUILD_CONTEXT"
+    
+    # --- FIXED TRIVY COMMANDS ---
+    # This simplified command lets Trivy manage its own DB updates.
+    # It will download the DB on the first run and use the cache on subsequent runs.
     - echo "Scanning the container image for vulnerabilities..."
     - |
       trivy image --severity ${TRIVY_SEVERITY} \
         --cache-dir $TRIVY_CACHE_DIR \
-        --skip-db-update \
-        --skip-java-db-update \
+        --timeout ${TRIVY_TIMEOUT} \
         --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} \
         --format json \
         --output trivy-report.json \
         "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-    - trivy image --severity ${TRIVY_SEVERITY} --cache-dir $TRIVY_CACHE_DIR --skip-db-update --skip-java-db-update --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} --format table "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" | tee trivy-report.txt
+
+    # Generate human-readable report for the logs
+    - trivy image --severity ${TRIVY_SEVERITY} --cache-dir $TRIVY_CACHE_DIR --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} --format table "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" | tee trivy-report.txt
+    
+    # Check if there are any CRITICAL vulnerabilities to enforce a security gate
     - |
       CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-report.json || echo "0")
       if [ "$CRITICAL_COUNT" -gt 0 ]; then
@@ -120,11 +127,10 @@ update-trivy-db:
       container_scanning: trivy-report.json
     when: always
     expire_in: 1 week
-  # The security gate is now properly re-enabled.
   allow_failure: false
 
 # ===================================================================
-# JOBS FOR EACH MICROSERVICE
+# JOBS FOR EACH MICROSERVICE (Unchanged from your previous version)
 # ===================================================================
 
 # --- USER-MANAGEMENT-SERVICE ---
