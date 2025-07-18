@@ -12,6 +12,66 @@ stages:
   - push
 
 # ===================================================================
+# GLOBAL VARIABLES AND CACHE FOR TRIVY
+# ===================================================================
+variables:
+  TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache/"
+  DOCKER_BUILDKIT: 1
+  BUILDKIT_PROGRESS: plain
+
+# Global cache for Trivy - shared across all jobs
+.trivy_cache: &trivy_cache
+  cache:
+    key: trivy-global-cache
+    paths:
+      - .trivycache/
+    policy: pull-push
+
+# ===================================================================
+# TEMPLATE FOR TRIVY SCAN
+# ===================================================================
+.trivy_scan_template: &trivy_scan_template
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_HOST: tcp://docker:2375/
+    DOCKER_TLS_CERTDIR: ""
+  <<: *trivy_cache
+  before_script:
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - apk add --no-cache wget
+    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
+    - mkdir -p "$TRIVY_CACHE_DIR"
+    # Download databases once with longer timeout
+    - trivy image --download-db-only --cache-dir "$TRIVY_CACHE_DIR" --timeout 30m
+    - trivy image --download-java-db-only --cache-dir "$TRIVY_CACHE_DIR" --timeout 30m
+  script:
+    - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" "$BUILD_CONTEXT"
+    # Run scan with optimized settings
+    - echo "Scanning image with Trivy..."
+    - trivy image 
+        --exit-code 1 
+        --severity CRITICAL,HIGH 
+        --timeout 60m 
+        --cache-dir "$TRIVY_CACHE_DIR"
+        --skip-db-update 
+        --skip-java-db-update
+        --format template 
+        --template "@contrib/gitlab.tpl" 
+        -o gl-container-scanning-report.json 
+        "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - echo "Trivy scan passed. Pushing images..."
+    - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
+    - docker push "$IMAGE_NAME:latest"
+  artifacts:
+    when: always
+    reports:
+      container_scanning: gl-container-scanning-report.json
+    expire_in: 1 week
+
+    
+# ===================================================================
 # JOBS FOR: user-management-service
 # ===================================================================
 unit-tests:user-service:
