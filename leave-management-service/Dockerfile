@@ -1,6 +1,11 @@
-# Dockerfile - CORRECTED AND CLEANED
-# Stage 1: Use a standard base image
+# Dockerfile for leave-management-service - CORRECTED AND SECURED
 FROM openjdk:17-jdk-slim
+
+# ==============================================================================
+# *** THE FIX IS HERE: Apply security patches to the base OS ***
+# This will fix any potential OS vulnerabilities.
+# ==============================================================================
+RUN apt-get update && apt-get upgrade -y && rm -rf /var/lib/apt/lists/*
 
 # Create a non-root user and group for security
 RUN addgroup --system appgroup && adduser --system --group appuser
@@ -9,7 +14,6 @@ RUN addgroup --system appgroup && adduser --system --group appuser
 WORKDIR /app
 
 # Copy the application JAR file into the container
-# This assumes your build process creates a JAR in the 'target' directory
 COPY target/leave-management-service-*.jar app.jar
 
 # Change ownership of the app directory to the non-root user
@@ -19,5 +23,4 @@ RUN chown -R appuser:appgroup /app
 USER appuser
 
 # Define the entry point to run the application
-# All configuration will be passed in as environment variables by Kubernetes
 ENTRYPOINT ["java", "-jar", "app.jar"]
