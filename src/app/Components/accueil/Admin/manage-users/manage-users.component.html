@@ -1,4 +1,3 @@
-<!-- manage-users.component.html -->
 <div class="manage-users-container">
   <app-header [user]="user"></app-header>
 
@@ -41,18 +40,18 @@
             <td>
               <div class="role-change-container">
                 <select
-  [ngModel]="user.role"
-  (ngModelChange)="changeUserRole(user.userId, $event)"
-  (click)="$event.stopPropagation()"
-  [disabled]="!canChangeRole(user) || isRoleBeingChanged(user.userId)"
-  class="role-select">
-  <option *ngFor="let role of userRoles" 
-          [value]="role"
-          [disabled]="!isRoleAssignable(role) || 
-                     (isCurrentUser(user) && currentUserRole === UserRole.SUPER_ADMIN)">
-    {{ getRoleDisplayName(role) }}
-  </option>
-</select>
+                  [ngModel]="user.role"
+                  (ngModelChange)="changeUserRole(user.userId, $event)"
+                  (click)="$event.stopPropagation()"
+                  [disabled]="!canChangeRole(user) || isRoleBeingChanged(user.userId)"
+                  class="role-select">
+                  <option *ngFor="let role of userRoles" 
+                          [value]="role"
+                          [disabled]="!isRoleAssignable(role) || 
+                                     (isCurrentUser(user) && currentUserRole === UserRole.SUPER_ADMIN)">
+                    {{ getRoleDisplayName(role) }}
+                  </option>
+                </select>
                 <div class="spinner-container" *ngIf="isRoleBeingChanged(user.userId)">
                   <mat-spinner diameter="16"></mat-spinner>
                 </div>
@@ -60,10 +59,10 @@
             </td>
             <td>
               <button *ngIf="(currentUserRole === UserRole.ADMIN || currentUserRole === UserRole.SUPER_ADMIN) && !isCurrentUser(user)"
-        class="delete-button"
-        (click)="deleteUser(user.userId); $event.stopPropagation()">
-  <i class="fas fa-trash-alt"></i>
-</button>
+                      class="delete-button"
+                      (click)="deleteUser(user.userId); $event.stopPropagation()">
+                <i class="fas fa-trash-alt"></i>
+              </button>
             </td>
           </tr>
           <tr class="details-row" *ngIf="expandedRows[i]" [@slideDown]>
@@ -75,9 +74,7 @@
                   <div><strong>Status:</strong> {{ user.status }}</div>
                   <div><strong>Phone:</strong> {{ user.phone || 'N/A' }}</div>
                   <div><strong>Address:</strong> {{ user.address || 'N/A' }}</div>
-                  <div><strong>Hire Date:</strong> {{ user.hireDate ? (user.hireDate | date: 'yyyy-MM-dd') : 'N/A' }}</div>
-                  <div><strong>Department ID:</strong> {{ user.departmentId ?? 'N/A' }}</div>
-                  <div><strong>Manager ID:</strong> {{ user.managerId ?? 'N/A' }}</div>
+                  <div><strong>Hire Date:</strong> {{ formatHireDate(user.hireDate) }}</div>
                   <div><strong>Position:</strong> {{ user.position || 'N/A' }}</div>
                 </div>
               </div>

@@ -22,7 +22,7 @@ export interface UserDTO {
   lastName?: string;
   phone?: string;
   address?: string;
-  hireDate?: string | Date;
+  hireDate?: string | Date| null | undefined ;
   departmentId?: number;
   managerId?: number;
   position?: string;
@@ -30,7 +30,7 @@ export interface UserDTO {
   isOnline?: boolean;          
   emailVerified?: boolean;     
   twoFactorEnabled?: boolean;  
-  joinDate?: string | Date;    
+  joinDate?: string | Date | null | undefined;    
   projectTitles?: string[];
 }
 

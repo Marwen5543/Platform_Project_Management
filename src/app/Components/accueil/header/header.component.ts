@@ -255,11 +255,12 @@ export class HeaderComponent implements OnInit, OnDestroy {
   }
 
   canAccessLeaveManagement(): boolean {
-    return (
-      [UserRole.EMPLOYEE, UserRole.MANAGER, UserRole.HR, UserRole.SUPER_ADMIN].includes(this.user?.role) &&
-      this.user?.role !== UserRole.ADMIN
-    );
-  }
+  return (
+    [UserRole.EMPLOYEE, UserRole.MANAGER, UserRole.HR].includes(this.user?.role) &&
+    this.user?.role !== UserRole.ADMIN &&
+    this.user?.role !== UserRole.SUPER_ADMIN
+  );
+}
 
   getRoleDisplayName(role: UserRole): string {
     switch (role) {

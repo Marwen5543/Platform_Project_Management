@@ -10,59 +10,375 @@
     color: #ff0000;
   }
   
-  /* Hero Section */
-  .hero-section {
-    background: linear-gradient(135deg, #ff0000, #ff5555, #ffcccc);
-    color: white;
-    padding: 60px 20px;
+/* Hero Section */
+.hero-section {
+  /* Use the new professional font */
+  font-family: 'Poppins', sans-serif;
+
+  /* 1. REFINED GRADIENT & PARALLAX EFFECT */
+  background: 
+    linear-gradient(135deg, rgba(180, 20, 20, 0.75), rgba(80, 0, 0, 0.85)), 
+    url('/assets/carousel-1.jpg');
+  
+  /* THIS CREATES THE PARALLAX SCROLLING EFFECT */
+  background-attachment: fixed; 
+  background-size: cover;
+  background-position: center center;
+  
+  min-height: 90vh; /* Make it a bit taller */
+  padding: 80px 20px;
+  color: white;
+  
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  overflow: hidden; /* Important for animations */
+}
+
+/* 2. POLISHED ANIMATIONS (Staggered Fade-in) */
+.fade-in-up {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s ease-out, transform 0.8s ease-out;
+}
+
+.fade-in-up.loaded {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.anim-delay-1 { transition-delay: 0.2s; }
+.anim-delay-2 { transition-delay: 0.4s; }
+
+
+/* 3. ENHANCED TYPOGRAPHY */
+.hero-content h1 {
+  font-size: 3.8rem; /* Slightly larger for more impact */
+  font-weight: 700;
+  line-height: 1.2; /* Tighter line spacing */
+  letter-spacing: -1px; /* A professional touch */
+  margin-bottom: 25px;
+  text-shadow: 0px 4px 12px rgba(0, 0, 0, 0.5); /* Softer, deeper shadow */
+}
+
+.hero-content .lead {
+  font-size: 1.4rem;
+  font-weight: 300; /* Lighter weight for contrast with the headline */
+  max-width: 650px; /* Make it a bit narrower */
+  margin: 0 auto 40px auto;
+  opacity: 0.9;
+  position: relative; /* Needed for the new divider */
+  padding-bottom: 40px; /* Space for the divider */
+}
+
+/* 4. ELEGANT DIVIDER */
+.hero-content .lead::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 80px;
+  height: 2px;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 2px;
+}
+
+
+/* Styling for the "About" section */
+.hero-description {
+  margin-top: 40px;
+}
+
+.hero-description h2 {
+  color: white;
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-bottom: 15px;
+}
+
+.hero-description p {
+  font-size: 1.1rem;
+  font-weight: 300;
+  max-width: 700px;
+  margin: 0 auto;
+  line-height: 1.8;
+  opacity: 0.95;
+}
+
+
+/* Style de base pour les deux nouvelles sections */
+.info-section {
+  padding: 80px 20px;
+  width: 100%;
+}
+
+.info-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.section-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: #1a202c; /* Couleur sombre pour le titre */
+  margin-bottom: 16px;
+  line-height: 1.2;
+}
+
+.section-subtitle {
+  font-size: 1.15rem;
+  color: #4a5568; /* Couleur plus douce pour le sous-titre */
+  max-width: 800px;
+  margin-bottom: 32px;
+}
+
+.text-center {
+  text-align: center;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* --- Section "À Propos de Nous" --- */
+.about-us-section {
+  background-color: #f7fafc; /* Fond très clair pour la distinction */
+}
+
+.about-us-section .info-container {
+  display: flex;
+  align-items: center;
+  gap: 60px;
+}
+
+.about-content {
+  flex: 1;
+}
+
+.about-content p {
+  font-size: 1rem;
+  color: #2d3748;
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+
+.about-image {
+  flex: 1;
+  height: 400px;
+  background-color: #e2e8f0; /* Placeholder color */
+  background-image: url('https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=2832&auto=format&fit=crop'); /* Mettez une image pertinente ici */
+  background-size: cover;
+  background-position: center;
+  border-radius: 12px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+}
+
+.info-btn {
+  display: inline-block;
+  background-color: #ce3131; /* Couleur bleue, similaire au style général */
+  color: #fff;
+  padding: 12px 24px;
+  border-radius: 8px;
+  text-decoration: none;
+  font-weight: 600;
+  transition: background-color 0.3s ease;
+}
+
+.info-btn:hover {
+  background-color: #970202;
+}
+
+
+/* --- Section "Pourquoi Nous Choisir" --- */
+.why-choose-us-section {
+  background-color: #ffffff;
+}
+
+.reasons-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 30px;
+  margin-top: 50px;
+}
+
+.reason-card {
+  background-color: #f7fafc;
+  padding: 30px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid #e2e8f0;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.reason-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.reason-icon {
+  font-size: 2.5rem;
+  color: #3182ce; /* Même couleur bleue que le bouton */
+  margin-bottom: 20px;
+}
+
+.reason-card h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a202c;
+  margin-bottom: 12px;
+}
+
+.reason-card p {
+  font-size: 0.95rem;
+  color: #4a5568;
+  line-height: 1.5;
+}
+
+
+/* --- Responsive Design pour les écrans plus petits --- */
+@media (max-width: 992px) {
+  .about-us-section .info-container {
+    flex-direction: column;
     text-align: center;
-    position: relative;
-    overflow: hidden;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   }
   
-  .hero-section::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.2), transparent 70%);
-    pointer-events: none;
+  .about-image {
+    width: 100%;
+    max-width: 500px;
+    height: 300px;
+    margin-top: 30px;
   }
-  
-  .hero-content {
-    position: relative;
-    z-index: 1;
-    max-width: 1200px;
-    margin: 0 auto;
-    opacity: 0;
-    transform: translateY(20px);
-    transition: all 0.8s ease;
+}
+
+@media (max-width: 768px) {
+  .section-title {
+    font-size: 2rem;
   }
-  
-  .hero-content.loaded {
-    opacity: 1;
-    transform: translateY(0);
+
+  .info-section {
+    padding: 60px 20px;
   }
-  
-  .hero-content h1 {
-    font-size: 3rem;
-    margin-bottom: 15px;
-    font-weight: 700;
-    text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
-  }
-  
-  .hero-content .lead {
-    font-size: 1.3rem;
-    margin-bottom: 40px;
-    max-width: 700px;
-    margin-left: auto;
-    margin-right: auto;
-    line-height: 1.8;
-  }
-  
+}
+
+
+/* ====================================================== */
+/*      STYLES POUR LES SECTIONS CLIENTS & ACTUALITÉS     */
+/* ====================================================== */
+
+/* --- Section Clients & Partenaires --- */
+.clients-partners-section {
+  background-color: #f7fafc; /* Fond très clair, comme la section "About Us" */
+  padding: 60px 20px;
+}
+
+.logos-container {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+  margin-top: 40px;
+}
+
+.logo-item {
+  height: 50px; /* Hauteur fixe pour l'alignement */
+}
+
+.logo-item img {
+  height: 100%;
+  width: auto;
+  opacity: 0.6;
+  filter: grayscale(100%);
+  transition: all 0.3s ease;
+}
+
+.logo-item img:hover {
+  opacity: 1;
+  filter: grayscale(0%);
+  transform: scale(1.1);
+}
+
+
+/* --- Section Actualités & Perspectives --- */
+.news-section {
+  background-color: #ffffff;
+  padding: 80px 20px;
+}
+
+.news-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 30px;
+  margin-top: 50px;
+}
+
+.news-card {
+  background-color: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e2e8f0;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.news-card:hover {
+  transform: translateY(-8px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+}
+
+.news-image {
+  height: 200px;
+  background-size: cover;
+  background-position: center;
+}
+
+.news-content {
+  padding: 24px;
+}
+
+.news-category {
+  display: inline-block;
+  background-color: #e2e8f0;
+  color: #4a5568;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+}
+
+.news-card h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1a202c;
+  margin-bottom: 8px;
+  line-height: 1.4;
+}
+
+.news-card p {
+  font-size: 0.95rem;
+  color: #4a5568;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.news-link {
+  color: #3182ce;
+  font-weight: 600;
+  text-decoration: none;
+  transition: color 0.3s ease;
+}
+
+.news-link:hover {
+  color: #2b6cb0;
+}
+
+
+
+
+
+
   .company-highlights {
     display: flex;
     align-items: center;

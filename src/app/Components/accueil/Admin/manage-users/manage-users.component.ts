@@ -30,7 +30,7 @@ import { HeaderComponent } from '../../header/header.component';
 })
 export class ManageUsersComponent implements OnInit {
   users: UserDTO[] = [];
-  userRoles = Object.values(UserRole); // Include SUPER_ADMIN in the dropdown options
+  userRoles = Object.values(UserRole);
   expandedRows: boolean[] = [];
   errorMessage: string | null = null;
   isLoading: boolean = true;
@@ -41,9 +41,7 @@ export class ManageUsersComponent implements OnInit {
   isDeletingUser: { [userId: string]: boolean } = {};
 
   user: UserDTO = this.createEmptyUserForHeader();
-  isRoleAssignable(role: UserRole): boolean {
-    return role !== UserRole.SUPER_ADMIN;
-  }
+
   constructor(
     private userService: UserService,
     private cdr: ChangeDetectorRef,
@@ -55,11 +53,10 @@ export class ManageUsersComponent implements OnInit {
 
   ngOnInit(): void {
     console.log('Raw role from Keycloak:', this.keycloakService.getRole());
-  console.log('All roles from Keycloak:', this.keycloakService.getRoles());
-  
-  this.loadUserDetails();
-  this.initializeHeaderUser();
-  this.currentUserId = this.keycloakService.getUserId();
+    console.log('All roles from Keycloak:', this.keycloakService.getRoles());
+    this.loadUserDetails();
+    this.initializeHeaderUser();
+    this.currentUserId = this.keycloakService.getUserId();
   }
 
   private createEmptyUserForHeader(): UserDTO {
@@ -73,13 +70,24 @@ export class ManageUsersComponent implements OnInit {
       phone: '',
       address: '',
       position: '',
-      hireDate: '',
+      hireDate: null, // Changed from '' to null for consistency
       departmentId: 0,
       managerId: 0
     };
   }
 
-  // In manage-users.component.ts
+  // Format hireDate to handle string, Date, null, or undefined
+  formatHireDate(hireDate: string | Date | null | undefined): string {
+    if (!hireDate) {
+      return 'N/A';
+    }
+    const date = new Date(hireDate);
+    if (isNaN(date.getTime())) {
+      return 'N/A'; // Invalid date
+    }
+    return date.toISOString().split('T')[0]; // Returns yyyy-MM-dd
+  }
+
   getRoleDisplayName(role: UserRole): string {
     switch (role) {
       case UserRole.SUPER_ADMIN: return 'Super Admin (System)';
@@ -91,19 +99,15 @@ export class ManageUsersComponent implements OnInit {
     }
   }
 
-private convertToUserRole(roleString: string): UserRole {
-  if (!roleString) return UserRole.EMPLOYEE;
-  
-  // Make sure comparison is case-insensitive
-  const upperRole = roleString.toUpperCase();
-  
-  if (upperRole.includes('SUPER_ADMIN')) return UserRole.SUPER_ADMIN;
-  if (upperRole.includes('ADMIN')) return UserRole.ADMIN;
-  if (upperRole.includes('MANAGER')) return UserRole.MANAGER;
-  if (upperRole.includes('HR')) return UserRole.HR;
-  
-  return UserRole.EMPLOYEE;
-}
+  private convertToUserRole(roleString: string): UserRole {
+    if (!roleString) return UserRole.EMPLOYEE;
+    const upperRole = roleString.toUpperCase();
+    if (upperRole.includes('SUPER_ADMIN')) return UserRole.SUPER_ADMIN;
+    if (upperRole.includes('ADMIN')) return UserRole.ADMIN;
+    if (upperRole.includes('MANAGER')) return UserRole.MANAGER;
+    if (upperRole.includes('HR')) return UserRole.HR;
+    return UserRole.EMPLOYEE;
+  }
 
   private initializeHeaderUser(): void {
     this.user = this.createEmptyUserForHeader();
@@ -125,7 +129,7 @@ private convertToUserRole(roleString: string): UserRole {
       error: (err) => {
         console.error('loadUserDetails() - userService.getAllUsers() error:', err);
         this.errorMessage = this.getErrorMessage(err.status);
-        this.showSnackbar(this.errorMessage);
+        // Snackbar message removed as per previous request
         this.isLoading = false;
       }
     });
@@ -182,17 +186,17 @@ private convertToUserRole(roleString: string): UserRole {
     this.snackBar.open(message ?? 'An error occurred', 'Close', { duration });
   }
 
+  isRoleAssignable(role: UserRole): boolean {
+    return role !== UserRole.SUPER_ADMIN;
+  }
+
   canChangeRole(user: UserDTO): boolean {
-    // Prevent changing SUPER_ADMIN users
     if (user.role === UserRole.SUPER_ADMIN) {
       return false;
     }
-    
-    // Both SUPER_ADMIN and ADMIN can change other roles
     return this.currentUserRole === UserRole.SUPER_ADMIN || 
            this.currentUserRole === UserRole.ADMIN;
   }
-
 
   isRoleBeingChanged(userId: string): boolean {
     return this.isChangingRole[userId] ?? false;
@@ -207,9 +211,8 @@ private convertToUserRole(roleString: string): UserRole {
   }
 
   canDeleteUser(): boolean {
-    // Allow both ADMIN and SUPER_ADMIN to delete users
     return this.currentUserRole === UserRole.ADMIN || 
-    this.currentUserRole === UserRole.SUPER_ADMIN;
+           this.currentUserRole === UserRole.SUPER_ADMIN;
   }
 
   deleteUser(userId: string): void {

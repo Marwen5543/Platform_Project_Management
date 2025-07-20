@@ -9,20 +9,26 @@
   <div *ngIf="currentUser" class="user-info">
   </div>
 
-  <!-- Section Héros -->
-  <section class="hero-section">
-    <div class="hero-content" [ngClass]="{'loaded': isLoaded}">
-      <h1>Bienvenue dans la Suite de Projets Tunisys</h1>
-      <p class="lead">Innover les solutions d'entreprise grâce à une technologie de pointe et des équipes d'experts</p>
-      <div class="company-highlights">
-        <img src="assets/tunisys.png" alt="Bureau Tunisys" class="company-image">
-        <div class="description">
-          <h2>À propos de Tunisys</h2>
-          <p>Tunisys est un fournisseur leader de solutions technologiques spécialisé dans la transformation numérique au niveau de l'entreprise. Avec une équipe d'ingénieurs et de consultants experts, nous livrons des solutions innovantes qui stimulent la croissance et l'innovation des entreprises.</p>
-        </div>
-      </div>
+  <!-- Section Héros (Updated & Simplified) -->
+<!-- Section Héros (IMPROVED VERSION) -->
+<section class="hero-section">
+  <div class="hero-content">
+    
+    <!-- Added animation class 'fade-in-up' -->
+    <h1 [ngClass]="{'loaded': isLoaded}" class="fade-in-up">Bienvenue dans la Suite de Projets<br>Tunisys</h1>
+    
+    <!-- Added animation class 'fade-in-up' with a delay -->
+    <p [ngClass]="{'loaded': isLoaded}" class="lead fade-in-up anim-delay-1">Innover les solutions d'entreprise grâce à une technologie de pointe et des équipes d'experts.</p>
+    
+    <!-- Added animation class 'fade-in-up' with a longer delay -->
+    <div [ngClass]="{'loaded': isLoaded}" class="hero-description fade-in-up anim-delay-2">
+      <h2>À propos de Tunisys</h2>
+      <p>Tunisys est un fournisseur leader de solutions technologiques spécialisé dans la transformation numérique au niveau de l'entreprise. Avec une équipe d'ingénieurs et de consultants experts, nous livrons des solutions innovantes qui stimulent la croissance et l'innovation des entreprises.</p>
     </div>
-  </section>
+
+  </div>
+</section>
+
 
   <!-- Section Statistiques -->
   <section class="stats-section">
@@ -45,6 +51,151 @@
       </div>
     </div>
   </section>
+
+
+  <!-- ====================================================== -->
+  <!--           NOUVELLE SECTION : À PROPOS DE NOUS           -->
+  <!-- ====================================================== -->
+  <section class="info-section about-us-section">
+    <div class="info-container">
+      <div class="about-content">
+        <h2 class="section-title">Plus de 40 ans à la pointe de l'innovation IT</h2>
+        <p class="section-subtitle">
+          Depuis 1981, Tunisys est le pionnier de l'intégration de systèmes en Tunisie. Notre mission est d'accompagner les entreprises dans leur transition numérique en concevant et déployant des architectures et des services sur-mesure, adaptés à chaque organisation.
+        </p>
+        <p>
+          Notre force réside dans notre capital humain : une équipe d'experts et de consultants chevronnés qui innovent en permanence pour apporter une réelle valeur ajoutée à vos projets les plus complexes. La satisfaction de nos clients est notre priorité absolue.
+        </p>
+        <a href="#" class="info-btn">Découvrir notre histoire</a>
+      </div>
+      <div class="about-image">
+        <!-- Vous pouvez remplacer ce div par une balise <img> avec une vraie image -->
+        <img src="assets/team-meeting.jpg" alt="Équipe Tunisys en réunion">
+      </div>
+    </div>
+  </section>
+
+
+  <!-- ====================================================== -->
+  <!--         NOUVELLE SECTION : POURQUOI NOUS CHOISIR       -->
+  <!-- ====================================================== -->
+  <section class="info-section why-choose-us-section">
+    <div class="info-container">
+      <h2 class="section-title text-center">Pourquoi Choisir Tunisys ?</h2>
+      <p class="section-subtitle text-center">
+        Nous combinons expertise technique, partenariats stratégiques et un engagement total envers votre réussite.
+      </p>
+      
+      <div class="reasons-grid">
+        <!-- Raison 1: Expertise -->
+        <div class="reason-card">
+          <div class="reason-icon">
+            <!-- Pensez à utiliser une bibliothèque d'icônes comme Font Awesome : <i class="fas fa-brain"></i> -->
+            <span class="icon-placeholder">★</span>
+          </div>
+          <h3>Expertise Éprouvée</h3>
+          <p>Bénéficiez de l'expérience de nos consultants et de nos ingénieurs spécialisés dans les dernières technologies pour des solutions performantes.</p>
+        </div>
+
+        <!-- Raison 2: Partenariats Stratégiques -->
+        <div class="reason-card">
+          <div class="reason-icon">
+             <span class="icon-placeholder">🤝</span>
+          </div>
+          <h3>Partenariats Stratégiques</h3>
+          <p>Nous nous appuyons sur les meilleures technologies du marché (Huawei, HP, etc.) pour offrir des solutions globales et adaptées.</p>
+        </div>
+
+        <!-- Raison 3: Accompagnement Client -->
+        <div class="reason-card">
+          <div class="reason-icon">
+             <span class="icon-placeholder">🎯</span>
+          </div>
+          <h3>Approche Centrée Client</h3>
+          <p>Votre satisfaction est notre priorité. Nous vous accompagnons de A à Z, de l'analyse des besoins jusqu'à la maintenance.</p>
+        </div>
+
+        <!-- Raison 4: Innovation & Qualité -->
+        <div class="reason-card">
+          <div class="reason-icon">
+             <span class="icon-placeholder">💡</span>
+          </div>
+          <h3>Innovation & Qualité</h3>
+          <p>Nous sommes dans une démarche d'innovation constante pour vous garantir un service de la plus haute qualité et des solutions fiables.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+    <!-- ====================================================== -->
+  <!--        NOUVELLE SECTION : CLIENTS & PARTENAIRES        -->
+  <!-- ====================================================== -->
+  <section class="info-section clients-partners-section">
+    <div class="info-container">
+      <h2 class="section-title text-center">Ils nous font confiance</h2>
+      <p class="section-subtitle text-center">
+        Nous sommes fiers d'être le partenaire stratégique de plus de 1000 clients et de collaborer avec les leaders mondiaux de la technologie.
+      </p>
+      <div class="logos-container">
+        <!-- Remplacez les div par des balises <img> avec les logos de vos clients/partenaires -->
+        <div class="logo-item"><img src="assets/hwawei.png" alt="Huawei"></div>
+        <div class="logo-item"><img src="assets/hp.png" alt="HP"></div>
+        <div class="logo-item"><img src="assets/Wincor_Nixdorf.png" alt="Wincor Nixdorf"></div>
+        <div class="logo-item"><img src="assets/bia.png" alt="GRG Banking"></div>
+        <div class="logo-item"><img src="assets/Amen_Bank.png" alt="Amen Bank"></div>
+        <div class="logo-item"><img src="assets/ooredoo.png" alt="Ooredoo"></div>
+      </div>
+    </div>
+  </section>
+
+  
+
+
+  <!-- ====================================================== -->
+  <!--      NOUVELLE SECTION : ACTUALITÉS & PERSPECTIVES      -->
+  <!-- ====================================================== -->
+  <section class="info-section news-section">
+    <div class="info-container">
+      <h2 class="section-title text-center">Actualités et Perspectives IT</h2>
+      <p class="section-subtitle text-center">
+        Découvrez nos dernières analyses, études de cas et innovations technologiques.
+      </p>
+      <div class="news-grid">
+        <!-- Article 1 -->
+        <div class="news-card">
+          <div class="news-image" style="background-image: url('assets/security.jpeg');"></div>
+          <div class="news-content">
+            <span class="news-category">Sécurité</span>
+            <h3>Comment la sécurité Zero Trust transforme la protection des entreprises</h3>
+            <p>Dans un monde où le périmètre de sécurité n'existe plus, l'approche Zero Trust devient la nouvelle norme...</p>
+            <a href="#" class="news-link">Lire la suite →</a>
+          </div>
+        </div>
+        <!-- Article 2 -->
+        <div class="news-card">
+          <div class="news-image" style="background-image: url('assets/cloud.jpg');"></div>
+          <div class="news-content">
+            <span class="news-category">Cloud & Infrastructure</span>
+            <h3>Migration vers le Cloud Hybride : Les étapes clés pour une transition réussie</h3>
+            <p>Combiner la flexibilité du cloud public et la sécurité du privé. Notre guide pour y parvenir sans accroc...</p>
+            <a href="#" class="news-link">Lire la suite →</a>
+          </div>
+        </div>
+        <!-- Article 3 -->
+        <div class="news-card">
+          <div class="news-image" style="background-image: url('assets/Infrastructure.jpg');"></div>
+          <div class="news-content">
+            <span class="news-category">Transformation Digitale</span>
+            <h3>Étude de cas : La refonte de l'infrastructure IT d'un leader de la finance</h3>
+            <p>Découvrez comment Tunisys a accompagné un acteur majeur dans la modernisation de son système d'information...</p>
+            <a href="#" class="news-link">Lire la suite →</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
 
   <!-- Section Projets -->
   <section class="projects-section">

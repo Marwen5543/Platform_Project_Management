@@ -3,7 +3,7 @@ export const environment = {
   keycloak: {
     url: 'http://localhost:8080', // Local Keycloak server
     realm: 'Tunisys',
-    clientId: 'demo-rest-api',
+    clientId: 'angular-app',
     enablePkce: true,
     publicClient: true,
     postLogoutRedirectUri: window.location.origin

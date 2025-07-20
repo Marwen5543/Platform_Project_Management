@@ -28,7 +28,10 @@ export class DocumentHistoryComponent implements OnInit {
   loadDocuments(): void {
     this.documentService.getDocumentHistory().subscribe({
       next: (docs) => this.documents = docs,
-      error: (err) => this.snackBar.open('Failed to load documents', 'Close', { duration: 5000 })
+      error: (err) => {
+        // Removed: this.snackBar.open('Failed to load documents', 'Close', { duration: 5000 })
+        console.error('Error loading document history:', err); // Optional: Keep for debugging
+      }
     });
   }
 

@@ -67,8 +67,6 @@
                   <div><strong>Phone:</strong> {{ user.phone || 'N/A' }}</div>
                   <div><strong>Address:</strong> {{ user.address || 'N/A' }}</div>
                   <div><strong>Hire Date:</strong> {{ user.hireDate ? (user.hireDate | date: 'yyyy-MM-dd') : 'N/A' }}</div>
-                  <div><strong>Department ID:</strong> {{ user.departmentId ?? 'N/A' }}</div>
-                  <div><strong>Manager ID:</strong> {{ user.managerId ?? 'N/A' }}</div>
                   <div><strong>Position:</strong> {{ user.position || 'N/A' }}</div>
                   <div class="assigned-projects">
                     <strong>Assigned Projects:</strong>

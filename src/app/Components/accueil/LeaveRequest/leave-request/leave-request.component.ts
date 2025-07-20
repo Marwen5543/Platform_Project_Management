@@ -1,9 +1,11 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule, DatePipe } from '@angular/common';
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { Router } from '@angular/router'; // Import Router for redirection
 import { LeaveRequestDto, LeaveType } from 'src/app/Models/LeaveRequest';
 import { LeaveService } from 'src/app/Service/LeaveService';
+import { KeycloakService } from 'src/app/Service/KeycloakService'; // Import KeycloakService
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -34,11 +36,12 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
   styleUrls: ['./leave-request.component.css'],
   providers: [DatePipe]
 })
-export class LeaveRequestComponent {
+export class LeaveRequestComponent implements OnInit {
   leaveForm: FormGroup;
   rangeForm: FormGroup;
   leaveTypes = Object.values(LeaveType);
   isLoading = false;
+  canRequestLeave = false; // New property to track if user can request leave
 
   leaveTypeLabels: { [key in LeaveType]: string } = {
     [LeaveType.VACATION]: 'Congé payé',
@@ -53,7 +56,9 @@ export class LeaveRequestComponent {
     private fb: FormBuilder,
     private leaveService: LeaveService,
     private snackBar: MatSnackBar,
-    private datePipe: DatePipe
+    private datePipe: DatePipe,
+    private keycloakService: KeycloakService, // Add KeycloakService
+    private router: Router // Add Router
   ) {
     this.rangeForm = this.fb.group({
       start: ['', Validators.required],
@@ -67,9 +72,22 @@ export class LeaveRequestComponent {
     });
   }
 
+  async ngOnInit(): Promise<void> {
+    // Check user roles for leave request permission
+    const roles = await this.keycloakService.getRoles();
+    this.canRequestLeave = (roles.includes('EMPLOYEE') || roles.includes('MANAGER') || roles.includes('HR')) &&
+                          !roles.includes('ADMIN') && !roles.includes('SUPER_ADMIN');
+    if (!this.canRequestLeave) {
+      this.snackBar.open('Seuls les employés, managers peuvent demander des congés', 'Fermer', { duration: 5000 });
+      this.router.navigate(['/accueil']);
+      return;
+    }
+  }
+
   getLeaveTypeLabel(type: string): string {
     return this.leaveTypeLabels[type as LeaveType] || type;
   }
+
   calculateTotalDays(): number {
     if (this.rangeForm.valid) {
       const start = new Date(this.rangeForm.value.start);

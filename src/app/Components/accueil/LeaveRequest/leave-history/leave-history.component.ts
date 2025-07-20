@@ -104,7 +104,7 @@ export class LeaveHistoryComponent implements OnInit, OnDestroy {
         },
         error: (err) => {
           console.error('Erreur lors de la récupération de l\'historique des congés :', err);
-          this.snackBar.open('Échec du chargement de l\'historique des congés', 'Fermer', { duration: 3000 });
+          //this.snackBar.open('Échec du chargement de l\'historique des congés', 'Fermer', { duration: 3000 });
         }
       })
     );
