@@ -11,7 +11,7 @@ stages:
   - code-analysis
   - performance-test
   - push-and-scan-image
-  - dast
+  - zap_scan
 
 # ===================================================================
 # GLOBAL VARIABLES
@@ -133,7 +133,7 @@ update-trivy-db:
 
   # *** NEW TEMPLATE FOR ZAP ***
 .zap_dast_template: &zap_dast_template
-  stage: dast
+  stage: zap_scan
   image:
     name: owasp/zap2docker-stable
     entrypoint: [""]
