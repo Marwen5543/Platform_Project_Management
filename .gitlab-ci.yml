@@ -135,7 +135,7 @@ update-trivy-db:
 .zap_dast_template: &zap_dast_template
   stage: zap_scan
   image:
-    name: owasp/zap2docker-stable
+    name: zaproxy/zap-stable
     entrypoint: [""]
   script:
     - echo "Waiting for service to be ready..."
