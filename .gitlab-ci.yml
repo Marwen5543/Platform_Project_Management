@@ -23,7 +23,7 @@ variables:
   TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache"
   TRIVY_SEVERITY: "HIGH,CRITICAL"
   TRIVY_IGNORE_UNFIXED: "true"
-  TRIVY_TIMEOUT: "30m"
+  TRIVY_TIMEOUT: "60m"
   DOCKER_BUILDKIT: 1
   BUILDKIT_PROGRESS: plain
   # Set Maven options to use the local .m2 repository
