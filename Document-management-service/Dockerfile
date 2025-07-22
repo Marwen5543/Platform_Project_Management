@@ -17,6 +17,9 @@ COPY target/document-administratif-service-0.0.1-SNAPSHOT.jar app.jar
 # Create the directory for document storage
 RUN mkdir -p /app/documents
 
+# *** NEW: Added Health Check for robustness ***
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8090/actuator/health || exit 1
 # Change ownership of the entire app directory to the non-root user
 RUN chown -R appuser:appgroup /app
 

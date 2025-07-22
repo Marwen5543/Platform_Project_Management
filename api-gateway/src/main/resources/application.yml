@@ -38,12 +38,12 @@ spring:
             - StripPrefix=1
       default-filters:
         - AddResponseHeader=X-Gateway-Version,1.0.0
-  #security:
-   # oauth2:
-    #  resourceserver:
-     #   jwt:
-      #    issuer-uri: http://localhost:8080/realms/Tunisys
-       #   jwk-set-uri: http://localhost:8080/realms/Tunisys/protocol/openid-connect/certs
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/realms/Tunisys
+          jwk-set-uri: http://localhost:8080/realms/Tunisys/protocol/openid-connect/certs
 server:
   port: 8081
 eureka:

@@ -18,7 +18,9 @@ COPY target/leave-management-service-*.jar app.jar
 
 # Change ownership of the app directory to the non-root user
 RUN chown -R appuser:appgroup /app
-
+# *** NEW: Added Health Check for robustness ***
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8088/actuator/health || exit 1
 # Switch to the non-root user
 USER appuser
 

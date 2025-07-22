@@ -1,0 +1,32 @@
+---
+env:
+  contexts:
+    - name: "Default Context"
+      urls:
+        - "${ZAP_TARGET_URL}" # Use the variable from GitLab CI
+  parameters:
+    failOnError: true
+    failOnWarning: false
+    progressToStdout: true
+
+jobs:
+  - type: "passiveScan-wait" # Passive scan while spidering
+    parameters:
+      maxDuration: 5 # in minutes
+
+  - type: "spider"
+    parameters:
+      url: "${ZAP_TARGET_URL}"
+      maxDuration: 2
+
+  - type: "report"
+    parameters:
+      template: "traditional-html"
+      reportDir: "wrk" # <-- FIX: Changed from /zap/wrk/ to wrk
+      reportFile: "report"
+      
+  - type: "report"
+    parameters:
+      template: "json"
+      reportDir: "wrk" # <-- FIX: Changed from /zap/wrk/ to wrk
+      reportFile: "gl-dast-report"
