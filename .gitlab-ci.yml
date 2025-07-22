@@ -28,6 +28,7 @@ variables:
   BUILDKIT_PROGRESS: plain
   # Set Maven options to use the local .m2 repository
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+  TRIVY_CACHE_KEY: "trivy-db-cache-v1"
 
 # ===================================================================
 # REUSABLE CACHE TEMPLATE FOR MAVEN
@@ -50,7 +51,7 @@ update-trivy-db:
   stage: setup
   image: alpine:3.18
   cache:
-    key: trivy-db-v4
+    key: ${TRIVY_CACHE_KEY}
     paths:
       - .trivycache/
     policy: pull-push
@@ -78,10 +79,10 @@ update-trivy-db:
     - name: docker:${DOCKER_VERSION}-dind
       alias: docker
   cache:
-    key: trivy-scan-cache-${CI_JOB_NAME} # Job-specific cache for trivy DB
+    key: ${TRIVY_CACHE_KEY} # Job-specific cache for trivy DB
     paths:
       - .trivycache/
-    policy: pull-push
+    policy: pull
   before_script:
     - while ! docker info; do sleep 1; done
     - apk update && apk add --no-cache curl ca-certificates jq
@@ -138,18 +139,14 @@ update-trivy-db:
     name: zaproxy/zap-stable
     entrypoint: [""]
   variables:
-    # This tells ZAP to run in a CI-friendly "command line" mode
     ZAP_AUTH_HEADER_VALUE: "GitLab-CI" 
   script:
     - echo "Waiting for service to be ready..."
-    - sleep 30 # You can keep this or use the more robust curl check from before
+    - sleep 30
     - echo "Starting ZAP Scan using Automation Framework against target:${ZAP_TARGET_URL}"
-    # This is the new command
     - zap.sh -cmd -autorun /builds/$CI_PROJECT_PATH/zap-plan.yaml
-
   artifacts:
     when: always
-    # IMPORTANT: The artifacts are now inside the 'wrk' directory
     paths:
       - wrk/gl-dast-report.json
       - wrk/report.html
