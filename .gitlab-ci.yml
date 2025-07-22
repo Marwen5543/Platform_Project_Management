@@ -137,18 +137,24 @@ update-trivy-db:
   image:
     name: zaproxy/zap-stable
     entrypoint: [""]
+  variables:
+    # This tells ZAP to run in a CI-friendly "command line" mode
+    ZAP_AUTH_HEADER_VALUE: "GitLab-CI" 
   script:
     - echo "Waiting for service to be ready..."
-    - sleep 30 # Give the service time to start up before scanning
-    - echo "Starting ZAP Baseline Scan against target:${ZAP_TARGET_URL}"
-    - /zap/zap-baseline.py -t ${ZAP_TARGET_URL}/actuator/health -J gl-dast-report.json -r report.html
+    - sleep 30 # You can keep this or use the more robust curl check from before
+    - echo "Starting ZAP Scan using Automation Framework against target:${ZAP_TARGET_URL}"
+    # This is the new command
+    - zap.sh -cmd -autorun /builds/$CI_PROJECT_PATH/zap-plan.yaml
+
   artifacts:
     when: always
+    # IMPORTANT: The artifacts are now inside the 'wrk' directory
     paths:
-      - gl-dast-report.json
-      - report.html
+      - wrk/gl-dast-report.json
+      - wrk/report.html
     reports:
-      dast: gl-dast-report.json
+      dast: wrk/gl-dast-report.json
 
 # ===================================================================
 # JOBS FOR EACH MICROSERVICE (Unchanged from your previous version)
