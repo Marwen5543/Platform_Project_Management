@@ -110,7 +110,7 @@ variables:
       - trivy-report.txt
     reports:
       container_scanning: trivy-report.json
-    when: manual
+    when: always
     expire_in: 1 week
   allow_failure: false
 
