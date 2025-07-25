@@ -27,6 +27,6 @@ jobs:
       
   - type: "report"
     parameters:
-      template: "json"
+      template: "traditional-json"
       reportDir: "wrk" # <-- FIX: Changed from /zap/wrk/ to wrk
       reportFile: "gl-dast-report"
