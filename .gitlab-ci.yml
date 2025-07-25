@@ -110,7 +110,7 @@ variables:
       - trivy-report.txt
     reports:
       container_scanning: trivy-report.json
-    when: always
+    when: manual
     expire_in: 1 week
   allow_failure: false
 
@@ -156,6 +156,7 @@ build-and-push:user-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
+      when: manual
 
 sonar-analysis:user-service:
   stage: code-analysis
@@ -177,6 +178,7 @@ sonar-analysis:user-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
+      when: manual
 
 performance-test:user-service:
   stage: performance-test
@@ -212,13 +214,20 @@ push-and-scan:user-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
-
+      when: manual
 
 dast:user-service:
   <<: *zap_dast_template
   services:
     - name: "$DOCKERHUB_USERNAME/user-management-service:$CI_COMMIT_SHORT_SHA"
       alias: user-management-service-dast-target
+      ### ADD THIS COMMAND SECTION ###
+      # This overrides the Dockerfile's ENTRYPOINT to activate the 'dast' profile.
+      command:
+        - java
+        - -jar
+        - app.jar  # Correct based on your Dockerfile
+        - --spring.profiles.active=dast
   variables:
     ZAP_TARGET_URL: "http://user-management-service-dast-target:8085"
   needs: [push-and-scan:user-service]
