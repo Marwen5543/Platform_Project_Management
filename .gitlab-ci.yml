@@ -6,7 +6,6 @@ default:
     - docker
 
 stages:
-  - setup
   - build-and-push-to-nexus
   - code-analysis
   - performance-test
@@ -28,7 +27,6 @@ variables:
   BUILDKIT_PROGRESS: plain
   # Set Maven options to use the local .m2 repository
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
-  TRIVY_CACHE_KEY: "trivy-db-cache-v1"
 
 # ===================================================================
 # REUSABLE CACHE TEMPLATE FOR MAVEN
@@ -47,27 +45,7 @@ variables:
 # ===================================================================
 # SCHEDULED JOB FOR UPDATING THE TRIVY DATABASE CACHE
 # ===================================================================
-update-trivy-db:
-  stage: setup
-  image: alpine:3.18
-  cache:
-    key: ${TRIVY_CACHE_KEY}
-    paths:
-      - .trivycache/
-    policy: pull-push
-  script:
-    - echo "Updating Trivy database cache..."
-    - apk add --no-cache wget ca-certificates
-    - wget -qO - https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin
-    - mkdir -p $TRIVY_CACHE_DIR
-    - echo "Downloading OS vulnerability database..."
-    - trivy image --download-db-only --cache-dir $TRIVY_CACHE_DIR --timeout 30m
-    - echo "Downloading Java index database..."
-    - trivy image --download-java-db-only --cache-dir $TRIVY_CACHE_DIR --timeout 45m
-    - echo "Trivy cache updated successfully."
-    - ls -la $TRIVY_CACHE_DIR
-  rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule" || $CI_PIPELINE_SOURCE == "web"'
+
 
 # ===================================================================
 # REUSABLE DOCKER BUILD AND SCAN TEMPLATE - *** THIS SECTION IS FIXED ***
@@ -78,11 +56,16 @@ update-trivy-db:
   services:
     - name: docker:${DOCKER_VERSION}-dind
       alias: docker
+  variables:
+    # Force Trivy to use the more reliable GitHub registry for its database
+    TRIVY_DB_REPOSITORY: "ghcr.io/aquasecurity/trivy-db"
   cache:
-    key: ${TRIVY_CACHE_KEY} # Job-specific cache for trivy DB
+    # Give each scan job its own separate cache
+    key: "trivy-scan-cache-${CI_JOB_NAME}"
     paths:
       - .trivycache/
-    policy: pull
+    # Allow the job to read AND write to its own cache
+    policy: pull-push
   before_script:
     - while ! docker info; do sleep 1; done
     - apk update && apk add --no-cache curl ca-certificates jq
