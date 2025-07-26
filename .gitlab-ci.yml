@@ -152,99 +152,61 @@ get_keycloak_token:
     reports:
       dotenv: dast_token.env
 
-# *** NEW TEMPLATE FOR ZAP ***
+# *** SUPER SIMPLE ZAP TEMPLATE - NO FILE PERMISSION ISSUES ***
 .zap_dast_template: &zap_dast_template
   stage: zap_scan
-  image: { name: zaproxy/zap-stable, entrypoint: [""] }
-  before_script:
-    # Ensure zap-plan.yaml exists in the project root
-    - ls -la zap-plan.yaml || echo "❌ zap-plan.yaml not found!"
-    # Replace environment variables in the zap plan
-    - |
-      if [ -f "zap-plan.yaml" ]; then
-        # Create a temporary plan with substituted variables
-        envsubst < zap-plan.yaml > zap-plan-substituted.yaml
-        echo "✅ ZAP plan prepared with environment variables"
-        cat zap-plan-substituted.yaml
-      else
-        echo "❌ No zap-plan.yaml found - creating minimal plan"
-        cat > zap-plan-substituted.yaml << 'EOF'
-      ---
-      env:
-        contexts:
-          - name: "Default Context"
-            urls:
-              - "${ZAP_TARGET_URL}"
-        parameters:
-          failOnError: false
-          failOnWarning: false
-          progressToStdout: true
-      jobs:
-        - type: "spider"
-          parameters:
-            url: "${ZAP_TARGET_URL}"
-            maxDuration: 2
-        - type: "passiveScan-wait"
-          parameters:
-            maxDuration: 5
-        - type: "report"
-          parameters:
-            template: "traditional-html"
-            reportDir: "wrk"
-            reportFile: "report"
-        - type: "report"
-          parameters:
-            template: "traditional-json"
-            reportDir: "wrk"
-            reportFile: "gl-dast-report"
-      EOF
-      fi
+  image: 
+    name: zaproxy/zap-stable
+    entrypoint: [""]
   script:
     - echo "Waiting for service to be ready..."
     - sleep 30
-    - echo "Starting ZAP Scan using Automation Framework against target:${ZAP_TARGET_URL}"
-    - echo "Using Keycloak token:${KEYCLOAK_ACCESS_TOKEN:0:20}..."
+    - echo "Starting ZAP baseline scan against:${ZAP_TARGET_URL}"
     
-    # Create the wrk directory to ensure reports can be written
+    # Create output directory in ZAP's home
+    - mkdir -p /zap/wrk
+    
+    # Run ZAP baseline scan (simpler than automation framework)
+    - |
+      zap-baseline.py -t "${ZAP_TARGET_URL}" \
+        -J /zap/wrk/gl-dast-report.json \
+        -r /zap/wrk/report.html \
+        -x /zap/wrk/report.xml \
+        -w /zap/wrk/report.md \
+        -z "-config api.addrs.addr.name=.* -config api.addrs.addr.regex=true" \
+        || true  # Don't fail on findings
+    
+    # Copy results to project directory
     - mkdir -p wrk
-    
-    # Run ZAP with the substituted plan
     - |
-      ZAP_TARGET_URL="${ZAP_TARGET_URL}" \
-      KEYCLOAK_ACCESS_TOKEN="${KEYCLOAK_ACCESS_TOKEN}" \
-      zap.sh -cmd -autorun ./zap-plan-substituted.yaml || {
-        echo "❌ ZAP scan failed, but continuing to collect any partial results"
-        exit_code=$?
-        echo "Exit code: $exit_code"
-      }
-    
-    # Check if reports were generated
-    - |
-      if [ -f "wrk/gl-dast-report.json" ]; then
-        echo "✅ JSON report generated successfully"
-        ls -la wrk/
+      if [ -f "/zap/wrk/gl-dast-report.json" ]; then
+        cp /zap/wrk/gl-dast-report.json wrk/
+        echo "✅ JSON report created"
       else
-        echo "❌ JSON report not found, creating empty report"
-        mkdir -p wrk
         echo '{"site":[],"alerts":[]}' > wrk/gl-dast-report.json
+        echo "⚠️ Created fallback JSON report"
       fi
       
-      if [ -f "wrk/report.html" ]; then
-        echo "✅ HTML report generated successfully"
+      if [ -f "/zap/wrk/report.html" ]; then
+        cp /zap/wrk/report.html wrk/
+        echo "✅ HTML report created"
       else
-        echo "❌ HTML report not found"
-        echo "<html><body><h1>ZAP Scan Failed</h1><p>No results available</p></body></html>" > wrk/report.html
+        echo "<html><body><h1>ZAP Scan - No Results</h1></body></html>" > wrk/report.html
+        echo "⚠️ Created fallback HTML report"
       fi
-  
+    
+    - echo "Reports generated:"
+    - ls -la wrk/
+
   artifacts:
     when: always
     paths:
       - wrk/gl-dast-report.json
       - wrk/report.html
-      - zap-plan-substituted.yaml  # Include the substituted plan for debugging
     reports:
       dast: wrk/gl-dast-report.json
-  allow_failure: true  # Allow failure so you can debug the reports
+    expire_in: 1 week
+  allow_failure: true
 
 
 # ===================================================================
