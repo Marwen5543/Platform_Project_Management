@@ -10,6 +10,15 @@ env:
     progressToStdout: true
 
 jobs:
+  # This job adds the Authorization header to every request ZAP makes.
+  # It reads the token from the KEYCLOAK_ACCESS_TOKEN environment variable.
+  - type: "requester"
+    parameters:
+      rules:
+        - "DELETE http.header.Authorization" # Remove any existing Authorization header
+        - "ADD http.header.Authorization Bearer ${KEYCLOAK_ACCESS_TOKEN}" # Add the new one
+
+
   - type: "passiveScan-wait" # Passive scan while spidering
     parameters:
       maxDuration: 5 # in minutes

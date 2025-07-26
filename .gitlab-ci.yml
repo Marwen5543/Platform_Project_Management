@@ -10,6 +10,7 @@ stages:
   - code-analysis
   - performance-test
   - push-and-scan-image
+  - get_token
   - zap_scan
 
 # ==================================================================
@@ -27,7 +28,7 @@ variables:
   BUILDKIT_PROGRESS: plain
   # Set Maven options to use the local .m2 repository
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
-
+  KEYCLOAK_TOKEN_URL: "http://192.168.50.4:8080/realms/Tunisys/protocol/openid-connect/token"
 # ===================================================================
 # REUSABLE CACHE TEMPLATE FOR MAVEN
 # Caches the .m2 repository to avoid re-downloading dependencies on every run.
@@ -114,7 +115,41 @@ variables:
     expire_in: 1 week
   allow_failure: false
 
+# This job runs once and provides the token to all subsequent DAST jobs.
 
+get_keycloak_token:
+  stage: get_token
+  image: alpine:latest
+  before_script:
+    - apk add --no-cache curl jq
+  script:
+    - echo "Fetching Keycloak access token..."
+    # This curl command uses the secure CI/CD variables you configured in GitLab
+    - |
+      TOKEN_RESPONSE=$(curl -s -X POST "${KEYCLOAK_TOKEN_URL}" \
+        -H "Content-Type: application/x-www-form-urlencoded" \
+        -d "grant_type=password" \
+        -d "client_id=${KEYCLOAK_CLIENT_ID}" \
+        -d "client_secret=${KEYCLOAK_CLIENT_SECRET}" \
+        -d "username=${KEYCLOAK_USERNAME}" \
+        -d "password=${KEYCLOAK_PASSWORD}" \
+        -d "scope=openid")
+    - echo "Token response received from Keycloak."
+    - ACCESS_TOKEN=$(echo "${TOKEN_RESPONSE}" | jq -r '.access_token')
+    # Error handling: Fail the pipeline if the token is not retrieved
+    - |
+      if [ "${ACCESS_TOKEN}" == "null" ] || [ -z "${ACCESS_TOKEN}" ]; then
+        echo "❌ Failed to get access token from Keycloak."
+        echo "Response: ${TOKEN_RESPONSE}"
+        exit 1
+      else
+        echo "✅ Successfully retrieved Keycloak access token."
+        # Create a dotenv artifact to pass the token to the next stage
+        echo "KEYCLOAK_ACCESS_TOKEN=${ACCESS_TOKEN}" > dast_token.env
+      fi
+  artifacts:
+    reports:
+      dotenv: dast_token.env
 
 # *** NEW TEMPLATE FOR ZAP ***
 .zap_dast_template: &zap_dast_template
@@ -123,8 +158,8 @@ variables:
     name: zaproxy/zap-stable
     entrypoint: [""]
   variables:
-    ZAP_API_KEY: "$DAST_API_KEY"  # Use the GitLab CI/CD variable
-    ZAP_GITLAB_INSTANCE: "$CI_SERVER_URL" # GitLab instance URL
+    - echo "Waiting for service to be ready..."
+    - sleep 30
   script:
     - echo "Waiting for service to be ready..."
     - sleep 30
@@ -224,14 +259,15 @@ dast:user-service:
   services:
     - name: "$DOCKERHUB_USERNAME/user-management-service:$CI_COMMIT_SHORT_SHA"
       alias: user-management-service-dast-target
-      command:
-        - java
-        - -jar
-        - app.jar
-        - --spring.profiles.active=dast
+      command: ["java", "-jar", "app.jar", "--spring.profiles.active=dast"]
   variables:
     ZAP_TARGET_URL: "http://user-management-service-dast-target:8085"
-  needs: [push-and-scan:user-service]
+  # This DAST job now needs the image AND the token to run
+  needs:
+    - job: push-and-scan:user-service
+      artifacts: false
+    - job: get_keycloak_token
+      artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -316,9 +352,14 @@ dast:document-service:
   services:
     - name: "$DOCKERHUB_USERNAME/document-management-service:$CI_COMMIT_SHORT_SHA"
       alias: document-management-service-dast-target
+      # You may need a 'dast' profile and command for this service too
   variables:
     ZAP_TARGET_URL: "http://document-management-service-dast-target:8090"
-  needs: [push-and-scan:document-service]
+  needs:
+    - job: push-and-scan:document-service
+      artifacts: false
+    - job: get_keycloak_token
+      artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
@@ -403,9 +444,14 @@ dast:leave-service:
   services:
     - name: "$DOCKERHUB_USERNAME/leave-management-service:$CI_COMMIT_SHORT_SHA"
       alias: leave-management-service-dast-target
+      # You may need a 'dast' profile and command for this service too
   variables:
     ZAP_TARGET_URL: "http://leave-management-service-dast-target:8088"
-  needs: [push-and-scan:leave-service]
+  needs:
+    - job: push-and-scan:leave-service
+      artifacts: false
+    - job: get_keycloak_token
+      artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
