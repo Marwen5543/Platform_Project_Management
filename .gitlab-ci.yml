@@ -120,6 +120,7 @@ variables:
 get_keycloak_token:
   stage: get_token
   image: alpine:latest
+  needs: []
   before_script:
     - apk add --no-cache curl jq
   script:
@@ -154,12 +155,7 @@ get_keycloak_token:
 # *** NEW TEMPLATE FOR ZAP ***
 .zap_dast_template: &zap_dast_template
   stage: zap_scan
-  image:
-    name: zaproxy/zap-stable
-    entrypoint: [""]
-  variables:
-    - echo "Waiting for service to be ready..."
-    - sleep 30
+  image: { name: zaproxy/zap-stable, entrypoint: [""] }
   script:
     - echo "Waiting for service to be ready..."
     - sleep 30
