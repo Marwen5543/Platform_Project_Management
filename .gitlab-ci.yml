@@ -202,8 +202,8 @@ get_keycloak_token:
   script:
     - echo "Waiting for service to be ready..."
     - sleep 30
-    - echo "Starting ZAP Scan using Automation Framework against target: ${ZAP_TARGET_URL}"
-    - echo "Using Keycloak token: ${KEYCLOAK_ACCESS_TOKEN:0:20}..." # Show first 20 chars only
+    - echo "Starting ZAP Scan using Automation Framework against target:${ZAP_TARGET_URL}"
+    - echo "Using Keycloak token:${KEYCLOAK_ACCESS_TOKEN:0:20}..."
     
     # Create the wrk directory to ensure reports can be written
     - mkdir -p wrk
