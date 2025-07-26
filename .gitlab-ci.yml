@@ -159,8 +159,9 @@ get_keycloak_token:
   script:
     - echo "Waiting for service to be ready..."
     - sleep 30
-    - echo "Starting ZAP Scan using Automation Framework against target:${ZAP_TARGET_URL}"
-    - zap.sh -cmd -autorun /builds/$CI_PROJECT_PATH/zap-plan.yaml
+    - echo "Starting ZAP Scan using zap.sh with Authorization header against target:${ZAP_TARGET_URL}"
+    # This is the corrected command. It uses the -H option to inject the Authorization header.
+    - zap.sh -cmd -autorun /builds/$CI_PROJECT_PATH/zap-plan.yaml -H "Authorization:Bearer ${KEYCLOAK_ACCESS_TOKEN}"
   artifacts:
     when: always
     paths:
@@ -255,10 +256,10 @@ dast:user-service:
   services:
     - name: "$DOCKERHUB_USERNAME/user-management-service:$CI_COMMIT_SHORT_SHA"
       alias: user-management-service-dast-target
-      command: ["java", "-jar", "app.jar", "--spring.profiles.active=dast"]
+      # The command activating the 'dast' profile has been REMOVED.
+      # This ensures we are scanning the service with its real security enabled.
   variables:
     ZAP_TARGET_URL: "http://user-management-service-dast-target:8085"
-  # This DAST job now needs the image AND the token to run
   needs:
     - job: push-and-scan:user-service
       artifacts: false
