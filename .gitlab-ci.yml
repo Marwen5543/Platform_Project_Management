@@ -272,6 +272,7 @@ dast:user-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - user-management-service/**/*
+      when: manual
 
 # --- DOCUMENT-MANAGEMENT-SERVICE ---
 build-and-push:document-service:
@@ -289,6 +290,7 @@ build-and-push:document-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - Document-management-service/**/*
+      when: manual
 
 sonar-analysis:document-service:
   stage: code-analysis
@@ -310,6 +312,7 @@ sonar-analysis:document-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - Document-management-service/**/*
+      when: manual
 
 performance-test:document-service:
   stage: performance-test
@@ -345,6 +348,7 @@ push-and-scan:document-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - Document-management-service/**/*
+      when: manual
 
 
 dast:document-service:
@@ -364,6 +368,7 @@ dast:document-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - Document-management-service/**/*
+      when: manual
 
 
 # --- LEAVE-MANAGEMENT-SERVICE ---
@@ -382,6 +387,7 @@ build-and-push:leave-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - leave-management-service/**/*
+      when: manual
 
 sonar-analysis:leave-service:
   stage: code-analysis
@@ -403,6 +409,7 @@ sonar-analysis:leave-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - leave-management-service/**/*
+      when: manual
 
 performance-test:leave-service:
   stage: performance-test
@@ -438,6 +445,7 @@ push-and-scan:leave-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - leave-management-service/**/*
+      when: manual
 
 dast:leave-service:
   <<: *zap_dast_template
@@ -456,3 +464,4 @@ dast:leave-service:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - leave-management-service/**/*
+      when: manual
