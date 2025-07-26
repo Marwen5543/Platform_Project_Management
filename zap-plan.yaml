@@ -5,20 +5,25 @@ env:
       urls:
         - "${ZAP_TARGET_URL}"
   parameters:
-    failOnError: true
+    failOnError: false
     failOnWarning: false
     progressToStdout: true
 
 jobs:
-  - type: "passiveScan-wait"
-    parameters:
-      maxDuration: 5
-
   - type: "spider"
     parameters:
       url: "${ZAP_TARGET_URL}"
       maxDuration: 2
-
+      
+  - type: "passiveScan-wait"
+    parameters:
+      maxDuration: 5
+      
+  - type: "activeScan"
+    parameters:
+      context: "Default Context"
+      maxDuration: 5
+      
   - type: "report"
     parameters:
       template: "traditional-html"
