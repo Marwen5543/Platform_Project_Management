@@ -13,6 +13,9 @@ stages:
 # GLOBAL VARIABLES
 # ===================================================================
 variables:
+  DOCKER_VERSION: "20.10.16"
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
   KEYCLOAK_TOKEN_URL: "http://192.168.50.4:8080/realms/Tunisys/protocol/openid-connect/token"
 
 # ===================================================================
@@ -55,9 +58,9 @@ get_keycloak_token:
 # ===================================================================
 .zap_dast_template: &zap_dast_template
   stage: zap_scan
-  image: docker:20.10.16
+  image: docker:${DOCKER_VERSION}
   services:
-    - name: docker:20.10.16-dind
+    - name: docker:${DOCKER_VERSION}-dind
       alias: docker
   variables:
     DOCKER_TLS_CERTDIR: ""
@@ -66,6 +69,7 @@ get_keycloak_token:
   before_script:
     - while ! docker info; do sleep 1; done
     - apk add --no-cache curl
+    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
   
   script:
     - echo "Waiting for service to be ready..."
