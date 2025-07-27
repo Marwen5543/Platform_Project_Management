@@ -26,47 +26,27 @@ get_keycloak_token:
     - apk add --no-cache curl jq
   script:
     - echo "Fetching Keycloak access token..."
-    - echo "Keycloak URL:${KEYCLOAK_TOKEN_URL}"
-    - echo "Client ID:${KEYCLOAK_CLIENT_ID}"
-    
-    # Test connectivity first
-    - echo "Testing connectivity to Keycloak server..."
-    - curl -v --connect-timeout 10 --max-time 30 "${KEYCLOAK_TOKEN_URL}" || echo "Connection test failed, continuing anyway..."
-    
-    # Make the token request with verbose output and error handling
     - |
-      echo "Making token request..."
-      TOKEN_RESPONSE=$(curl -v --connect-timeout 10 --max-time 30 \
-        -X POST "${KEYCLOAK_TOKEN_URL}" \
+      TOKEN_RESPONSE=$(curl -s -X POST "${KEYCLOAK_TOKEN_URL}" \
         -H "Content-Type: application/x-www-form-urlencoded" \
         -d "grant_type=password" \
         -d "client_id=${KEYCLOAK_CLIENT_ID}" \
         -d "client_secret=${KEYCLOAK_CLIENT_SECRET}" \
         -d "username=${KEYCLOAK_USERNAME}" \
         -d "password=${KEYCLOAK_PASSWORD}" \
-        -d "scope=openid" 2>&1) || {
-          echo "❌ Curl command failed with exit code $?"
-          echo "Response: ${TOKEN_RESPONSE}"
-          exit 1
-        }
-    
-    - echo "Raw token response:${TOKEN_RESPONSE}"
-    - ACCESS_TOKEN=$(echo "${TOKEN_RESPONSE}" | jq -r '.access_token' 2>/dev/null || echo "")
-    
+        -d "scope=openid")
+    - echo "Token response received from Keycloak."
+    - ACCESS_TOKEN=$(echo "${TOKEN_RESPONSE}" | jq -r '.access_token')
     - |
-      if [ "${ACCESS_TOKEN}" == "null" ] || [ -z "${ACCESS_TOKEN}" ] || [ "${ACCESS_TOKEN}" == "" ]; then
+      if [ "${ACCESS_TOKEN}" == "null" ] || [ -z "${ACCESS_TOKEN}" ]; then
         echo "❌ Failed to get access token from Keycloak."
-        echo "Full response: ${TOKEN_RESPONSE}"
-        # Create a dummy token file to prevent artifact upload failure
-        echo "KEYCLOAK_ACCESS_TOKEN=dummy_token" > dast_token.env
+        echo "Response: ${TOKEN_RESPONSE}"
         exit 1
       else
         echo "✅ Successfully retrieved Keycloak access token."
-        echo "Token length: ${#ACCESS_TOKEN}"
         echo "KEYCLOAK_ACCESS_TOKEN=${ACCESS_TOKEN}" > dast_token.env
       fi
   artifacts:
-    when: always
     reports:
       dotenv: dast_token.env
 
@@ -161,7 +141,7 @@ get_keycloak_token:
 dast:user-service:
   <<: *zap_dast_template
   services:
-    - name: "$DOCKERHUB_USERNAME/user-management-service:latest"
+    - name: "$DOCKERHUB_USERNAME/user-management-service:$CI_COMMIT_SHORT_SHA"
       alias: user-management-service-dast-target
   variables:
     ZAP_TARGET_URL: "http://user-management-service-dast-target:8085"
@@ -171,12 +151,14 @@ dast:user-service:
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - user-management-service/**/*
       when: manual
 
 dast:document-service:
   <<: *zap_dast_template
   services:
-    - name: "$DOCKERHUB_USERNAME/document-management-service:latest"
+    - name: "$DOCKERHUB_USERNAME/document-management-service:$CI_COMMIT_SHORT_SHA"
       alias: document-management-service-dast-target
   variables:
     ZAP_TARGET_URL: "http://document-management-service-dast-target:8090"
@@ -186,12 +168,14 @@ dast:document-service:
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - Document-management-service/**/*
       when: manual
 
 dast:leave-service:
   <<: *zap_dast_template
   services:
-    - name: "$DOCKERHUB_USERNAME/leave-management-service:latest"
+    - name: "$DOCKERHUB_USERNAME/leave-management-service:$CI_COMMIT_SHORT_SHA"
       alias: leave-management-service-dast-target
   variables:
     ZAP_TARGET_URL: "http://leave-management-service-dast-target:8088"
@@ -201,4 +185,6 @@ dast:leave-service:
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
+      changes:
+        - leave-management-service/**/*
       when: manual
