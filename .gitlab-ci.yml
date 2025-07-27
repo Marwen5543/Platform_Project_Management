@@ -141,7 +141,7 @@ get_keycloak_token:
 dast:user-service:
   <<: *zap_dast_template
   services:
-    - name: "$DOCKERHUB_USERNAME/user-management-service:$CI_COMMIT_SHORT_SHA"
+    - name: "$DOCKERHUB_USERNAME/user-management-service:latest"
       alias: user-management-service-dast-target
   variables:
     ZAP_TARGET_URL: "http://user-management-service-dast-target:8085"
@@ -151,14 +151,12 @@ dast:user-service:
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - user-management-service/**/*
       when: manual
 
 dast:document-service:
   <<: *zap_dast_template
   services:
-    - name: "$DOCKERHUB_USERNAME/document-management-service:$CI_COMMIT_SHORT_SHA"
+    - name: "$DOCKERHUB_USERNAME/document-management-service:latest"
       alias: document-management-service-dast-target
   variables:
     ZAP_TARGET_URL: "http://document-management-service-dast-target:8090"
@@ -168,14 +166,12 @@ dast:document-service:
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - Document-management-service/**/*
       when: manual
 
 dast:leave-service:
   <<: *zap_dast_template
   services:
-    - name: "$DOCKERHUB_USERNAME/leave-management-service:$CI_COMMIT_SHORT_SHA"
+    - name: "$DOCKERHUB_USERNAME/leave-management-service:latest"
       alias: leave-management-service-dast-target
   variables:
     ZAP_TARGET_URL: "http://leave-management-service-dast-target:8088"
@@ -185,6 +181,4 @@ dast:leave-service:
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - leave-management-service/**/*
       when: manual
