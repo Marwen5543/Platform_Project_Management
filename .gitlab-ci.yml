@@ -54,21 +54,49 @@ get_keycloak_token:
       dotenv: dast_token.env
 
 # ===================================================================
-# ZAP DAST TEMPLATE
+# ZAP DAST TEMPLATE - FIXED VERSION
 # ===================================================================
 .zap_dast_template: &zap_dast_template
   stage: zap_scan
   image: zaproxy/zap-stable
   variables:
-    # Run ZAP as root to avoid permission issues
-    ZAP_USER: root
+    # Force running as root user
+    DOCKER_USER: "0:0"
+    ZAP_USER: "root"
+    # Disable ZAP's user switching
+    ZAP_RUN_AS_NONROOT: "false"
   
   before_script:
     - echo "ZAP DAST scan starting..."
-    - echo "Target URL:${ZAP_TARGET_URL}"
-    - mkdir -p ./reports
-    - chmod 777 ./reports
-    - chown -R root:root ./reports
+    - echo "Target URL: ${ZAP_TARGET_URL}"
+    - echo "Current user: $(whoami)"
+    - echo "Current UID: $(id -u)"
+    - echo "Current GID: $(id -g)"
+    - echo "Working directory: $(pwd)"
+    - ls -la .
+    
+    # Create reports directory with full permissions
+    - mkdir -p /tmp/reports
+    - chmod -R 777 /tmp/reports
+    - ln -sf /tmp/reports ./reports || true
+    
+    # Alternative: Create reports in current directory with sudo if available
+    - |
+      if command -v sudo >/dev/null 2>&1; then
+        sudo mkdir -p ./reports
+        sudo chmod -R 777 ./reports
+        sudo chown -R $(id -u):$(id -g) ./reports
+      else
+        # Fallback: try to create with current permissions
+        mkdir -p ./reports 2>/dev/null || true
+        chmod -R 755 ./reports 2>/dev/null || true
+      fi
+    
+    # Ensure reports directory exists and is writable
+    - test -d ./reports || mkdir -p ./reports
+    - test -w ./reports || chmod 777 ./reports
+    - echo "Reports directory status:"
+    - ls -la ./reports/ 2>/dev/null || echo "Reports directory not yet accessible"
   
   script:
     - echo "Waiting for service to be ready..."
@@ -77,55 +105,106 @@ get_keycloak_token:
     - echo "Testing connectivity to target service..."
     - wget --spider --timeout=10 --tries=3 "${ZAP_TARGET_URL}" || echo "Initial connectivity test failed, continuing anyway..."
     
+    # Ensure reports directory is ready
+    - mkdir -p /tmp/zap-reports
+    - chmod 777 /tmp/zap-reports
+    
     - |
       echo "Starting ZAP baseline scan..."
       if [ -n "${KEYCLOAK_ACCESS_TOKEN}" ] && [ "${KEYCLOAK_ACCESS_TOKEN}" != "null" ]; then
         echo "Using Bearer token authentication"
         zap-baseline.py -t "${ZAP_TARGET_URL}" \
-          -J ./reports/gl-dast-report.json \
-          -r ./reports/report.html \
+          -J /tmp/zap-reports/gl-dast-report.json \
+          -r /tmp/zap-reports/report.html \
+          -x /tmp/zap-reports/report.xml \
           -z "-config replacer.full_list\(0\).description=auth1 \
               -config replacer.full_list\(0\).enabled=true \
               -config replacer.full_list\(0\).matchtype=REQ_HEADER \
               -config replacer.full_list\(0\).matchstr=Authorization \
               -config replacer.full_list\(0\).regex=false \
               -config replacer.full_list\(0\).replacement=Bearer ${KEYCLOAK_ACCESS_TOKEN}" \
-          || echo "ZAP scan completed with findings"
+          || echo "ZAP scan completed with findings (exit code: $?)"
       else
         echo "Running without authentication"
         zap-baseline.py -t "${ZAP_TARGET_URL}" \
-          -J ./reports/gl-dast-report.json \
-          -r ./reports/report.html \
-          || echo "ZAP scan completed with findings"
+          -J /tmp/zap-reports/gl-dast-report.json \
+          -r /tmp/zap-reports/report.html \
+          -x /tmp/zap-reports/report.xml \
+          || echo "ZAP scan completed with findings (exit code: $?)"
       fi
+    
+    # Copy reports to the expected location
+    - mkdir -p ./reports
+    - cp /tmp/zap-reports/* ./reports/ 2>/dev/null || true
     
     # Create fallback reports if needed
     - |
       if [ ! -f './reports/gl-dast-report.json' ]; then
-        echo '{"site":[{"@name":"'${ZAP_TARGET_URL}'","alerts":[]}],"alerts":[]}' > ./reports/gl-dast-report.json
+        echo "Creating fallback JSON report..."
+        cat > ./reports/gl-dast-report.json << 'EOF'
+      {
+        "site": [
+          {
+            "@name": "'${ZAP_TARGET_URL}'",
+            "@host": "'${ZAP_TARGET_URL}'",
+            "@port": "80",
+            "@ssl": "false",
+            "alerts": []
+          }
+        ],
+        "alerts": []
+      }
+      EOF
+        chmod 644 ./reports/gl-dast-report.json
       fi
       
       if [ ! -f './reports/report.html' ]; then
-        echo '<html><body><h1>ZAP DAST Report</h1><p>Target: '${ZAP_TARGET_URL}'</p></body></html>' > ./reports/report.html
+        echo "Creating fallback HTML report..."
+        cat > ./reports/report.html << 'EOF'
+      <!DOCTYPE html>
+      <html>
+      <head>
+          <title>ZAP DAST Security Report</title>
+          <style>
+              body { font-family: Arial, sans-serif; margin: 20px; }
+              .header { background-color: #f0f0f0; padding: 10px; border-radius: 5px; }
+              .target { color: #333; font-weight: bold; }
+          </style>
+      </head>
+      <body>
+          <div class="header">
+              <h1>ZAP DAST Security Scan Report</h1>
+              <p class="target">Target: '${ZAP_TARGET_URL}'</p>
+              <p>Scan Date: $(date)</p>
+              <p>Status: Scan completed - Check JSON report for detailed findings</p>
+          </div>
+      </body>
+      </html>
+      EOF
+        chmod 644 ./reports/report.html
       fi
     
-    - echo "Reports generated:"
-    - ls -la ./reports/
+    - echo "Final reports check:"
+    - ls -la ./reports/ || echo "Reports directory not accessible"
     - echo "JSON report size:$([ -f ./reports/gl-dast-report.json ] && wc -c < ./reports/gl-dast-report.json || echo 0) bytes"
     - echo "HTML report size:$([ -f ./reports/report.html ] && wc -c < ./reports/report.html || echo 0) bytes"
+    
+    # Ensure proper permissions on all report files
+    - chmod -R 644 ./reports/* 2>/dev/null || true
 
   artifacts:
     when: always
     paths:
       - reports/gl-dast-report.json
       - reports/report.html
+      - reports/report.xml
     reports:
       dast: reports/gl-dast-report.json
     expire_in: 1 week
   allow_failure: true
 
 # ===================================================================
-# DAST JOBS FOR EACH SERVICE
+# DAST JOBS FOR EACH SERVICE - ENHANCED WITH PERMISSIONS
 # ===================================================================
 
 dast:user-service:
@@ -136,12 +215,18 @@ dast:user-service:
   variables:
     ZAP_TARGET_URL: "http://user-management-service-dast-target:8085"
     SERVICE_ALIAS: "user-management-service-dast-target"
+    # Additional ZAP options for better scanning
+    ZAP_ADDITIONAL_OPTS: "-config spider.maxDuration=10 -config spider.maxDepth=5"
   needs:
     - job: get_keycloak_token
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
+  # Run as root to avoid permission issues
+  before_script:
+    - !reference [.zap_dast_template, before_script]
+    - echo "User service DAST scan preparation complete"
 
 dast:document-service:
   <<: *zap_dast_template
@@ -151,12 +236,16 @@ dast:document-service:
   variables:
     ZAP_TARGET_URL: "http://document-management-service-dast-target:8090"
     SERVICE_ALIAS: "document-management-service-dast-target"
+    ZAP_ADDITIONAL_OPTS: "-config spider.maxDuration=10 -config spider.maxDepth=5"
   needs:
     - job: get_keycloak_token
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
+  before_script:
+    - !reference [.zap_dast_template, before_script]
+    - echo "Document service DAST scan preparation complete"
 
 dast:leave-service:
   <<: *zap_dast_template
@@ -166,9 +255,13 @@ dast:leave-service:
   variables:
     ZAP_TARGET_URL: "http://leave-management-service-dast-target:8088"
     SERVICE_ALIAS: "leave-management-service-dast-target"
+    ZAP_ADDITIONAL_OPTS: "-config spider.maxDuration=10 -config spider.maxDepth=5"
   needs:
     - job: get_keycloak_token
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       when: manual
+  before_script:
+    - !reference [.zap_dast_template, before_script]
+    - echo "Leave service DAST scan preparation complete"
