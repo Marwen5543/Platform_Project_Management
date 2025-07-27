@@ -58,15 +58,27 @@ get_keycloak_token:
 # ===================================================================
 .zap_dast_template: &zap_dast_template
   stage: zap_scan
-  image: zaproxy/zap-stable
+  image: 
+    name: zaproxy/zap-stable
+    # Force container to run as root
+    entrypoint: [""]
   variables:
     # Force running as root user
     DOCKER_USER: "0:0"
     ZAP_USER: "root"
     # Disable ZAP's user switching
     ZAP_RUN_AS_NONROOT: "false"
+    FF_NETWORK_PER_BUILD: "true"
   
   before_script:
+    # Switch to root user first
+    - |
+      if [ "$(id -u)" != "0" ]; then
+        echo "Current user is not root ($(whoami), UID: $(id -u))"
+        echo "Attempting to switch to root..."
+        exec su -c "$0 $*" root || true
+      fi
+    
     - echo "ZAP DAST scan starting..."
     - echo "Target URL:${ZAP_TARGET_URL}"
     - echo "Current user:$(whoami)"
@@ -75,28 +87,26 @@ get_keycloak_token:
     - echo "Working directory:$(pwd)"
     - ls -la .
     
-    # Create reports directory with full permissions
+    # Create reports directory with root permissions
     - mkdir -p /tmp/reports
     - chmod -R 777 /tmp/reports
-    - ln -sf /tmp/reports ./reports || true
     
-    # Alternative: Create reports in current directory with sudo if available
+    # Use /tmp/reports and create a working reports directory
+    - mkdir -p ./reports || true
+    - chmod 777 ./reports 2>/dev/null || true
+    
+    # If we can't create in current dir, work entirely from /tmp
     - |
-      if command -v sudo >/dev/null 2>&1; then
-        sudo mkdir -p ./reports
-        sudo chmod -R 777 ./reports
-        sudo chown -R $(id -u):$(id -g) ./reports
+      if [ ! -w "./reports" ] && [ ! -d "./reports" ]; then
+        echo "Cannot write to ./reports, using /tmp/reports as primary location"
+        export REPORTS_DIR="/tmp/reports"
       else
-        # Fallback: try to create with current permissions
-        mkdir -p ./reports 2>/dev/null || true
-        chmod -R 755 ./reports 2>/dev/null || true
+        export REPORTS_DIR="./reports"
       fi
     
-    # Ensure reports directory exists and is writable
-    - test -d ./reports || mkdir -p ./reports
-    - test -w ./reports || chmod 777 ./reports
-    - echo "Reports directory status:"
-    - ls -la ./reports/ 2>/dev/null || echo "Reports directory not yet accessible"
+    - echo "Using reports directory:$REPORTS_DIR"
+    - mkdir -p "$REPORTS_DIR"
+    - chmod 777 "$REPORTS_DIR" 2>/dev/null || true
   
   script:
     - echo "Waiting for service to be ready..."
@@ -111,12 +121,15 @@ get_keycloak_token:
     
     - |
       echo "Starting ZAP baseline scan..."
+      # Use the determined reports directory
+      REPORTS_DIR="${REPORTS_DIR:-/tmp/reports}"
+      
       if [ -n "${KEYCLOAK_ACCESS_TOKEN}" ] && [ "${KEYCLOAK_ACCESS_TOKEN}" != "null" ]; then
         echo "Using Bearer token authentication"
         zap-baseline.py -t "${ZAP_TARGET_URL}" \
-          -J /tmp/zap-reports/gl-dast-report.json \
-          -r /tmp/zap-reports/report.html \
-          -x /tmp/zap-reports/report.xml \
+          -J "${REPORTS_DIR}/gl-dast-report.json" \
+          -r "${REPORTS_DIR}/report.html" \
+          -x "${REPORTS_DIR}/report.xml" \
           -z "-config replacer.full_list\(0\).description=auth1 \
               -config replacer.full_list\(0\).enabled=true \
               -config replacer.full_list\(0\).matchtype=REQ_HEADER \
@@ -127,15 +140,20 @@ get_keycloak_token:
       else
         echo "Running without authentication"
         zap-baseline.py -t "${ZAP_TARGET_URL}" \
-          -J /tmp/zap-reports/gl-dast-report.json \
-          -r /tmp/zap-reports/report.html \
-          -x /tmp/zap-reports/report.xml \
+          -J "${REPORTS_DIR}/gl-dast-report.json" \
+          -r "${REPORTS_DIR}/report.html" \
+          -x "${REPORTS_DIR}/report.xml" \
           || echo "ZAP scan completed with findings (exit code: $?)"
       fi
     
-    # Copy reports to the expected location
-    - mkdir -p ./reports
-    - cp /tmp/zap-reports/* ./reports/ 2>/dev/null || true
+    # Copy reports to the expected location if needed
+    - |
+      REPORTS_DIR="${REPORTS_DIR:-/tmp/reports}"
+      if [ "$REPORTS_DIR" != "./reports" ]; then
+        echo "Copying reports from $REPORTS_DIR to ./reports"
+        mkdir -p ./reports 2>/dev/null || true
+        cp -f "$REPORTS_DIR"/* ./reports/ 2>/dev/null || true
+      fi
     
     # Create fallback reports if needed
     - |
