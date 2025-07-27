@@ -1,122 +1,23 @@
 # ===================================================================
-# GITLAB CI WITH TRIVY SECURITY SCANNING & MAVEN CACHING
+# GITLAB CI - DAST TESTS ONLY
 # ===================================================================
 default:
   tags:
     - docker
 
 stages:
-  - build-and-push-to-nexus
-  - code-analysis
-  - performance-test
-  - push-and-scan-image
   - get_token
   - zap_scan
 
-# ==================================================================
+# ===================================================================
 # GLOBAL VARIABLES
 # ===================================================================
 variables:
-  DOCKER_VERSION: "20.10.16"
-  DOCKER_DRIVER: overlay2
-  DOCKER_TLS_CERTDIR: ""
-  TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache"
-  TRIVY_SEVERITY: "HIGH,CRITICAL"
-  TRIVY_IGNORE_UNFIXED: "true"
-  TRIVY_TIMEOUT: "120m"
-  DOCKER_BUILDKIT: 1
-  BUILDKIT_PROGRESS: plain
-  # Set Maven options to use the local .m2 repository
-  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
   KEYCLOAK_TOKEN_URL: "http://192.168.50.4:8080/realms/Tunisys/protocol/openid-connect/token"
-# ===================================================================
-# REUSABLE CACHE TEMPLATE FOR MAVEN
-# Caches the .m2 repository to avoid re-downloading dependencies on every run.
-# ===================================================================
-.maven_cache_template: &maven_cache_template
-  cache:
-    key:
-      files:
-        - "*/pom.xml" # Create a new cache if any pom.xml changes
-      prefix: "maven-${CI_JOB_NAME}"
-    paths:
-      - .m2/repository/
-    policy: pull-push
 
 # ===================================================================
-# SCHEDULED JOB FOR UPDATING THE TRIVY DATABASE CACHE
+# GET KEYCLOAK TOKEN FOR AUTHENTICATION
 # ===================================================================
-
-
-# ===================================================================
-# REUSABLE DOCKER BUILD AND SCAN TEMPLATE - *** THIS SECTION IS FIXED ***
-# ===================================================================
-.docker_build_and_scan_template: &docker_build_and_scan_template
-  stage: push-and-scan-image
-  image: docker:${DOCKER_VERSION}
-  services:
-    - name: docker:${DOCKER_VERSION}-dind
-      alias: docker
-  variables:
-    # Force Trivy to use the more reliable GitHub registry for its database
-    TRIVY_DB_REPOSITORY: "ghcr.io/aquasecurity/trivy-db"
-  cache:
-    # Give each scan job its own separate cache
-    key: "trivy-scan-cache-${CI_JOB_NAME}"
-    paths:
-      - .trivycache/
-    # Allow the job to read AND write to its own cache
-    policy: pull-push
-  before_script:
-    - while ! docker info; do sleep 1; done
-    - apk update && apk add --no-cache curl ca-certificates jq
-    - curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.58.0/trivy_0.58.0_Linux-64bit.tar.gz | tar -C /usr/local/bin -xzf - trivy
-    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
-    - mkdir -p $TRIVY_CACHE_DIR
-  script:
-    - docker build -t "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" -t "$IMAGE_NAME:latest" "$BUILD_CONTEXT"
-    
-    # --- FIXED TRIVY COMMANDS ---
-    # This simplified command lets Trivy manage its own DB updates.
-    # It will download the DB on the first run and use the cache on subsequent runs.
-    - echo "Scanning the container image for vulnerabilities..."
-    - |
-      trivy image --severity ${TRIVY_SEVERITY} \
-        --cache-dir $TRIVY_CACHE_DIR \
-        --timeout ${TRIVY_TIMEOUT} \
-        --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} \
-        --format json \
-        --output trivy-report.json \
-        "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-
-    # Generate human-readable report for the logs
-    - trivy image --severity ${TRIVY_SEVERITY} --cache-dir $TRIVY_CACHE_DIR --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} --format table "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA" | tee trivy-report.txt
-    
-    # Check if there are any CRITICAL vulnerabilities to enforce a security gate
-    - |
-      CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-report.json || echo "0")
-      if [ "$CRITICAL_COUNT" -gt 0 ]; then
-        echo "❌ Security gate FAILED: Found $CRITICAL_COUNT CRITICAL vulnerabilities. Halting pipeline."
-        echo "Please review the trivy-report.json and trivy-report.txt artifacts."
-        exit 1
-      else
-        echo "✅ Security gate PASSED: No CRITICAL vulnerabilities found."
-      fi
-    - echo "Pushing images to registry..."
-    - docker push "$IMAGE_NAME:$CI_COMMIT_SHORT_SHA"
-    - docker push "$IMAGE_NAME:latest"
-  artifacts:
-    paths:
-      - trivy-report.json
-      - trivy-report.txt
-    reports:
-      container_scanning: trivy-report.json
-    when: always
-    expire_in: 1 week
-  allow_failure: false
-
-# This job runs once and provides the token to all subsequent DAST jobs.
-
 get_keycloak_token:
   stage: get_token
   image: alpine:latest
@@ -125,7 +26,6 @@ get_keycloak_token:
     - apk add --no-cache curl jq
   script:
     - echo "Fetching Keycloak access token..."
-    # This curl command uses the secure CI/CD variables you configured in GitLab
     - |
       TOKEN_RESPONSE=$(curl -s -X POST "${KEYCLOAK_TOKEN_URL}" \
         -H "Content-Type: application/x-www-form-urlencoded" \
@@ -137,7 +37,6 @@ get_keycloak_token:
         -d "scope=openid")
     - echo "Token response received from Keycloak."
     - ACCESS_TOKEN=$(echo "${TOKEN_RESPONSE}" | jq -r '.access_token')
-    # Error handling: Fail the pipeline if the token is not retrieved
     - |
       if [ "${ACCESS_TOKEN}" == "null" ] || [ -z "${ACCESS_TOKEN}" ]; then
         echo "❌ Failed to get access token from Keycloak."
@@ -145,21 +44,19 @@ get_keycloak_token:
         exit 1
       else
         echo "✅ Successfully retrieved Keycloak access token."
-        # Create a dotenv artifact to pass the token to the next stage
         echo "KEYCLOAK_ACCESS_TOKEN=${ACCESS_TOKEN}" > dast_token.env
       fi
   artifacts:
     reports:
       dotenv: dast_token.env
 
-# *** ACTUALLY WORKING ZAP SOLUTION - FORCE ROOT USER ***
+# ===================================================================
+# ZAP DAST TEMPLATE
+# ===================================================================
 .zap_dast_template: &zap_dast_template
   stage: zap_scan
-  # This is the key: use a Docker-in-Docker approach to run ZAP as root
   image: docker:20.10.16
   services:
-    - name: "$DOCKERHUB_USERNAME/user-management-service:$CI_COMMIT_SHORT_SHA"
-      alias: user-management-service-dast-target
     - name: docker:20.10.16-dind
       alias: docker
   variables:
@@ -175,15 +72,13 @@ get_keycloak_token:
     - sleep 60
     - echo "Starting ZAP scan against:${ZAP_TARGET_URL}"
     
-    # Create local directory for reports
     - mkdir -p ./wrk
     
-    # Run ZAP container as ROOT user with volume mount
     - |
       echo "Running ZAP container as root user..."
       docker run --rm \
         --user root \
-        --network container:$(docker ps -q -f name=user-management-service-dast-target) \
+        --network container:$(docker ps -q -f name=${SERVICE_ALIAS}) \
         -v "$(pwd)/wrk:/zap/wrk" \
         -e "ZAP_TARGET_URL=${ZAP_TARGET_URL}" \
         -e "KEYCLOAK_ACCESS_TOKEN=${KEYCLOAK_ACCESS_TOKEN}" \
@@ -192,7 +87,6 @@ get_keycloak_token:
           echo 'Running as user: \$(whoami)';
           echo 'Target URL: \$ZAP_TARGET_URL';
           
-          # Run ZAP baseline scan
           if [ -n '\$KEYCLOAK_ACCESS_TOKEN' ]; then
             echo 'Using Bearer token authentication';
             zap-baseline.py -t '\$ZAP_TARGET_URL' \
@@ -213,7 +107,6 @@ get_keycloak_token:
               || echo 'ZAP scan completed with findings';
           fi
           
-          # Create fallback reports if needed
           if [ ! -f '/zap/wrk/gl-dast-report.json' ]; then
             echo '{\"site\":[{\"@name\":\"'\$ZAP_TARGET_URL'\",\"alerts\":[]}],\"alerts\":[]}' > /zap/wrk/gl-dast-report.json;
           fi
@@ -241,99 +134,19 @@ get_keycloak_token:
     expire_in: 1 week
   allow_failure: true
 
-
 # ===================================================================
-# JOBS FOR EACH MICROSERVICE (Unchanged from your previous version)
+# DAST JOBS FOR EACH SERVICE
 # ===================================================================
-
-# --- USER-MANAGEMENT-SERVICE ---
-build-and-push:user-service:
-  stage: build-and-push-to-nexus
-  image: maven:3.8.5-openjdk-17
-  <<: *maven_cache_template
-  script:
-    - cp $SETTINGS_XML ./settings-temp.xml
-    - cd user-management-service
-    - mvn clean deploy -s ../settings-temp.xml
-  artifacts:
-    paths:
-      - user-management-service/target/
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - user-management-service/**/*
-      when: manual
-
-sonar-analysis:user-service:
-  stage: code-analysis
-  image: maven:3.8.5-openjdk-17
-  <<: *maven_cache_template
-  script:
-    - cp $SETTINGS_XML ./settings-temp.xml
-    - cd user-management-service
-    - >-
-      mvn verify sonar:sonar -s ../settings-temp.xml
-      -Dsonar.projectKey=com.tunisys:user-management-service
-      -Dsonar.host.url=$SONAR_HOST_URL
-      -Dsonar.login=$SONAR_TOKEN
-      -Dsonar.qualitygate.wait=true
-  needs:
-    - job: build-and-push:user-service
-      artifacts: true
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - user-management-service/**/*
-      when: manual
-
-performance-test:user-service:
-  stage: performance-test
-  image: maven:3.8.5-openjdk-17
-  <<: *maven_cache_template
-  needs: ["build-and-push:user-service"]
-  script:
-    - cp $SETTINGS_XML ./settings-temp.xml
-    - cd user-management-service
-    - >-
-      mvn gatling:test -s ../settings-temp.xml
-      -Dgatling.simulationClass=company.user_management_service.simulations.UserManagementSimulation
-      -DAPP_URL=${STAGING_APP_URL}
-  artifacts:
-    when: always
-    paths:
-      - user-management-service/target/gatling/
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - user-management-service/**/*
-      when: manual
-
-push-and-scan:user-service:
-  <<: *docker_build_and_scan_template
-  variables:
-    IMAGE_NAME: "$DOCKERHUB_USERNAME/user-management-service"
-    BUILD_CONTEXT: "user-management-service"
-  needs:
-    - job: build-and-push:user-service
-      artifacts: true
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - user-management-service/**/*
-      when: manual
 
 dast:user-service:
   <<: *zap_dast_template
   services:
     - name: "$DOCKERHUB_USERNAME/user-management-service:$CI_COMMIT_SHORT_SHA"
       alias: user-management-service-dast-target
-      # The command activating the 'dast' profile has been REMOVED.
-      # This ensures we are scanning the service with its real security enabled.
   variables:
     ZAP_TARGET_URL: "http://user-management-service-dast-target:8085"
+    SERVICE_ALIAS: "user-management-service-dast-target"
   needs:
-    - job: push-and-scan:user-service
-      artifacts: false
     - job: get_keycloak_token
       artifacts: true
   rules:
@@ -342,177 +155,21 @@ dast:user-service:
         - user-management-service/**/*
       when: manual
 
-# --- DOCUMENT-MANAGEMENT-SERVICE ---
-build-and-push:document-service:
-  stage: build-and-push-to-nexus
-  image: maven:3.8.5-openjdk-17
-  <<: *maven_cache_template
-  script:
-    - cp $SETTINGS_XML ./settings-temp.xml
-    - cd Document-management-service
-    - mvn clean deploy -s ../settings-temp.xml
-  artifacts:
-    paths:
-      - Document-management-service/target/
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - Document-management-service/**/*
-      when: manual
-
-sonar-analysis:document-service:
-  stage: code-analysis
-  image: maven:3.8.5-openjdk-17
-  <<: *maven_cache_template
-  script:
-    - cp $SETTINGS_XML ./settings-temp.xml
-    - cd Document-management-service
-    - >-
-      mvn verify sonar:sonar -s ../settings-temp.xml
-      -Dsonar.projectKey=com.tunisys:document-management-service
-      -Dsonar.host.url=$SONAR_HOST_URL
-      -Dsonar.login=$SONAR_TOKEN
-      -Dsonar.qualitygate.wait=true
-  needs:
-    - job: build-and-push:document-service
-      artifacts: true
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - Document-management-service/**/*
-      when: manual
-
-performance-test:document-service:
-  stage: performance-test
-  image: maven:3.8.5-openjdk-17
-  <<: *maven_cache_template
-  needs: ["build-and-push:document-service"]
-  script:
-    - cp $SETTINGS_XML ./settings-temp.xml
-    - cd Document-management-service
-    - >-
-      mvn gatling:test -s ../settings-temp.xml
-      -Dgatling.simulationClass=org.example.documentmanagementservice.simulations.DocumentSimulation
-      -DAPP_URL=${STAGING_APP_URL}
-  artifacts:
-    when: always
-    paths:
-      - Document-management-service/target/gatling/
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - Document-management-service/**/*
-      when: manual
-
-push-and-scan:document-service:
-  <<: *docker_build_and_scan_template
-  variables:
-    IMAGE_NAME: "$DOCKERHUB_USERNAME/document-management-service"
-    BUILD_CONTEXT: "Document-management-service"
-  needs:
-    - job: build-and-push:document-service
-      artifacts: true
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - Document-management-service/**/*
-      when: manual
-
-
 dast:document-service:
   <<: *zap_dast_template
   services:
     - name: "$DOCKERHUB_USERNAME/document-management-service:$CI_COMMIT_SHORT_SHA"
       alias: document-management-service-dast-target
-      # You may need a 'dast' profile and command for this service too
   variables:
     ZAP_TARGET_URL: "http://document-management-service-dast-target:8090"
+    SERVICE_ALIAS: "document-management-service-dast-target"
   needs:
-    - job: push-and-scan:document-service
-      artifacts: false
     - job: get_keycloak_token
       artifacts: true
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
       changes:
         - Document-management-service/**/*
-      when: manual
-
-
-# --- LEAVE-MANAGEMENT-SERVICE ---
-build-and-push:leave-service:
-  stage: build-and-push-to-nexus
-  image: maven:3.8.5-openjdk-17
-  <<: *maven_cache_template
-  script:
-    - cp $SETTINGS_XML ./settings-temp.xml
-    - cd leave-management-service
-    - mvn clean deploy -s ../settings-temp.xml
-  artifacts:
-    paths:
-      - leave-management-service/target/
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - leave-management-service/**/*
-      when: manual
-
-sonar-analysis:leave-service:
-  stage: code-analysis
-  image: maven:3.8.5-openjdk-17
-  <<: *maven_cache_template
-  script:
-    - cp $SETTINGS_XML ./settings-temp.xml
-    - cd leave-management-service
-    - >-
-      mvn verify sonar:sonar -s ../settings-temp.xml
-      -Dsonar.projectKey=com.tunisys:leave-management-service
-      -Dsonar.host.url=$SONAR_HOST_URL
-      -Dsonar.login=$SONAR_TOKEN
-      -Dsonar.qualitygate.wait=true
-  needs:
-    - job: build-and-push:leave-service
-      artifacts: true
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - leave-management-service/**/*
-      when: manual
-
-performance-test:leave-service:
-  stage: performance-test
-  image: maven:3.8.5-openjdk-17
-  <<: *maven_cache_template
-  needs: ["build-and-push:leave-service"]
-  script:
-    - cp $SETTINGS_XML ./settings-temp.xml
-    - cd leave-management-service
-    - >-
-      mvn gatling:test -s ../settings-temp.xml
-      -Dgatling.simulationClass=company.leave_management_service.simulations.LeaveSimulation
-      -DAPP_URL=${STAGING_APP_URL}
-  artifacts:
-    when: always
-    paths:
-      - leave-management-service/target/gatling/
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - leave-management-service/**/*
-      when: manual
-
-push-and-scan:leave-service:
-  <<: *docker_build_and_scan_template
-  variables:
-    IMAGE_NAME: "$DOCKERHUB_USERNAME/leave-management-service"
-    BUILD_CONTEXT: "leave-management-service"
-  needs:
-    - job: build-and-push:leave-service
-      artifacts: true
-  rules:
-    - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - leave-management-service/**/*
       when: manual
 
 dast:leave-service:
@@ -520,12 +177,10 @@ dast:leave-service:
   services:
     - name: "$DOCKERHUB_USERNAME/leave-management-service:$CI_COMMIT_SHORT_SHA"
       alias: leave-management-service-dast-target
-      # You may need a 'dast' profile and command for this service too
   variables:
     ZAP_TARGET_URL: "http://leave-management-service-dast-target:8088"
+    SERVICE_ALIAS: "leave-management-service-dast-target"
   needs:
-    - job: push-and-scan:leave-service
-      artifacts: false
     - job: get_keycloak_token
       artifacts: true
   rules:
