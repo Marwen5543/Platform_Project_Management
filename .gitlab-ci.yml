@@ -68,11 +68,11 @@ get_keycloak_token:
   
   before_script:
     - echo "ZAP DAST scan starting..."
-    - echo "Target URL: ${ZAP_TARGET_URL}"
-    - echo "Current user: $(whoami)"
-    - echo "Current UID: $(id -u)"
-    - echo "Current GID: $(id -g)"
-    - echo "Working directory: $(pwd)"
+    - echo "Target URL:${ZAP_TARGET_URL}"
+    - echo "Current user:$(whoami)"
+    - echo "Current UID:$(id -u)"
+    - echo "Current GID:$(id -g)"
+    - echo "Working directory:$(pwd)"
     - ls -la .
     
     # Create reports directory with full permissions
