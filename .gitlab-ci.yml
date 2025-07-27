@@ -68,6 +68,7 @@ get_keycloak_token:
     - echo "Target URL:${ZAP_TARGET_URL}"
     - mkdir -p ./reports
     - chmod 777 ./reports
+    - chown -R root:root ./reports
   
   script:
     - echo "Waiting for service to be ready..."
