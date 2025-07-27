@@ -58,83 +58,70 @@ get_keycloak_token:
 # ===================================================================
 .zap_dast_template: &zap_dast_template
   stage: zap_scan
-  image: docker:${DOCKER_VERSION}
-  services:
-    - name: docker:${DOCKER_VERSION}-dind
-      alias: docker
+  image: zaproxy/zap-stable
   variables:
-    DOCKER_TLS_CERTDIR: ""
-    DOCKER_DRIVER: overlay2
+    # Run ZAP as root to avoid permission issues
+    ZAP_USER: root
   
   before_script:
-    - while ! docker info; do sleep 1; done
-    - apk add --no-cache curl
-    - echo "$DOCKERHUB_TOKEN" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
+    - echo "ZAP DAST scan starting..."
+    - echo "Target URL:${ZAP_TARGET_URL}"
+    - mkdir -p /zap/wrk
   
   script:
     - echo "Waiting for service to be ready..."
     - sleep 60
-    - echo "Starting ZAP scan against:${ZAP_TARGET_URL}"
     
-    - mkdir -p ./wrk
+    - echo "Testing connectivity to target service..."
+    - wget --spider --timeout=10 --tries=3 "${ZAP_TARGET_URL}" || echo "Initial connectivity test failed, continuing anyway..."
     
     - |
-      echo "Running ZAP container as root user..."
-      docker run --rm \
-        --user root \
-        --network container:$(docker ps -q -f name=${SERVICE_ALIAS}) \
-        -v "$(pwd)/wrk:/zap/wrk" \
-        -e "ZAP_TARGET_URL=${ZAP_TARGET_URL}" \
-        -e "KEYCLOAK_ACCESS_TOKEN=${KEYCLOAK_ACCESS_TOKEN}" \
-        zaproxy/zap-stable \
-        bash -c "
-          echo 'Running as user: \$(whoami)';
-          echo 'Target URL: \$ZAP_TARGET_URL';
-          
-          if [ -n '\$KEYCLOAK_ACCESS_TOKEN' ]; then
-            echo 'Using Bearer token authentication';
-            zap-baseline.py -t '\$ZAP_TARGET_URL' \
-              -J /zap/wrk/gl-dast-report.json \
-              -r /zap/wrk/report.html \
-              -z '-config replacer.full_list(0).description=auth1 \
-                  -config replacer.full_list(0).enabled=true \
-                  -config replacer.full_list(0).matchtype=REQ_HEADER \
-                  -config replacer.full_list(0).matchstr=Authorization \
-                  -config replacer.full_list(0).regex=false \
-                  -config replacer.full_list(0).replacement=Bearer \$KEYCLOAK_ACCESS_TOKEN' \
-              || echo 'ZAP scan completed with findings';
-          else
-            echo 'Running without authentication';
-            zap-baseline.py -t '\$ZAP_TARGET_URL' \
-              -J /zap/wrk/gl-dast-report.json \
-              -r /zap/wrk/report.html \
-              || echo 'ZAP scan completed with findings';
-          fi
-          
-          if [ ! -f '/zap/wrk/gl-dast-report.json' ]; then
-            echo '{\"site\":[{\"@name\":\"'\$ZAP_TARGET_URL'\",\"alerts\":[]}],\"alerts\":[]}' > /zap/wrk/gl-dast-report.json;
-          fi
-          
-          if [ ! -f '/zap/wrk/report.html' ]; then
-            echo '<html><body><h1>ZAP DAST Report</h1><p>Target: '\$ZAP_TARGET_URL'</p></body></html>' > /zap/wrk/report.html;
-          fi
-          
-          echo 'Reports generated:';
-          ls -la /zap/wrk/;
-        "
+      echo "Starting ZAP baseline scan..."
+      if [ -n "${KEYCLOAK_ACCESS_TOKEN}" ] && [ "${KEYCLOAK_ACCESS_TOKEN}" != "null" ]; then
+        echo "Using Bearer token authentication"
+        zap-baseline.py -t "${ZAP_TARGET_URL}" \
+          -J /zap/wrk/gl-dast-report.json \
+          -r /zap/wrk/report.html \
+          -z "-config replacer.full_list(0).description=auth1 \
+              -config replacer.full_list(0).enabled=true \
+              -config replacer.full_list(0).matchtype=REQ_HEADER \
+              -config replacer.full_list(0).matchstr=Authorization \
+              -config replacer.full_list(0).regex=false \
+              -config replacer.full_list(0).replacement=Bearer ${KEYCLOAK_ACCESS_TOKEN}" \
+          || echo "ZAP scan completed with findings"
+      else
+        echo "Running without authentication"
+        zap-baseline.py -t "${ZAP_TARGET_URL}" \
+          -J /zap/wrk/gl-dast-report.json \
+          -r /zap/wrk/report.html \
+          || echo "ZAP scan completed with findings"
+      fi
     
-    - echo "ZAP scan completed. Checking reports..."
-    - ls -la ./wrk/
-    - echo "JSON report size:$([ -f ./wrk/gl-dast-report.json ] && wc -c < ./wrk/gl-dast-report.json || echo 0) bytes"
-    - echo "HTML report size:$([ -f ./wrk/report.html ] && wc -c < ./wrk/report.html || echo 0) bytes"
+    # Create fallback reports if needed
+    - |
+      if [ ! -f '/zap/wrk/gl-dast-report.json' ]; then
+        echo '{"site":[{"@name":"'${ZAP_TARGET_URL}'","alerts":[]}],"alerts":[]}' > /zap/wrk/gl-dast-report.json
+      fi
+      
+      if [ ! -f '/zap/wrk/report.html' ]; then
+        echo '<html><body><h1>ZAP DAST Report</h1><p>Target: '${ZAP_TARGET_URL}'</p></body></html>' > /zap/wrk/report.html
+      fi
+    
+    - echo "Reports generated:"
+    - ls -la /zap/wrk/
+    - echo "JSON report size:$([ -f /zap/wrk/gl-dast-report.json ] && wc -c < /zap/wrk/gl-dast-report.json || echo 0) bytes"
+    - echo "HTML report size:$([ -f /zap/wrk/report.html ] && wc -c < /zap/wrk/report.html || echo 0) bytes"
+    
+    # Copy reports to GitLab CI workspace
+    - cp /zap/wrk/* ./
 
   artifacts:
     when: always
     paths:
-      - wrk/gl-dast-report.json
-      - wrk/report.html
+      - gl-dast-report.json
+      - report.html
     reports:
-      dast: wrk/gl-dast-report.json
+      dast: gl-dast-report.json
     expire_in: 1 week
   allow_failure: true
 
