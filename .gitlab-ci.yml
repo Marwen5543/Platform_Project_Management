@@ -154,6 +154,8 @@ sonar-analysis:user-service:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
   <<: *maven_cache_template
+  variables:
+    GIT_DEPTH: 0
   script:
     - cp $SETTINGS_XML ./settings-temp.xml
     - cd user-management-service
@@ -240,6 +242,8 @@ sonar-analysis:document-service:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
   <<: *maven_cache_template
+  variables:
+    GIT_DEPTH: 0
   script:
     - cp $SETTINGS_XML ./settings-temp.xml
     - cd Document-management-service
@@ -328,6 +332,8 @@ sonar-analysis:leave-service:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
   <<: *maven_cache_template
+  variables:
+    GIT_DEPTH: 0
   script:
     - cp $SETTINGS_XML ./settings-temp.xml
     - cd leave-management-service
