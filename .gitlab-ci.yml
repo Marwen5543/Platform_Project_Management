@@ -116,18 +116,19 @@ variables:
 # --- KUBERNETES DEPLOY ---
 .deploy_template: &deploy_template
   stage: deploy
-  image: bitnami/kubectl:latest
+  # --- THE FIX: Use an image that includes a shell and kubectl ---
+  image: google/cloud-sdk:latest
+  # --------------------------------------------------------------
   before_script:
     - mkdir -p ~/.kube
     - echo "$KUBE_CONFIG" > ~/.kube/config
     - kubectl cluster-info
   script:
-    - echo "Deploying $DEPLOYMENT_NAME..."
+    - echo "Deploying $DEPLOYMENT_NAME by restarting the pods to pull the :latest image..."
     - kubectl rollout restart deployment $DEPLOYMENT_NAME -n tunisys
     - echo "Waiting for deployment to complete..."
     - kubectl rollout status deployment $DEPLOYMENT_NAME -n tunisys --timeout=300s
     - echo "Deployment of $DEPLOYMENT_NAME successful!"
-
 # ===================================================================
 # JOBS FOR EACH MICROSERVICE (Unchanged from your previous version)
 # ===================================================================
