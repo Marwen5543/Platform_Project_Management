@@ -8,10 +8,9 @@ default:
 stages:
   - build-and-push-to-nexus
   - code-analysis
-  - performance-test
   - push-and-scan-image
-  - get_token
-  - zap_scan
+  - deploy
+  - performance-test
 
 # ==================================================================
 # GLOBAL VARIABLES
@@ -28,7 +27,6 @@ variables:
   BUILDKIT_PROGRESS: plain
   # Set Maven options to use the local .m2 repository
   MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
-  KEYCLOAK_TOKEN_URL: "http://192.168.50.4:8080/realms/Tunisys/protocol/openid-connect/token"
 # ===================================================================
 # REUSABLE CACHE TEMPLATE FOR MAVEN
 # Caches the .m2 repository to avoid re-downloading dependencies on every run.
@@ -115,138 +113,36 @@ variables:
     expire_in: 1 week
   allow_failure: false
 
-# This job runs once and provides the token to all subsequent DAST jobs.
-
-get_keycloak_token:
-  stage: get_token
-  image: alpine:latest
-  needs: []
+# --- KUBERNETES DEPLOY ---
+.deploy_template: &deploy_template
+  stage: deploy
+  image: google/cloud-sdk:latest
   before_script:
-    - apk add --no-cache curl jq
+    - mkdir -p ~/.kube
+    - chmod 700 ~/.kube
+    
+    # Copy the kubeconfig file
+    - echo "Kubeconfig file path:$KUBE_CONFIG"
+    - cp "$KUBE_CONFIG" ~/.kube/config
+    - chmod 600 ~/.kube/config
+    
+    # Skip TLS verification for self-signed certificates
+    - kubectl config set-cluster default --insecure-skip-tls-verify=true
+    
+    # Validate the kubeconfig format
+    - echo "Validating kubeconfig..."
+    - kubectl config view --minify
+    - kubectl cluster-info
+    - kubectl get nodes || echo "Warning:Cannot list nodes (may be permission issue)"
+    
   script:
-    - echo "Fetching Keycloak access token..."
-    # This curl command uses the secure CI/CD variables you configured in GitLab
-    - |
-      TOKEN_RESPONSE=$(curl -s -X POST "${KEYCLOAK_TOKEN_URL}" \
-        -H "Content-Type: application/x-www-form-urlencoded" \
-        -d "grant_type=password" \
-        -d "client_id=${KEYCLOAK_CLIENT_ID}" \
-        -d "client_secret=${KEYCLOAK_CLIENT_SECRET}" \
-        -d "username=${KEYCLOAK_USERNAME}" \
-        -d "password=${KEYCLOAK_PASSWORD}" \
-        -d "scope=openid")
-    - echo "Token response received from Keycloak."
-    - ACCESS_TOKEN=$(echo "${TOKEN_RESPONSE}" | jq -r '.access_token')
-    # Error handling: Fail the pipeline if the token is not retrieved
-    - |
-      if [ "${ACCESS_TOKEN}" == "null" ] || [ -z "${ACCESS_TOKEN}" ]; then
-        echo "❌ Failed to get access token from Keycloak."
-        echo "Response: ${TOKEN_RESPONSE}"
-        exit 1
-      else
-        echo "✅ Successfully retrieved Keycloak access token."
-        # Create a dotenv artifact to pass the token to the next stage
-        echo "KEYCLOAK_ACCESS_TOKEN=${ACCESS_TOKEN}" > dast_token.env
-      fi
-  artifacts:
-    reports:
-      dotenv: dast_token.env
-
-# *** NEW TEMPLATE FOR ZAP ***
-.zap_dast_template: &zap_dast_template
-  stage: zap_scan
-  image: { name: zaproxy/zap-stable, entrypoint: [""] }
-  before_script:
-    # Ensure zap-plan.yaml exists in the project root
-    - ls -la zap-plan.yaml || echo "❌ zap-plan.yaml not found!"
-    # Replace environment variables in the zap plan
-    - |
-      if [ -f "zap-plan.yaml" ]; then
-        # Create a temporary plan with substituted variables
-        envsubst < zap-plan.yaml > zap-plan-substituted.yaml
-        echo "✅ ZAP plan prepared with environment variables"
-        cat zap-plan-substituted.yaml
-      else
-        echo "❌ No zap-plan.yaml found - creating minimal plan"
-        cat > zap-plan-substituted.yaml << 'EOF'
-      ---
-      env:
-        contexts:
-          - name: "Default Context"
-            urls:
-              - "${ZAP_TARGET_URL}"
-        parameters:
-          failOnError: false
-          failOnWarning: false
-          progressToStdout: true
-      jobs:
-        - type: "spider"
-          parameters:
-            url: "${ZAP_TARGET_URL}"
-            maxDuration: 2
-        - type: "passiveScan-wait"
-          parameters:
-            maxDuration: 5
-        - type: "report"
-          parameters:
-            template: "traditional-html"
-            reportDir: "wrk"
-            reportFile: "report"
-        - type: "report"
-          parameters:
-            template: "traditional-json"
-            reportDir: "wrk"
-            reportFile: "gl-dast-report"
-      EOF
-      fi
-  script:
-    - echo "Waiting for service to be ready..."
-    - sleep 30
-    - echo "Starting ZAP Scan using Automation Framework against target: ${ZAP_TARGET_URL}"
-    - echo "Using Keycloak token: ${KEYCLOAK_ACCESS_TOKEN:0:20}..." # Show first 20 chars only
-    
-    # Create the wrk directory to ensure reports can be written
-    - mkdir -p wrk
-    
-    # Run ZAP with the substituted plan
-    - |
-      ZAP_TARGET_URL="${ZAP_TARGET_URL}" \
-      KEYCLOAK_ACCESS_TOKEN="${KEYCLOAK_ACCESS_TOKEN}" \
-      zap.sh -cmd -autorun ./zap-plan-substituted.yaml || {
-        echo "❌ ZAP scan failed, but continuing to collect any partial results"
-        exit_code=$?
-        echo "Exit code: $exit_code"
-      }
-    
-    # Check if reports were generated
-    - |
-      if [ -f "wrk/gl-dast-report.json" ]; then
-        echo "✅ JSON report generated successfully"
-        ls -la wrk/
-      else
-        echo "❌ JSON report not found, creating empty report"
-        mkdir -p wrk
-        echo '{"site":[],"alerts":[]}' > wrk/gl-dast-report.json
-      fi
-      
-      if [ -f "wrk/report.html" ]; then
-        echo "✅ HTML report generated successfully"
-      else
-        echo "❌ HTML report not found"
-        echo "<html><body><h1>ZAP Scan Failed</h1><p>No results available</p></body></html>" > wrk/report.html
-      fi
-  
-  artifacts:
-    when: always
-    paths:
-      - wrk/gl-dast-report.json
-      - wrk/report.html
-      - zap-plan-substituted.yaml  # Include the substituted plan for debugging
-    reports:
-      dast: wrk/gl-dast-report.json
-  allow_failure: true  # Allow failure so you can debug the reports
-
-
+    - echo "Deploying $DEPLOYMENT_NAME to namespace tunisys..."
+    - kubectl get deployment $DEPLOYMENT_NAME -n tunisys || echo "Deployment doesn't exist yet"
+    - kubectl rollout restart deployment $DEPLOYMENT_NAME -n tunisys
+    - echo "Waiting for deployment to complete..."
+    - kubectl rollout status deployment $DEPLOYMENT_NAME -n tunisys --timeout=300s
+    - echo "Deployment of $DEPLOYMENT_NAME successful!"
+    - kubectl get pods -n tunisys -l app=$DEPLOYMENT_NAME
 # ===================================================================
 # JOBS FOR EACH MICROSERVICE (Unchanged from your previous version)
 # ===================================================================
@@ -273,6 +169,8 @@ sonar-analysis:user-service:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
   <<: *maven_cache_template
+  variables:
+    GIT_DEPTH: 0
   script:
     - cp $SETTINGS_XML ./settings-temp.xml
     - cd user-management-service
@@ -327,24 +225,14 @@ push-and-scan:user-service:
         - user-management-service/**/*
       when: manual
 
-dast:user-service:
-  <<: *zap_dast_template
-  services:
-    - name: "$DOCKERHUB_USERNAME/user-management-service:$CI_COMMIT_SHORT_SHA"
-      alias: user-management-service-dast-target
-      # The command activating the 'dast' profile has been REMOVED.
-      # This ensures we are scanning the service with its real security enabled.
+deploy:user-service:
+  <<: *deploy_template
   variables:
-    ZAP_TARGET_URL: "http://user-management-service-dast-target:8085"
-  needs:
-    - job: push-and-scan:user-service
-      artifacts: false
-    - job: get_keycloak_token
-      artifacts: true
+    DEPLOYMENT_NAME: "user-service-deployment"
+  needs: ["build-and-push:user-service"]
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - user-management-service/**/*
+      changes: [user-management-service/**/*]
       when: manual
 
 # --- DOCUMENT-MANAGEMENT-SERVICE ---
@@ -369,6 +257,8 @@ sonar-analysis:document-service:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
   <<: *maven_cache_template
+  variables:
+    GIT_DEPTH: 0
   script:
     - cp $SETTINGS_XML ./settings-temp.xml
     - cd Document-management-service
@@ -424,23 +314,14 @@ push-and-scan:document-service:
       when: manual
 
 
-dast:document-service:
-  <<: *zap_dast_template
-  services:
-    - name: "$DOCKERHUB_USERNAME/document-management-service:$CI_COMMIT_SHORT_SHA"
-      alias: document-management-service-dast-target
-      # You may need a 'dast' profile and command for this service too
+deploy:document-service:
+  <<: *deploy_template
   variables:
-    ZAP_TARGET_URL: "http://document-management-service-dast-target:8090"
-  needs:
-    - job: push-and-scan:document-service
-      artifacts: false
-    - job: get_keycloak_token
-      artifacts: true
+    DEPLOYMENT_NAME: "document-management-service"
+  needs: ["build-and-push:document-service"]
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - Document-management-service/**/*
+      changes: [Document-management-service/**/*]
       when: manual
 
 
@@ -466,6 +347,8 @@ sonar-analysis:leave-service:
   stage: code-analysis
   image: maven:3.8.5-openjdk-17
   <<: *maven_cache_template
+  variables:
+    GIT_DEPTH: 0
   script:
     - cp $SETTINGS_XML ./settings-temp.xml
     - cd leave-management-service
@@ -520,21 +403,12 @@ push-and-scan:leave-service:
         - leave-management-service/**/*
       when: manual
 
-dast:leave-service:
-  <<: *zap_dast_template
-  services:
-    - name: "$DOCKERHUB_USERNAME/leave-management-service:$CI_COMMIT_SHORT_SHA"
-      alias: leave-management-service-dast-target
-      # You may need a 'dast' profile and command for this service too
+deploy:leave-service:
+  <<: *deploy_template
   variables:
-    ZAP_TARGET_URL: "http://leave-management-service-dast-target:8088"
-  needs:
-    - job: push-and-scan:leave-service
-      artifacts: false
-    - job: get_keycloak_token
-      artifacts: true
+    DEPLOYMENT_NAME: "leave-management-service"
+  needs: ["build-and-push:leave-service"]
   rules:
     - if: '$CI_COMMIT_BRANCH == "main"'
-      changes:
-        - leave-management-service/**/*
+      changes: [leave-management-service/**/*]
       when: manual
