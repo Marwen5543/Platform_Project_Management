@@ -121,13 +121,15 @@ variables:
     - mkdir -p ~/.kube
     - chmod 700 ~/.kube
     
-    # Write the kubeconfig (assuming it's stored as plain text in GitLab variable)
-    - printf "%s" "$KUBE_CONFIG" > ~/.kube/config
+    # Since KUBE_CONFIG is a FILE variable, GitLab creates a temp file
+    # and $KUBE_CONFIG contains the PATH to that file, not the content
+    - echo "Kubeconfig file path:$KUBE_CONFIG"
+    - cp "$KUBE_CONFIG" ~/.kube/config
     - chmod 600 ~/.kube/config
     
     # Validate the kubeconfig format
     - echo "Validating kubeconfig..."
-    - kubectl config view --minify --raw
+    - kubectl config view --minify
     - kubectl cluster-info
     - kubectl get nodes || echo "Warning:Cannot list nodes (may be permission issue)"
     
