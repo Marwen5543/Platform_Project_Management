@@ -1,12 +1,15 @@
+server:
+  port: ${SERVER_PORT:8081}
+
 spring:
   application:
     name: api-gateway
   cloud:
     gateway:
-      discovery:
-        locator:
-          enabled: true
-          lower-case-service-id: true #Good practice for consistency
+      globalfilters:
+        - name: RequestHeaderToRequestUri
+          args:
+            name: X-Forwarded-Uri
       routes:
         - id: user-service-route
           uri: lb://user-management-service # Route to the user service in Eureka
@@ -42,68 +45,39 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: http://localhost:8080/realms/Tunisys
-          jwk-set-uri: http://localhost:8080/realms/Tunisys/protocol/openid-connect/certs
-server:
-  port: 8081
-eureka:
-  client:
-    service-url:
-      defaultZone: http://eureka-server:8761/eureka/
-    fetch-registry: true
-    register-with-eureka: true
-  instance:
-    prefer-ip-address: true
-    instance-id: ${spring.application.name}:${server.port}
-    hostname: localhost
-    status-page-url: http://localhost:${server.port}/actuator/info
-    health-check-url: http://localhost:${server.port}/actuator/health
-    home-page-url: http://localhost:${server.port}/
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,metrics,gateway
-      base-path: /actuator
-      cors:
-        allowed-origins: http://localhost:3000,http://localhost:4200  # Restricted for security
-        allowed-methods: GET,POST
-        allowed-headers: "*"
-        allow-credentials: true
-  endpoint:
-    health:
-      show-details: always
-    gateway:
-      enabled: true
-  info:
-    env:
-      enabled: true
-info:
-  app:
-    name: ${spring.application.name}
-    description: API Gateway Service
-    version: 1.0.0
-resilience4j:
-  circuitbreaker:
-    instances:
-      user-management-service:
-        failure-rate-threshold: 50
-        minimum-number-of-calls: 5
-        sliding-window-size: 10
-        wait-duration-in-open-state: 10000
-      leave-management-service:
-        failure-rate-threshold: 50
-        minimum-number-of-calls: 5
-        sliding-window-size: 10
-        wait-duration-in-open-state: 10000
-      document-management-service:
-        failure-rate-threshold: 50
-        minimum-number-of-calls: 5
-        sliding-window-size: 10
-        wait-duration-in-open-state: 10000
-logging:
-  level:
-    org.springframework.cloud.gateway: INFO  # Reduced from DEBUG for production
-    org.springframework.security: INFO      # Reduced from DEBUG for production
-    org.springframework.web: INFO           # Reduced from DEBUG for production
-    reactor.netty: INFO                     # Reduced from DEBUG for production
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/demo}  # 🔥 FIXED: Using `localhost` instead of `keycloak`
+
+  eureka:
+    client:
+      serviceUrl:
+        defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}  # ✅ Use localhost
+      fetch-registry: true
+      register-with-eureka: true
+    instance:
+      prefer-ip-address: false  # ✅ Ensure it uses hostname instead of IP
+      hostname: localhost  # ✅ Explicitly set hostname
+      instance-id: ${spring.application.name}:localhost:${server.port}  # ✅ Make instance ID predictable
+      statusPageUrl: http://localhost:${server.port}/actuator/info
+      healthCheckUrl: http://localhost:${server.port}/actuator/health
+      homePageUrl: http://localhost:${server.port}/
+
+
+
+  logging:
+    level:
+      org.springframework.cloud.gateway: DEBUG
+      org.springframework.web: DEBUG
+      org.springframework.cloud.netflix.eureka: DEBUG
+      reactor.netty: DEBUG
+
+  management:
+    endpoints:
+      web:
+        exposure:
+          include: "*"
+    endpoint:
+      health:
+        show-details: always
+    info:
+      env:
+        enabled: true
