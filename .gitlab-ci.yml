@@ -114,22 +114,31 @@ variables:
   allow_failure: false
 
 # --- KUBERNETES DEPLOY ---
-# --- KUBERNETES DEPLOY ---
 .deploy_template: &deploy_template
   stage: deploy
   image: google/cloud-sdk:latest
   before_script:
     - mkdir -p ~/.kube
-    # --- THE FIX: Use printf instead of echo for safety ---
+    - chmod 700 ~/.kube
+    
+    # Write the kubeconfig (assuming it's stored as plain text in GitLab variable)
     - printf "%s" "$KUBE_CONFIG" > ~/.kube/config
-    # ----------------------------------------------------
+    - chmod 600 ~/.kube/config
+    
+    # Validate the kubeconfig format
+    - echo "Validating kubeconfig..."
+    - kubectl config view --minify --raw
     - kubectl cluster-info
+    - kubectl get nodes || echo "Warning:Cannot list nodes (may be permission issue)"
+    
   script:
-    - echo "Deploying $DEPLOYMENT_NAME..."
+    - echo "Deploying $DEPLOYMENT_NAME to namespace tunisys..."
+    - kubectl get deployment $DEPLOYMENT_NAME -n tunisys || echo "Deployment doesn't exist yet"
     - kubectl rollout restart deployment $DEPLOYMENT_NAME -n tunisys
     - echo "Waiting for deployment to complete..."
     - kubectl rollout status deployment $DEPLOYMENT_NAME -n tunisys --timeout=300s
     - echo "Deployment of $DEPLOYMENT_NAME successful!"
+    - kubectl get pods -n tunisys -l app=$DEPLOYMENT_NAME
 # ===================================================================
 # JOBS FOR EACH MICROSERVICE (Unchanged from your previous version)
 # ===================================================================
