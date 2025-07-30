@@ -114,17 +114,18 @@ variables:
   allow_failure: false
 
 # --- KUBERNETES DEPLOY ---
+# --- KUBERNETES DEPLOY ---
 .deploy_template: &deploy_template
   stage: deploy
-  # --- THE FIX: Use an image that includes a shell and kubectl ---
   image: google/cloud-sdk:latest
-  # --------------------------------------------------------------
   before_script:
     - mkdir -p ~/.kube
-    - echo "$KUBE_CONFIG" > ~/.kube/config
+    # --- THE FIX: Use printf instead of echo for safety ---
+    - printf "%s" "$KUBE_CONFIG" > ~/.kube/config
+    # ----------------------------------------------------
     - kubectl cluster-info
   script:
-    - echo "Deploying $DEPLOYMENT_NAME by restarting the pods to pull the :latest image..."
+    - echo "Deploying $DEPLOYMENT_NAME..."
     - kubectl rollout restart deployment $DEPLOYMENT_NAME -n tunisys
     - echo "Waiting for deployment to complete..."
     - kubectl rollout status deployment $DEPLOYMENT_NAME -n tunisys --timeout=300s
