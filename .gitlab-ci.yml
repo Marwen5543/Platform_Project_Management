@@ -121,11 +121,13 @@ variables:
     - mkdir -p ~/.kube
     - chmod 700 ~/.kube
     
-    # Since KUBE_CONFIG is a FILE variable, GitLab creates a temp file
-    # and $KUBE_CONFIG contains the PATH to that file, not the content
+    # Copy the kubeconfig file
     - echo "Kubeconfig file path:$KUBE_CONFIG"
     - cp "$KUBE_CONFIG" ~/.kube/config
     - chmod 600 ~/.kube/config
+    
+    # Skip TLS verification for self-signed certificates
+    - kubectl config set-cluster default --insecure-skip-tls-verify=true
     
     # Validate the kubeconfig format
     - echo "Validating kubeconfig..."
