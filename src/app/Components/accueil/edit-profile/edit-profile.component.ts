@@ -7,7 +7,20 @@ import { KeycloakService } from 'src/app/Service/KeycloakService';
 import { FormsModule, NgForm } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { FontAwesomeModule } from '@fortawesome/angular-fontawesome';
-import { faUserEdit, faSpinner, faSave, faTimes } from '@fortawesome/free-solid-svg-icons';
+import {
+  faUser,
+  faEnvelope,
+  faPhone,
+  faMapMarkerAlt,
+  faBriefcase,
+  faLock,
+  faEye,
+  faEyeSlash,
+  faUserEdit,
+  faSpinner,
+  faSave,
+  faTimes
+} from '@fortawesome/free-solid-svg-icons';
 import { IconProp } from '@fortawesome/fontawesome-svg-core';
 
 @Component({
@@ -28,9 +41,22 @@ export class EditProfileComponent implements OnInit {
   };
   showPasswordFields = false;
 
+  // Password visibility toggles
+  showCurrentPassword: boolean = false;
+  showNewPassword: boolean = false;
+  showConfirmPassword: boolean = false;
+
   @ViewChild('editForm') editForm!: NgForm;
 
-  // Explicitly assert IconDefinition as IconProp
+  // FontAwesome icons
+  faUser: IconProp = faUser as IconProp;
+  faEnvelope: IconProp = faEnvelope as IconProp;
+  faPhone: IconProp = faPhone as IconProp;
+  faMapMarkerAlt: IconProp = faMapMarkerAlt as IconProp;
+  faBriefcase: IconProp = faBriefcase as IconProp;
+  faLock: IconProp = faLock as IconProp;
+  faEye: IconProp = faEye as IconProp;
+  faEyeSlash: IconProp = faEyeSlash as IconProp;
   faUserEdit: IconProp = faUserEdit as IconProp;
   faSpinner: IconProp = faSpinner as IconProp;
   faSave: IconProp = faSave as IconProp;
@@ -81,7 +107,7 @@ export class EditProfileComponent implements OnInit {
     if (!this.user || this.isSaving || this.editForm.invalid) return;
 
     this.isSaving = true;
-    const userId = this.keycloakService.getUserId(); // Always use the authenticated sub
+    const userId = this.keycloakService.getUserId();
     this.userService.updateProfile(userId, this.user).subscribe({
       next: (updatedUser: UserDTO) => {
         this.user = updatedUser;
@@ -129,5 +155,21 @@ export class EditProfileComponent implements OnInit {
 
   cancel(): void {
     this.router.navigate(['/profile']);
+  }
+
+  togglePasswordVisibility(field: string): void {
+    switch (field) {
+      case 'current':
+        this.showCurrentPassword = !this.showCurrentPassword;
+        break;
+      case 'new':
+        this.showNewPassword = !this.showNewPassword;
+        break;
+      case 'confirm':
+        this.showConfirmPassword = !this.showConfirmPassword;
+        break;
+      default:
+        break;
+    }
   }
 }

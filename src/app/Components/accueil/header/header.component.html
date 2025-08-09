@@ -10,6 +10,8 @@
     <!-- Desktop Menu -->
     <nav class="desktop-menu" [ngClass]="{'open': isMenuOpen}" role="navigation" aria-label="Main navigation">
       <a [routerLink]="['/accueil']" class="nav-item" role="menuitem">Accueil</a>
+
+      <a [routerLink]="['/projets']" routerLinkActive="active" class="nav-item" role="menuitem">Projets</a>
       <!-- Gestion Congé - Hide for ADMIN -->
       <div class="nav-item dropdown" *ngIf="canAccessLeaveManagement()" role="menuitem" aria-haspopup="true">
         <span class="dropdown-toggle" (click)="toggleDropdown($event)">Gestion Congé</span>

@@ -16,6 +16,7 @@ import { LeaveHistoryComponent } from './Components/accueil/LeaveRequest/leave-h
 import { CalanderComponent } from './Components/accueil/Calander/calander/calander.component';
 import { LeaveRequestComponent } from './Components/accueil/LeaveRequest/leave-request/leave-request.component';
 import { VideoCallComponent } from './Components/accueil/video-call/video-call.component';
+import { ProjetsComponent } from './Components/accueil/projets/projets.component';
 
 // Guard to explicitly allow unauthenticated access
 @Injectable({
@@ -54,6 +55,7 @@ const routes: Routes = [
       { path: 'consulter-conge', component: LeaveHistoryComponent },
       { path: 'liste-equipe-conge', component: TeamLeavesComponent },
       { path: 'planification', component: CalanderComponent },
+      { path: 'projets', component: ProjetsComponent},
       { path: '', redirectTo: 'acceuil', pathMatch: 'full' }
     ]
   },

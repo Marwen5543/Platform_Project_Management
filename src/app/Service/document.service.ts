@@ -11,6 +11,9 @@ import { saveAs } from 'file-saver';
   providedIn: 'root',
 })
 export class DocumentService {
+  deleteDocumentRequest(id: string) {
+    throw new Error('Method not implemented.');
+  }
   private apiUrl = 'http://localhost:8090/api/documents';
 
   constructor(

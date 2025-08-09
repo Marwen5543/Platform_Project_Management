@@ -1,10 +1,13 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
-import { UserDTO, UserRole, UserStatus } from 'src/app/Models/user.models';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
+import { Router } from '@angular/router';
+import { UserDTO, UserRole } from 'src/app/Models/user.models';
 import { KeycloakService } from 'src/app/Service/KeycloakService';
 import { UserService } from 'src/app/Service/UserService';
-import { Router } from '@angular/router';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { finalize } from 'rxjs/operators';
+import { forkJoin } from 'rxjs';
+
 
 interface CompanyProject {
   title: string;
@@ -24,16 +27,14 @@ interface ProjectStats {
 }
 
 @Component({
-  selector: 'app-acceuil',
+  selector: 'app-projets',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './acceuil.component.html',
-  styleUrls: ['./acceuil.component.css']
+  templateUrl: './projets.component.html',
+  styleUrl: './projets.component.css'
 })
-export class AcceuilComponent implements OnInit {
-  
-  emailAddress: string = 'contact@tunisys.com.tn';
-  featuredProjects: CompanyProject[] = [];
+export class ProjetsComponent implements OnInit, OnDestroy{
+ featuredProjects: CompanyProject[] = [];
   filteredProjects: CompanyProject[] = [];
   users: UserDTO[] = [];
   selectedProject: CompanyProject | null = null;
@@ -43,7 +44,7 @@ export class AcceuilComponent implements OnInit {
   searchTerm: string = '';
   currentUser: UserDTO | null = null;
   errorMessage: string | null = null;
-
+  isLoading: boolean = true; 
   projectStats: ProjectStats = {
     totalProjects: 0,
     totalUsers: 0,
@@ -51,22 +52,105 @@ export class AcceuilComponent implements OnInit {
     averageTeamSize: 0
   };
 
+  bg1Url!: string;
+  bg2Url!: string;
+  isBg1Visible = true;
+  private currentImageIndex = 0;
+  private intervalId: any;
+  private allBackgroundImages = [
+    '/assets/carousel-1.jpg', // IMPORTANT: Make sure this path is correct!
+  ];
+
   constructor(
     private keycloakService: KeycloakService,
     private userService: UserService,
     private cdr: ChangeDetectorRef,
-    private router: Router
+    private router: Router,
   ) {}
+  ngOnDestroy(): void {
+     if (this.intervalId) {
+      clearInterval(this.intervalId);
+    }
+  }
 
   ngOnInit(): void {
-    this.loadCurrentUser();
-    this.loadFeaturedProjects();
-    this.loadUsers();
+  this.isLoading = true;
+  forkJoin({
+    currentUser: this.keycloakService.getCurrentUser(),
+    users: this.userService.getAllUsers()
+  }).pipe(
+    finalize(() => {
+      this.isLoading = false;
+      this.cdr.detectChanges();
+    })
+  ).subscribe({
+    next: ({ currentUser, users }) => {
+      if (currentUser && currentUser.userId && currentUser.username) {
+        this.userService.getUserDetailsById(currentUser.userId).subscribe({
+          next: (userDetails: UserDTO) => {
+            this.currentUser = {
+              ...currentUser,
+              projectTitles: userDetails.projectTitles ?? [],
+              position: userDetails.position ?? ''
+            };
+            console.log('Loaded current user', this.currentUser);
+            this.loadFeaturedProjects();
+            this.cdr.detectChanges();
+          },
+          error: (err) => {
+            console.error('Error fetching user details:', err);
+            this.currentUser = { ...currentUser, projectTitles: [], position: '' };
+            this.errorMessage = 'Failed to load user projects.';
+            this.loadFeaturedProjects();
+            this.cdr.detectChanges();
+          }
+        });
+      } else {
+        this.currentUser = null;
+        this.errorMessage = 'User authentication failed.';
+      }
+      this.users = users;
+      this.calculateStats();
+      this.cdr.detectChanges();
+    },
+    error: (err) => {
+      console.error('Error loading data:', err);
+      this.errorMessage = 'Failed to load data.';
+      this.currentUser = null;
+      this.users = [];
+      this.cdr.detectChanges();
+    }
+  });
+   this.bg1Url = this.allBackgroundImages[0];
+    this.bg2Url = this.allBackgroundImages[1];
+    this.startImageRotation();
+
+    // 2. Trigger the text fade-in animation after a short delay
     setTimeout(() => {
       this.isLoaded = true;
-      this.cdr.detectChanges();
-    }, 300);
+      this.cdr.detectChanges(); // This tells Angular to apply the 'loaded' class
+    }, 100);
+}
+  startImageRotation() {
+    this.intervalId = setInterval(() => {
+      this.currentImageIndex = (this.currentImageIndex + 1) % this.allBackgroundImages.length;
+      const nextImage = this.allBackgroundImages[this.currentImageIndex];
+
+      if (this.isBg1Visible) {
+        this.bg2Url = nextImage;
+      } else {
+        this.bg1Url = nextImage;
+      }
+      this.isBg1Visible = !this.isBg1Visible;
+    }, 7000); // Change image every 7 seconds
   }
+
+
+  getBackgroundImageUrl(imageUrl: string): string {
+    return `linear-gradient(135deg, rgba(180, 20, 20, 0.75), rgba(80, 0, 0, 0.85)), url('${imageUrl}')`;
+  }
+
+
 
   public loadCurrentUser(): void {
     this.keycloakService.getCurrentUser().subscribe({
@@ -285,7 +369,7 @@ export class AcceuilComponent implements OnInit {
     this.applyFilters();
   }
 
-  private applyFilters(): void {
+  public applyFilters(): void {
     this.filteredProjects = this.featuredProjects.filter(project => {
       const categoryMatch = this.selectedCategory === 'All' || project.category === this.selectedCategory;
       const searchMatch = !this.searchTerm ||
@@ -350,3 +434,4 @@ export class AcceuilComponent implements OnInit {
     }
   }
 }
+

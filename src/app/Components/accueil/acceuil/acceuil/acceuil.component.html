@@ -1,56 +1,65 @@
-<div class="accueil-container">
-  <!-- Error Message for Authentication Failure -->
-  <div *ngIf="errorMessage" class="error-message">
-    {{ errorMessage }}
-    <button class="retry-btn" (click)="loadCurrentUser()">Retry</button>
-  </div>
+ <div class="accueil-container">
+        <!-- PREMIUM HERO SECTION -->
+        <section class="hero-section">
+            <!-- Hero Slides -->
+            <div class="hero-slides">
+                <div class="hero-slide slide-1 active"></div>
+                <div class="hero-slide slide-2"></div>
+                <div class="hero-slide slide-3"></div>
+            </div>
 
-  <!-- User Identity -->
-  <div *ngIf="currentUser" class="user-info">
-  </div>
+            <!-- Hero Content -->
+            <div class="hero-content">
+                <div class="content-wrapper">
+                    <!-- Text Content -->
+                    <div class="text-content">
+                        <div class="hero-badge">Innovation • Excellence • Confiance</div>
+                        
+                        <h1 class="hero-title" id="heroTitle">Notre force est notre capital humain qui continue sans cesse de se développer</h1>
+                        
+                        <p class="hero-description" id="heroDesc">Depuis 1981, les équipes de Tunisys innovent en permanence et développent des compétences et expertises de très haut niveau, pour concevoir les architectures et les services les mieux adaptés à chaque organisation.</p>
+                        
+                        <a href="#" class="hero-cta">
+                            <span>Qui Sommes-nous</span>
+                            <i class="fas fa-arrow-right"></i>
+                        </a>
+                    </div>
 
-  <!-- Section Héros (Updated & Simplified) -->
-<!-- Section Héros (IMPROVED VERSION) -->
-<section class="hero-section">
-  <div class="hero-content">
-    
-    <!-- Added animation class 'fade-in-up' -->
-    <h1 [ngClass]="{'loaded': isLoaded}" class="fade-in-up">Bienvenue dans la Suite de Projets<br>Tunisys</h1>
-    
-    <!-- Added animation class 'fade-in-up' with a delay -->
-    <p [ngClass]="{'loaded': isLoaded}" class="lead fade-in-up anim-delay-1">Innover les solutions d'entreprise grâce à une technologie de pointe et des équipes d'experts.</p>
-    
-    <!-- Added animation class 'fade-in-up' with a longer delay -->
-    <div [ngClass]="{'loaded': isLoaded}" class="hero-description fade-in-up anim-delay-2">
-      <h2>À propos de Tunisys</h2>
-      <p>Tunisys est un fournisseur leader de solutions technologiques spécialisé dans la transformation numérique au niveau de l'entreprise. Avec une équipe d'ingénieurs et de consultants experts, nous livrons des solutions innovantes qui stimulent la croissance et l'innovation des entreprises.</p>
-    </div>
+                    <!-- Visual Content -->
+                    <div class="visual-content">
+                        <div class="floating-card">
+                            <div class="card-icon">
+                                <i class="fas fa-users" id="cardIcon"></i>
+                            </div>
+                            <h3 class="card-title" id="cardTitle">Capital Humain</h3>
+                            <p class="card-text" id="cardText">Plus de 40 ans d'expérience dans l'innovation et le développement de solutions technologiques de pointe.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
-  </div>
-</section>
+            <!-- Navigation Arrows -->
+            <div class="nav-arrows">
+                <div class="nav-arrow" id="prevBtn">
+                    <i class="fas fa-chevron-left"></i>
+                </div>
+                <div class="nav-arrow" id="nextBtn">
+                    <i class="fas fa-chevron-right"></i>
+                </div>
+            </div>
+
+            <!-- Slide Indicators -->
+            <div class="slide-indicators">
+                <div class="indicator active" data-slide="0"></div>
+                <div class="indicator" data-slide="1"></div>
+                <div class="indicator" data-slide="2"></div>
+            </div>
+        </section>
 
 
-  <!-- Section Statistiques -->
-  <section class="stats-section">
-    <div class="stats-container">
-      <div class="stat-card">
-        <div class="stat-number">{{projectStats.totalProjects}}</div>
-        <div class="stat-label">Projets Actifs</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">{{projectStats.totalUsers}}</div>
-        <div class="stat-label">Membres de l'Équipe</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">{{categories.length - 1}}</div>
-        <div class="stat-label">Catégories de Projets</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">{{projectStats.averageTeamSize | number:'1.1-1'}}</div>
-        <div class="stat-label">Taille Moyenne d'Équipe</div>
-      </div>
-    </div>
-  </section>
+
+
+
 
 
   <!-- ====================================================== -->
@@ -145,6 +154,8 @@
         <div class="logo-item"><img src="assets/bia.png" alt="GRG Banking"></div>
         <div class="logo-item"><img src="assets/Amen_Bank.png" alt="Amen Bank"></div>
         <div class="logo-item"><img src="assets/ooredoo.png" alt="Ooredoo"></div>
+        <div class="logo-item"><img src="assets/Dell.png" alt="Dell"></div>
+        <div class="logo-item"><img src="assets/hewlett-packard-enterprise.png" alt="hewlett"></div>
       </div>
     </div>
   </section>
@@ -197,153 +208,233 @@
   </section>
 
 
-  <!-- Section Projets -->
-  <section class="projects-section">
-    <h2 *ngIf="currentUser?.role === 'EMPLOYEE'">Mes Projets Assignés</h2>
-    <h2 *ngIf="currentUser?.role !== 'EMPLOYEE'">Projets en Vedette</h2>
-    
-    <!-- Contrôles de Filtrage (cachés pour EMPLOYEE) -->
-    <div class="filter-controls" *ngIf="currentUser?.role !== 'EMPLOYEE'">
-      <div class="category-filter">
-        <span class="filter-label">Filtrer par Catégorie :</span>
-        <div class="category-buttons">
-          <button 
-            *ngFor="let category of categories" 
-            class="category-btn" 
-            [ngClass]="{'active': selectedCategory === category}"
-            (click)="filterByCategory(category)">
-            {{category}}
-          </button>
-        </div>
+  <!-- ====================================================== -->
+<!--       NOUVELLE SECTION : NOTRE MÉTHODOLOGIE PROJET       -->
+<!-- ====================================================== -->
+<section class="info-section methodology-section">
+  <div class="info-container">
+    <h2 class="section-title text-center">Notre Chemin vers la Réussite</h2>
+    <p class="section-subtitle text-center">
+      Chaque projet réussi est le fruit d'un processus structuré et d'une collaboration transparente. Voici notre approche.
+    </p>
+
+    <div class="methodology-grid">
+
+      <!-- Step 1: Discovery & Strategy -->
+      <div class="method-card">
+        <div class="method-icon"><i class="fas fa-search"></i></div>
+        <span class="method-step-number">01</span>
+        <h3>Découverte & Stratégie</h3>
+        <p>Nous commençons par une immersion totale pour comprendre vos objectifs, vos défis et vos utilisateurs. Cette phase est cruciale pour définir une feuille de route claire et alignée.</p>
       </div>
-      <div class="search-filter">
-        <input 
-          type="text" 
-          placeholder="Rechercher des projets, technologies..." 
-          class="search-input"
-          (input)="searchProjects($any($event.target).value)">
+
+      <!-- Step 2: Design & Prototyping -->
+      <div class="method-card">
+        <div class="method-icon"><i class="fas fa-drafting-compass"></i></div>
+        <span class="method-step-number">02</span>
+        <h3>Conception & Prototypage</h3>
+        <p>Nous transformons la stratégie en plans concrets. À travers des wireframes, des maquettes et des prototypes interactifs, nous validons l'expérience utilisateur avant d'écrire une seule ligne de code.</p>
       </div>
+
+      <!-- Step 3: Agile Development -->
+      <div class="method-card">
+        <div class="method-icon"><i class="fas fa-cogs"></i></div>
+        <span class="method-step-number">03</span>
+        <h3>Développement Agile</h3>
+        <p>En utilisant des sprints et une communication constante, nos équipes construisent la solution de manière itérative. Vous suivez l'avancement en temps réel et fournissez des retours continus.</p>
+      </div>
+
+      <!-- Step 4: Deployment & Support -->
+      <div class="method-card">
+        <div class="method-icon"><i class="fas fa-rocket"></i></div>
+        <span class="method-step-number">04</span>
+        <h3>Déploiement & Support</h3>
+        <p>Le lancement n'est que le début. Nous assurons un déploiement fluide, une surveillance rigoureuse et un support réactif pour garantir la performance et l'évolution de votre solution sur le long terme.</p>
+      </div>
+
     </div>
+  </div>
+</section>
+
+
+<!-- CONTACT US SECTION - ANGULAR VERSION WITH INLINE STYLES -->
+<section style="padding: 80px 20px; background-color: #ffffff;">
+  <div style="max-width: 1200px; margin: 0 auto;">
     
-    <!-- Liste des Projets -->
-    <div *ngIf="!selectedProject; else projectDetail">
-      <div class="projects-grid">
-        <div *ngFor="let project of filteredProjects" class="project-card" (click)="selectProject(project)">
-          <img [src]="getImageForProject(project.title)" [alt]="project.title" class="project-image">
-          <div class="project-info">
-            <div class="category-tag">{{project.category}}</div>
-            <h3>{{ project.title }}</h3>
-            <p>{{ project.description.substring(0, 100) }}{{ project.description.length > 100 ? '...' : '' }}</p>
-            
-            <div class="project-progress">
-              <div class="progress-bar">
-                <div class="progress-fill" [ngClass]="getProgressColorClass(project.progress)" [style.width.%]="project.progress"></div>
-              </div>
-              <div class="progress-text">{{project.progress}}% Complété</div>
-            </div>
-            
-            <div class="project-meta">
-              <span class="position-tag">{{ project.position }}</span>
-              <span class="user-count">{{ getUserCountForProject(project.title) }} {{ getUserCountForProject(project.title) === 1 ? 'Utilisateur' : 'Utilisateurs' }}</span>
-            </div>
-            
-            <div class="project-tech">
-              <span class="tech-tag" *ngFor="let tech of project.technologies.slice(0, 3)">{{tech}}</span>
-              <span class="more-tech" *ngIf="project.technologies.length > 3">+{{project.technologies.length - 3}}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+    <!-- Section Header -->
+    <div style="text-align: center; margin-bottom: 50px;">
+      <span style="color: #ff0000; font-size: 14px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px;">Contact</span>
+      <h2 style="font-size: 2.5rem; font-weight: 700; color: #1a202c; margin: 16px 0; line-height: 1.2;">Entrez en Contact avec Tunisys</h2>
+      <p style="font-size: 1.15rem; color: #4a5568; max-width: 800px; margin: 0 auto;">
+        Notre équipe est prête à discuter de vos projets et à répondre à toutes vos questions.
+      </p>
+    </div>
+
+    <!-- Contact Grid -->
+    <div style="display: flex; justify-content: space-between; gap: 60px; flex-wrap: wrap;">
       
-      <!-- Message pour aucun projet -->
-      <div *ngIf="filteredProjects.length === 0" class="no-projects">
-        <div class="no-projects-message">
-          <p *ngIf="currentUser?.role === 'EMPLOYEE'">Vous n'êtes assigné à aucun projet.</p>
-          <p *ngIf="currentUser?.role !== 'EMPLOYEE'">Aucun projet ne correspond à vos critères de filtre.</p>
-          <button *ngIf="currentUser?.role !== 'EMPLOYEE'" class="reset-btn" (click)="filterByCategory('All'); searchProjects('')">Réinitialiser les Filtres</button>
+      <!-- Contact Details Column -->
+      <div style="flex: 1; min-width: 300px;">
+        
+        <!-- Contact Information Blocks -->
+        <div style="display: flex; flex-direction: column; gap: 25px; margin-bottom: 40px;">
+          
+          <!-- Phone -->
+          <div style="display: flex; align-items: center; gap: 20px; padding: 20px; background-color: #f9f9f9; border-radius: 10px; border-left: 4px solid #ff0000;">
+            <div style="width: 50px; height: 50px; background-color: #ff0000; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px;">
+              <i class="fas fa-phone-alt"></i>
+            </div>
+            <div>
+              <h4 style="font-size: 18px; font-weight: bold; color: #333; margin: 0 0 5px 0;">Appelez-nous</h4>
+              <a href="tel:+21671123456" style="font-size: 16px; color: #ff0000; text-decoration: none; font-weight: 600;">+216 71 123 456</a>
+            </div>
+          </div>
+
+          <!-- Email -->
+          <div style="display: flex; align-items: center; gap: 20px; padding: 20px; background-color: #f9f9f9; border-radius: 10px; border-left: 4px solid #ff0000;">
+            <div style="width: 50px; height: 50px; background-color: #ff0000; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px;">
+              <i class="fas fa-envelope"></i>
+            </div>
+            <div>
+              <h4 style="font-size: 18px; font-weight: bold; color: #333; margin: 0 0 5px 0;">Envoyez-nous un email</h4>
+              <a [href]="'mailto:contact@tunisys.com.tn'" style="font-size: 16px; color: #ff0000; text-decoration: none; font-weight: 600;">{{ emailAddress || 'contact@tunisys.com.tn' }}</a>
+            </div>
+          </div>
+
+          <!-- Address -->
+          <div style="display: flex; align-items: center; gap: 20px; padding: 20px; background-color: #f9f9f9; border-radius: 10px; border-left: 4px solid #ff0000;">
+            <div style="width: 50px; height: 50px; background-color: #ff0000; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-size: 20px;">
+              <i class="fas fa-map-marker-alt"></i>
+            </div>
+            <div>
+              <h4 style="font-size: 18px; font-weight: bold; color: #333; margin: 0 0 5px 0;">Visitez nos bureaux</h4>
+              <p style="font-size: 16px; color: #666; margin: 0; line-height: 1.5;">Av. de La Liberté, Tunis 1002, Tunisie</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Map Container -->
+        <div style="padding: 20px; border: 2px solid #e2e8f0; border-radius: 15px; background-color: white; box-shadow: 0 4px 15px rgba(0,0,0,0.1);">
+          <iframe
+            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3194.049497509955!2d10.1784214!3d36.8173338!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x12fd347d80c80f87%3A0x4d699b3e7df6ea5c!2sTunisys!5e0!3m2!1sfr!2stn!4v1753737993143!5m2!1sfr!2stn" 
+            width="100%"
+            height="300"
+            style="border: none; border-radius: 10px;"
+            allowfullscreen=""
+            loading="lazy"
+            referrerpolicy="no-referrer-when-downgrade">
+          </iframe>
+        </div>
+      </div>
+
+      <!-- Contact Form Column -->
+      <div style="flex: 1; min-width: 300px;">
+        <div style="padding: 40px; border: 2px solid #e2e8f0; border-radius: 15px; background-color: white; box-shadow: 0 8px 25px rgba(0,0,0,0.1);">
+          <h3 style="font-size: 24px; color: #ff0000; margin: 0 0 30px 0; text-align: center;">Contactez-nous</h3>
+          
+          <form action="#" method="POST" style="display: flex; flex-direction: column; gap: 25px;">
+            
+            <!-- Name and Email Row -->
+            <div style="display: flex; gap: 20px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 200px;">
+                <label for="name" style="display: block; font-size: 16px; font-weight: bold; color: #333; margin-bottom: 8px;">Votre Nom *</label>
+                <input 
+                  type="text" 
+                  id="name" 
+                  name="name" 
+                  placeholder="Nom" 
+                  required
+                  style="width: 100%; padding: 12px 15px; border: 2px solid #ddd; border-radius: 8px; background-color: #f9f9f9; font-size: 16px; font-family: Arial, sans-serif; transition: all 0.3s ease; box-sizing: border-box;"
+                >
+              </div>
+              <div style="flex: 1; min-width: 200px;">
+                <label for="email" style="display: block; font-size: 16px; font-weight: bold; color: #333; margin-bottom: 8px;">Votre Email *</label>
+                <input 
+                  type="email" 
+                  id="email" 
+                  name="email" 
+                  placeholder="Email" 
+                  required
+                  style="width: 100%; padding: 12px 15px; border: 2px solid #ddd; border-radius: 8px; background-color: #f9f9f9; font-size: 16px; font-family: Arial, sans-serif; transition: all 0.3s ease; box-sizing: border-box;"
+                >
+              </div>
+            </div>
+
+            <!-- Subject -->
+            <div>
+              <label for="subject" style="display: block; font-size: 16px; font-weight: bold; color: #333; margin-bottom: 8px;">Sujet *</label>
+              <input 
+                type="text" 
+                id="subject" 
+                name="subject" 
+                placeholder="Demande de devis" 
+                required
+                style="width: 100%; padding: 12px 15px; border: 2px solid #ddd; border-radius: 8px; background-color: #f9f9f9; font-size: 16px; font-family: Arial, sans-serif; transition: all 0.3s ease; box-sizing: border-box;"
+              >
+            </div>
+
+            <!-- Message -->
+            <div>
+              <label for="message" style="display: block; font-size: 16px; font-weight: bold; color: #333; margin-bottom: 8px;">Message *</label>
+              <textarea 
+                id="message" 
+                name="message" 
+                rows="6" 
+                placeholder="Bonjour, je souhaiterais..." 
+                required
+                style="width: 100%; padding: 12px 15px; border: 2px solid #ddd; border-radius: 8px; background-color: #f9f9f9; font-size: 16px; font-family: Arial, sans-serif; resize: vertical; transition: all 0.3s ease; min-height: 120px; box-sizing: border-box;"
+              ></textarea>
+            </div>
+
+            <!-- Submit Button -->
+            <button 
+              type="submit" 
+              style="background-color: #ff0000; color: white; padding: 15px 30px; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(255,0,0,0.3);"
+            >
+              <i class="fas fa-paper-plane" style="margin-right: 8px;"></i>
+              Envoyer le Message
+            </button>
+          </form>
         </div>
       </div>
     </div>
+  </div>
+</section>
 
-    <!-- Modèle de Détail du Projet -->
-    <ng-template #projectDetail>
-      <div class="project-detail" *ngIf="selectedProject">
-        <button class="back-btn" (click)="deselectProject()">Retour aux Projets</button>
-        
-        <div class="category-chip">{{selectedProject.category}}</div>
-        <h3>{{ selectedProject.title }}</h3>
-        
-        <div class="detail-image-container">
-          <img [src]="getImageForProject(selectedProject.title)" [alt]="selectedProject.title" class="detail-image">
-        </div>
-        
-        <p class="full-description">{{ selectedProject.description }}</p>
-        
-        <div class="project-meta-detail">
-          <span class="position-tag">{{ selectedProject.position }}</span>
-          <span class="user-count">{{ getUserCountForProject(selectedProject.title) }} {{ getUserCountForProject(selectedProject.title) === 1 ? 'Utilisateur' : 'Utilisateurs' }} Assignés</span>
-          <span class="deadline-tag" *ngIf="selectedProject.deadline">
-            Date Limite : {{selectedProject.deadline | date:'mediumDate'}}
-          </span>
-        </div>
-        
-        <div class="project-progress-detail">
-          <h4>Progression du Projet</h4>
-          <div class="project-progress-detail">
-            <div class="progress-bar-detail">
-              <div class="progress-fill-detail" [ngClass]="getProgressColorClass(selectedProject.progress)" [style.width.%]="selectedProject.progress"></div>
-            </div>
-            <div class="progress-percentage">{{selectedProject.progress}}% Complété</div>
-          </div>
-        </div>
-        
-        <div class="technologies-section">
-          <h4>Technologies</h4>
-          <div class="tech-tags">
-            <div class="tech-tag-detail" *ngFor="let tech of selectedProject.technologies">
-              {{tech}}
-            </div>
-          </div>
-        </div>
-        
-        <div class="team-section">
-          <h4>Membres de l'Équipe Assignés</h4>
-          <div class="members-list">
-            <div *ngFor="let user of getUsersForProject(selectedProject.title)" class="member">
-              {{ user.username }} - {{ user.position || 'Aucun Poste' }}
-            </div>
-            <div *ngIf="!getUsersForProject(selectedProject.title).length" class="no-members">
-              Aucun utilisateur assigné à ce projet.
-            </div>
-          </div>
-        </div>
-        
-        <div class="project-actions">
-          <button class="action-btn primary-action">Voir la Documentation</button>
-          <button class="action-btn secondary-action">Chronologie du Projet</button>
-          <button class="action-btn secondary-action">Chat d'Équipe</button>
-          <button class="action-btn secondary-action" (click)="startMeeting()">Call Meeting</button>
-        </div>
-      </div>
-    </ng-template>
-  </section>
-
-  <!-- Sections Supplémentaires -->
-  <section class="categories-section" *ngIf="currentUser?.role !== 'EMPLOYEE'">
-    <h2>Catégories de Projets</h2>
-    <div class="categories-grid">
-      <ng-container *ngFor="let category of categories">
-        <div class="category-card" 
-             [ngClass]="{'all-category': category === 'All'}"
-             (click)="filterByCategory(category); deselectProject()"
-             *ngIf="category !== 'All'">
-          <div class="category-icon" [ngClass]="'category-icon-' + category.toLowerCase().replace(' & ', '-').replace(' ', '-')"></div>
-          <h3>{{category}}</h3>
-          <div class="category-count">
-            {{projectStats.categoryCounts[category] || 0}} Projets
-          </div>
-        </div>
-      </ng-container>
-    </div>
-  </section>
-</div>
+<!-- Add this CSS in your component's style section or in a style tag -->
+<style>
+  /* Focus effects for form inputs */
+  input:focus, textarea:focus {
+    border-color: #ff0000 !important;
+    box-shadow: 0 0 10px rgba(255,0,0,0.3) !important;
+    outline: none;
+  }
+  
+  /* Button hover effects */
+  button[type="submit"]:hover {
+    background-color: #ff0000 !important;
+    transform: translateY(-3px);
+    box-shadow: 0 6px 20px rgba(255,0,0,0.4) !important;
+  }
+  
+  /* Responsive styles */
+  @media (max-width: 768px) {
+    section[style*="padding: 80px"] {
+      padding: 40px 20px !important;
+    }
+    
+    div[style*="gap: 60px"] {
+      flex-direction: column !important;
+      gap: 30px !important;
+    }
+    
+    div[style*="gap: 20px"][style*="flex-wrap: wrap"] {
+      flex-direction: column !important;
+      gap: 15px !important;
+    }
+    
+    h2[style*="font-size: 2.5rem"] {
+      font-size: 2rem !important;
+    }
+  }
+</style>
