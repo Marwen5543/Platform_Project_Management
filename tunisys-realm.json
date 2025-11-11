@@ -1,0 +1,16 @@
+{
+  "realm": "Tunisys",
+  "enabled": true,
+  "clients": [
+    {
+      "clientId": "demo-rest-api",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "6ZWEg9yWkbERGGJK0ju0AKaqgTn7S0wI",
+      "redirectUris": ["*"],
+      "webOrigins": ["*"],
+      "protocol": "openid-connect",
+      "publicClient": false
+    }
+  ]
+}

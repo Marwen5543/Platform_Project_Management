@@ -1,0 +1,1 @@
+{"virtualbox":{"/vagrant":{"type":"virtualbox","mount_options":["fmode=755","uid=1000","gid=1000","_netdev"],"guestpath":"/vagrant","hostpath":"D:/PFE/Vagrant","disabled":false,"__vagrantfile":true}}}

@@ -1,0 +1,180 @@
+- name: Configure VM for k3s and dependencies
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install dependencies for repository setup
+      apt:
+        name:
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - software-properties-common
+          - apt-transport-https
+          - unzip
+          - socat
+        state: present
+
+    - name: Create keyrings directory
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+
+    - name: Add Kubernetes GPG key
+      shell: |
+        curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.31/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        chmod a+r /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+      args:
+        creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+    - name: Add Kubernetes repository
+      apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.31/deb/ /"
+        state: present
+        filename: kubernetes
+
+    - name: Add Docker GPG key
+      shell: |
+        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+        chmod a+r /etc/apt/keyrings/docker.gpg
+      args:
+        creates: /etc/apt/keyrings/docker.gpg
+
+    - name: Add Docker repository
+      apt_repository:
+        repo: "deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_distribution_release }} stable"
+        state: present
+        filename: docker
+
+    - name: Force update apt cache
+      apt:
+        update_cache: yes
+        force_apt_get: yes
+
+    - name: Install Docker and Kubernetes tools
+      apt:
+        name:
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - conntrack
+          - cri-tools
+          - kubectl
+        state: present
+
+    - name: Add vagrant user to docker group
+      user:
+        name: vagrant
+        groups: docker
+        append: yes
+
+    - name: Configure Docker daemon
+      copy:
+        content: |
+          {
+            "default-runtime": "runc",
+            "ipv6": false,
+            "dns": ["8.8.8.8", "1.1.1.1"],
+            "storage-driver": "overlay2"
+          }
+        dest: /etc/docker/daemon.json
+        mode: '0644'
+
+    - name: Restart Docker service
+      systemd:
+        name: docker
+        state: restarted
+        enabled: yes
+
+    - name: Install Terraform
+      unarchive:
+        src: https://releases.hashicorp.com/terraform/1.9.7/terraform_1.9.7_linux_amd64.zip
+        dest: /usr/local/bin
+        remote_src: yes
+        creates: /usr/local/bin/terraform
+
+    - name: Configure DNS
+      copy:
+        content: |
+          [Resolve]
+          DNS=8.8.8.8 1.1.1.1
+          FallbackDNS=8.8.4.4
+        dest: /etc/systemd/resolved.conf.d/dns.conf
+        mode: '0644'
+
+    - name: Restart systemd-resolved
+      systemd:
+        name: systemd-resolved
+        state: restarted
+        enabled: yes
+
+    - name: Install k3s
+      shell: curl -sfL https://get.k3s.io | sh -
+      args:
+        creates: /etc/rancher/k3s/k3s.yaml
+
+    - name: Ensure .kube directory exists
+      file:
+        path: /home/vagrant/.kube
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: '0755'
+
+    - name: Configure k3s kubectl
+      copy:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: /home/vagrant/.kube/config
+        owner: vagrant
+        group: vagrant
+        mode: '0644'
+        remote_src: yes
+
+    - name: Check if resources already exist
+      shell: |
+        kubectl get service nginx-service &>/dev/null || echo "service_not_found"
+        kubectl get deployment nginx &>/dev/null || echo "deployment_not_found"
+      register: resources_check
+      changed_when: false
+      become: yes
+      become_user: vagrant
+      environment:
+        KUBECONFIG: /home/vagrant/.kube/config
+
+    - name: Clean up existing resources
+      shell: |
+        kubectl delete service nginx-service || true
+        kubectl delete deployment nginx || true
+      args:
+        chdir: /vagrant
+      changed_when: true
+      become: yes
+      become_user: vagrant
+      environment:
+        KUBECONFIG: /home/vagrant/.kube/config
+      when: "'service_not_found' not in resources_check.stdout or 'deployment_not_found' not in resources_check.stdout"
+
+    - name: Initialize Terraform
+      shell: terraform init
+      args:
+        chdir: /vagrant
+      changed_when: true
+      become: yes
+      become_user: vagrant
+      environment:
+        KUBECONFIG: /home/vagrant/.kube/config
+
+    - name: Apply Terraform configuration
+      shell: terraform apply -auto-approve
+      args:
+        chdir: /vagrant
+      changed_when: true
+      become: yes
+      become_user: vagrant
+      environment:
+        KUBECONFIG: /home/vagrant/.kube/config
