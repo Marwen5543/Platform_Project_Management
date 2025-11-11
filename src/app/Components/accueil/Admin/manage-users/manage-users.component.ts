@@ -77,14 +77,25 @@ export class ManageUsersComponent implements OnInit {
   }
 
   // Format hireDate to handle string, Date, null, or undefined
-  formatHireDate(hireDate: string | Date | null | undefined): string {
-    if (!hireDate) {
+   formatHireDate(hireDate: string | Date | null | undefined): string {
+    // 1. Explicitly check for null, undefined, or an empty string.
+    // This is the most reliable way to determine if a date is not provided.
+    if (hireDate === null || hireDate === undefined || hireDate === '') {
       return 'N/A';
     }
+
+    // 2. Attempt to create a Date object from the provided value.
     const date = new Date(hireDate);
+
+    // 3. Check if the created date is valid. new Date() will create an
+    // 'Invalid Date' object if it cannot parse the input string.
+    // isNaN(date.getTime()) is the standard way to check for this.
     if (isNaN(date.getTime())) {
-      return 'N/A'; // Invalid date
+      console.error('Could not parse hireDate:', hireDate); // Optional: for debugging
+      return 'N/A'; // Return 'N/A' for invalid date formats
     }
+
+    // 4. If the date is valid, format it and return it.
     return date.toISOString().split('T')[0]; // Returns yyyy-MM-dd
   }
 
@@ -118,6 +129,7 @@ export class ManageUsersComponent implements OnInit {
     this.isLoading = true;
     this.userService.getAllUsers().subscribe({
       next: (data) => {
+        console.log('RAW USER DATA FROM API:', data); 
         console.log('loadUserDetails() - userService.getAllUsers() next:', data);
         this.users = data;
         this.expandedRows = new Array(this.users.length).fill(false);

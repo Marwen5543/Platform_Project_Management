@@ -1,65 +1,215 @@
+<!-- leave-request.component.html -->
+<section class="hero-section">
+  <div class="hero-content">
+    
+    <!-- Hero title with animation -->
+    <h1 [ngClass]="{'loaded': isLoaded}" class="fade-in-up">Gestion des Demandes<br>de Congés</h1>
+    
+    <!-- Hero subtitle with delay -->
+    <p [ngClass]="{'loaded': isLoaded}" class="lead fade-in-up anim-delay-1">Planifiez et gérez vos congés en toute simplicité grâce à notre plateforme intuitive.</p>
+    
+    <!-- Hero description with longer delay -->
+    <div [ngClass]="{'loaded': isLoaded}" class="hero-description fade-in-up anim-delay-2">
+      <h2>Système de Gestion des Congés</h2>
+      <p>Notre plateforme vous permet de soumettre facilement vos demandes de congés, de suivre vos soldes disponibles et de consulter l'historique de vos demandes. Avec une interface moderne et intuitive, la gestion de vos absences n'a jamais été aussi simple.</p>
+    </div>
+
+  </div>
+</section>
+
 <div class="leave-request-container">
-  <mat-card class="form-card">
-    <mat-card-header>
-      <mat-card-title>Nouvelle demande de congé</mat-card-title>
-      <mat-card-subtitle>Sélectionnez vos dates et le type de congé</mat-card-subtitle>
-    </mat-card-header>
+  <div class="premium-form-wrapper">
+    
+    <!-- ===== LEFT COLUMN: THE FORM ===== -->
+    <div class="form-content">
+      <div class="header-section">
+        <div class="header-icon">
+          <mat-icon>event_note</mat-icon>
+        </div>
+        <mat-card-title class="header-title">Nouvelle demande de congé</mat-card-title>
+        <br>
+        <mat-card-subtitle class="header-subtitle">Planifiez votre absence en toute simplicité</mat-card-subtitle>
+      </div>
 
-    <mat-card-content>
-      <form [formGroup]="leaveForm" (ngSubmit)="onSubmit()">
-        <div class="form-grid">
-          <!-- Date Range Picker -->
-          <mat-form-field appearance="fill" class="date-picker">
-            <mat-label>Dates de congé</mat-label>
-            <mat-date-range-input [rangePicker]="rangePicker" [formGroup]="rangeForm">
-              <input matStartDate formControlName="start" placeholder="Date de début">
-              <input matEndDate formControlName="end" placeholder="Date de fin">
-            </mat-date-range-input>
-            <mat-datepicker-toggle matSuffix [for]="rangePicker"></mat-datepicker-toggle>
-            <mat-date-range-picker #rangePicker></mat-date-range-picker>
-          </mat-form-field>
+      <mat-card-content>
+        <form [formGroup]="leaveForm" (ngSubmit)="onSubmit()">
+          
+          <div class="form-grid">
+            <!-- Date Range Picker -->
+            <div class="form-group date-picker">
+              <label class="form-label">
+                <mat-icon class="label-icon">date_range</mat-icon>
+                Période de congé
+              </label>
+              <mat-form-field appearance="outline" class="date-range-field">
+                <mat-date-range-input [rangePicker]="rangePicker" [formGroup]="rangeForm">
+                  <input matStartDate formControlName="start" placeholder="Date de début" />
+                  <input matEndDate formControlName="end" placeholder="Date de fin" />
+                </mat-date-range-input>
+                <mat-datepicker-toggle matIconSuffix [for]="rangePicker">
+                  <mat-icon matDatepickerToggleIcon>calendar_month</mat-icon>
+                </mat-datepicker-toggle>
+                <mat-date-range-picker #rangePicker></mat-date-range-picker>
+                <mat-error *ngIf="rangeForm.get('start')?.hasError('required')">
+                  La date de début est obligatoire
+                </mat-error>
+                <mat-error *ngIf="rangeForm.get('end')?.hasError('required')">
+                  La date de fin est obligatoire
+                </mat-error>
+              </mat-form-field>
+            </div>
 
-          <!-- Leave Type Selection -->
-          <mat-form-field appearance="fill">
-            <mat-label>Type de congé</mat-label>
-            <mat-select formControlName="type">
-              <mat-option *ngFor="let type of leaveTypes" [value]="type">
-                {{ leaveTypeLabels[type] }}
-              </mat-option>
-            </mat-select>
-            <mat-icon matSuffix>event_available</mat-icon>
-          </mat-form-field>
+            <!-- Leave Type Selection -->
+            <div class="form-group">
+              <label class="form-label">
+                <mat-icon class="label-icon">category</mat-icon>
+                Type de congé
+              </label>
+              <mat-form-field appearance="outline">
+                <mat-select formControlName="type" placeholder="Sélectionnez un type">
+                  <mat-option *ngFor="let type of leaveTypes" [value]="type">
+                    <mat-icon class="option-icon">{{ getLeaveTypeIcon(type) }}</mat-icon>
+                    {{ leaveTypeLabels[type] }}
+                  </mat-option>
+                </mat-select>
+                <mat-icon matSuffix>expand_more</mat-icon>
+                <mat-error *ngIf="leaveForm.get('type')?.hasError('required')">
+                  Le type de congé est obligatoire
+                </mat-error>
+              </mat-form-field>
+            </div>
 
-          <!-- Reason Textarea -->
-          <mat-form-field appearance="fill" class="full-width">
-            <mat-label>Motif du congé</mat-label>
-            <textarea matInput formControlName="reason" rows="4"></textarea>
-            <mat-icon matSuffix>description</mat-icon>
-          </mat-form-field>
+            <!-- Reason Textarea -->
+            <div class="form-group full-width">
+              <label class="form-label">
+                <mat-icon class="label-icon">edit_note</mat-icon>
+                Motif (facultatif)
+              </label>
+              <mat-form-field appearance="outline">
+                <textarea 
+                  matInput 
+                  formControlName="reason" 
+                  rows="3" 
+                  placeholder="Motif de votre demande..."
+                  maxlength="300">
+                </textarea>
+                <mat-hint align="end">{{ leaveForm.get('reason')?.value?.length || 0 }}/300</mat-hint>
+              </mat-form-field>
+            </div>
+          </div>
+
+          <!-- Submit Button -->
+          <div class="submit-section">
+            <button 
+              mat-raised-button 
+              class="submit-btn" 
+              type="submit" 
+              [disabled]="!leaveForm.valid || isLoading"
+              [class.loading]="isLoading">
+              <ng-container *ngIf="!isLoading">
+                <mat-icon>send</mat-icon>
+                <span>Soumettre la demande</span>
+              </ng-container>
+              <ng-container *ngIf="isLoading">
+                <mat-spinner diameter="20"></mat-spinner>
+                <span>Envoi en cours...</span>
+              </ng-container>
+            </button>
+          </div>
+        </form>
+      </mat-card-content>
+    </div>
+
+    <!-- ===== RIGHT COLUMN: INFO & SUMMARY SIDEBAR ===== -->
+    <div class="form-sidebar">
+      <!-- Leave Balance Section -->
+      <div class="leave-balance">
+        <h3 class="balance-title">
+          <mat-icon>account_balance_wallet</mat-icon>
+          Votre solde de congés
+        </h3>
+        <div class="balance-grid">
+          <div class="balance-item" *ngFor="let balance of leaveBalances">
+            <span class="balance-value">{{ balance.value }}</span>
+            <span class="balance-label">{{ balance.label }}</span>
+          </div>
         </div>
 
-        <!-- Summary Section -->
-        <div class="summary" *ngIf="rangeForm.value.start && rangeForm.value.end">
-          <h3>Récapitulatif du congé :</h3>
-          <p>
-            <mat-icon>date_range</mat-icon>
-            {{ calculateTotalDays() }} jours ({{ rangeForm.value.start | date:'mediumDate' }} - {{ rangeForm.value.end | date:'mediumDate' }})
-          </p>
-          <p *ngIf="leaveForm.value.type">
-            <mat-icon>category</mat-icon>
-            {{ getLeaveTypeLabel(leaveForm.value.type) }}
-          </p>
+        <!-- Quick Tips Section (inside balance card) -->
+        <div class="tips-section-inline">
+          <h4 class="tips-title-inline">
+            <mat-icon>lightbulb</mat-icon>
+            Conseils utiles
+          </h4>
+          <ul class="tips-list">
+            <li>
+              <mat-icon class="tip-icon">info</mat-icon>
+              Planifiez vos congés à l'avance
+            </li>
+            <li>
+              <mat-icon class="tip-icon">calendar_today</mat-icon>
+              Vérifiez les jours fériés
+            </li>
+            <li>
+              <mat-icon class="tip-icon">check_circle</mat-icon>
+              Consultez votre manager
+            </li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Summary Section -->
+      <div class="summary-section" *ngIf="showSummary()">
+        <h3 class="summary-title">
+          <mat-icon>summarize</mat-icon>
+          Récapitulatif
+        </h3>
+        <div class="summary-content">
+          <div class="summary-item" *ngIf="rangeForm.value.start && rangeForm.value.end">
+            <mat-icon class="summary-icon">date_range</mat-icon>
+            <div class="summary-text">
+              <strong>Période :</strong>
+              <span>{{ rangeForm.value.start | date:'dd/MM/yyyy' }} - {{ rangeForm.value.end | date:'dd/MM/yyyy' }}</span>
+            </div>
+          </div>
+
+          <div class="summary-item total-days" *ngIf="calculateTotalDays() > 0">
+            <mat-icon class="summary-icon">schedule</mat-icon>
+            <div class="summary-text">
+              <strong>Durée :</strong>
+              <span>{{ calculateTotalDays() }} jour{{ calculateTotalDays() > 1 ? 's' : '' }} ouvrable{{ calculateTotalDays() > 1 ? 's' : '' }}</span>
+            </div>
+          </div>
+
+          <div class="summary-item" *ngIf="leaveForm.value.type">
+            <mat-icon class="summary-icon">{{ getLeaveTypeIcon(leaveForm.value.type) }}</mat-icon>
+            <div class="summary-text">
+              <strong>Type :</strong>
+              <span>{{ getLeaveTypeLabel(leaveForm.value.type) }}</span>
+            </div>
+          </div>
+
+          <div class="summary-item" *ngIf="leaveForm.value.reason && leaveForm.value.reason.trim()">
+            <mat-icon class="summary-icon">comment</mat-icon>
+            <div class="summary-text">
+              <strong>Motif :</strong>
+              <span>{{ leaveForm.value.reason | slice:0:50 }}{{ leaveForm.value.reason.length > 50 ? '...' : '' }}</span>
+            </div>
+          </div>
         </div>
 
-        <!-- Submit Button -->
-        <div class="button-row">
-          <button mat-raised-button color="primary" type="submit" [disabled]="!leaveForm.valid || isLoading">
-            <mat-icon>send</mat-icon>
-            {{ isLoading ? 'Envoi en cours...' : 'Soumettre la demande' }}
-            <mat-spinner *ngIf="isLoading" diameter="20"></mat-spinner>
-          </button>
+        <!-- Impact on Balance -->
+        <div class="impact-section" *ngIf="calculateTotalDays() > 0 && leaveForm.value.type">
+          <div class="impact-item">
+            <mat-icon class="impact-icon">trending_down</mat-icon>
+            <div class="impact-text">
+              <strong>Impact sur votre solde :</strong>
+              <span class="impact-value">-{{ calculateTotalDays() }} jour{{ calculateTotalDays() > 1 ? 's' : '' }}</span>
+            </div>
+          </div>
         </div>
-      </form>
-    </mat-card-content>
-  </mat-card>
+      </div>
+
+
+  </div>
 </div>

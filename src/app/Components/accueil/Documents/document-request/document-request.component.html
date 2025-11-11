@@ -1,31 +1,72 @@
+
+<!-- Hero Section -->
+<section class="hero-section">
+  <div class="hero-content">
+    <h1 class="fade-in-up">Gestion des Demandes de Documents</h1>
+    <p class="lead fade-in-up anim-delay-1">
+      Demandez vos documents professionnels en quelques clics grâce à notre plateforme sécurisée et intuitive.
+    </p>
+    <div class="hero-description fade-in-up anim-delay-2">
+      <h2>Système de Demande de Documents</h2>
+      <p>
+        Notre plateforme simplifie la demande de documents comme les fiches de paie, attestations de travail ou certificats, avec une interface moderne et sécurisée.
+      </p>
+    </div>
+  </div>
+  <script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Add 'loaded' class to all fade-in-up elements
+    const fadeElements = document.querySelectorAll('.fade-in-up');
+    fadeElements.forEach(element => {
+        element.classList.add('loaded');
+    });
+});
+</script>
+</section>
+
+<!-- Main Content -->
 <div class="document-request-container">
-  <h2>Demander un document</h2>
-  <form [formGroup]="documentForm" (ngSubmit)="submitRequest()" class="document-form">
-    <mat-form-field appearance="outline">
-      <mat-label>Type de document</mat-label>
-      <mat-select formControlName="documentType" required>
-        <mat-option *ngFor="let type of documentTypes" [value]="type">
-          {{ type === 'PAYSLIP' ? 'Fiche de paie' : type === 'WORK_ATTESTATION' ? 'Attestation de travail' : 'Certificat de travail' }}
-        </mat-option>
-      </mat-select>
-      <mat-error *ngIf="documentForm.get('documentType')?.hasError('required')">
-        Le type de document est requis
-      </mat-error>
-    </mat-form-field>
+  <div class="form-card">
+    <div class="form-header">
+      <h2>Demander un document</h2>
+      <p>Sélectionnez le type de document souhaité</p>
+    </div>
 
-    <mat-form-field appearance="outline" *ngIf="selectedType === 'PAYSLIP'">
-      <mat-label>Mois/Année (AAAA-MM)</mat-label>
-      <input matInput formControlName="monthYear" placeholder="2025-04">
-      <mat-error *ngIf="documentForm.get('monthYear')?.hasError('required')">
-        Le mois/année est requis
-      </mat-error>
-      <mat-error *ngIf="documentForm.get('monthYear')?.hasError('pattern')">
-        Le format doit être AAAA-MM (ex. : 2025-04)
-      </mat-error>
-    </mat-form-field>
+    <form class="document-form" [formGroup]="documentForm" (ngSubmit)="submitRequest()">
+      <!-- Document Type Field -->
+      <div class="form-group">
+        <div class="form-field" [class.error]="documentForm.get('documentType')?.invalid && (documentForm.get('documentType')?.dirty || documentForm.get('documentType')?.touched)">
+          <label for="documentType">Type de document *</label>
+          <select id="documentType" formControlName="documentType">
+            <option value="">Choisir un type de document</option>
+            <option value="PAYSLIP">Fiche de paie</option>
+            <option value="WORK_ATTESTATION">Attestation de travail</option>
+            <option value="WORK_CERTIFICATE">Certificat de travail</option>
+          </select>
+        </div>
+        <div class="error-message" *ngIf="documentForm.get('documentType')?.hasError('required') && (documentForm.get('documentType')?.dirty || documentForm.get('documentType')?.touched)">
+          Le type de document est requis
+        </div>
+      </div>
 
-    <button mat-raised-button color="primary" type="submit" [disabled]="documentForm.invalid">
-      Soumettre la demande
-    </button>
-  </form>
+      <!-- Month/Year Field (conditional) -->
+      <div class="form-group" *ngIf="selectedType === 'PAYSLIP'">
+        <div class="form-field" [class.error]="documentForm.get('monthYear')?.invalid && (documentForm.get('monthYear')?.dirty || documentForm.get('monthYear')?.touched)">
+          <label for="monthYear">Mois/Année (AAAA-MM) *</label>
+          <input id="monthYear" type="text" formControlName="monthYear" placeholder="2025-04">
+        </div>
+        <div class="error-message" *ngIf="documentForm.get('monthYear')?.hasError('required') && (documentForm.get('monthYear')?.dirty || documentForm.get('monthYear')?.touched)">
+          Le mois/année est requis
+        </div>
+        <div class="error-message" *ngIf="documentForm.get('monthYear')?.hasError('pattern') && (documentForm.get('monthYear')?.dirty || documentForm.get('monthYear')?.touched)">
+          Le format doit être AAAA-MM (ex. : 2025-04)
+        </div>
+      </div>
+
+      <!-- Submit Button -->
+      <button type="submit" class="submit-button" [disabled]="documentForm.invalid">
+        <span>Soumettre la demande</span>
+      </button>
+    </form>
+  </div>
 </div>

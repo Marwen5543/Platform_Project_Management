@@ -46,6 +46,7 @@ export class DocumentRequestComponent implements OnInit {
   }
 
   async ngOnInit(): Promise<void> {
+    console.log('Component initialized');
     const roles = await this.keycloakService.getRoles();
     this.canRequest = (roles.includes('EMPLOYEE') || roles.includes('MANAGER') || roles.includes('ADMIN')) &&
                      !roles.includes('HR') && !roles.includes('SUPER_ADMIN');
@@ -111,4 +112,6 @@ export class DocumentRequestComponent implements OnInit {
       }
     });
   }
+
+  
 }

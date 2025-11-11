@@ -1,4 +1,222 @@
+
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tunisys Calendar</title>
+    <style>
+        /* ===== TUNISYS CALENDAR HERO SECTION ===== */
+        .calendar-hero-section {
+            background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+            color: white;
+            padding: 60px 0;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            background-image: 
+                /* The Color Overlay for Readability & Branding */
+                linear-gradient(135deg, oklab(62.793% 0.22489 0.1258 / 0.75), rgba(0, 20, 40, 0.85)),
+                /* Your Background Image */
+                url('/assets/calendar-background.jpg'); /* IMPORTANT: See note below about this path */
+        }
+
+        .calendar-hero-section::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.1);
+            z-index: 1;
+        }
+
+        .calendar-hero-content {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .calendar-hero-content h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 20px;
+            line-height: 1.2;
+            opacity: 1;
+            transform: translateY(0);
+            transition: all 0.8s ease-out;
+        }
+
+        .calendar-hero-content h1.loaded {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .calendar-hero-content .lead {
+            font-size: 1.3rem;
+            font-weight: 300;
+            margin-bottom: 40px;
+            opacity: 1;
+            transform: translateY(0);
+            transition: all 0.8s ease-out 0.2s;
+        }
+
+        .calendar-hero-content .lead.loaded {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .calendar-hero-description {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            padding: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            opacity: 1;
+            transform: translateY(0);
+            transition: all 0.8s ease-out 0.4s;
+        }
+
+        .calendar-hero-description.loaded {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .calendar-hero-description h2 {
+            font-size: 1.8rem;
+            font-weight: 600;
+            margin-bottom: 16px;
+            color: white;
+        }
+
+        .calendar-hero-description p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.9);
+            margin: 0;
+        }
+
+        /* Animation classes for calendar */
+        .calendar-fade-in-up {
+            opacity: 1;
+            transform: translateY(0);
+            transition: all 0.8s ease-out;
+        }
+
+        .calendar-fade-in-up.loaded {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .calendar-anim-delay-1 {
+            transition-delay: 0.2s;
+        }
+
+        .calendar-anim-delay-2 {
+            transition-delay: 0.4s;
+        }
+
+        /* ===== RESPONSIVE DESIGN FOR CALENDAR HERO ===== */
+        @media (max-width: 768px) {
+            .calendar-hero-section {
+                background-attachment: scroll;
+                padding: 80px 0 60px 0;
+            }
+            
+            .calendar-hero-content h1 {
+                font-size: 2.8rem;
+            }
+
+            .calendar-hero-content .lead {
+                font-size: 1.2rem;
+            }
+
+            .calendar-hero-description {
+                padding: 32px 24px;
+            }
+
+            .calendar-hero-description h2 {
+                font-size: 1.8rem;
+            }
+
+            .calendar-hero-description p {
+                font-size: 1.1rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .calendar-hero-section {
+                padding: 60px 0 40px 0;
+            }
+
+            .calendar-hero-content {
+                padding: 0 16px;
+            }
+
+            .calendar-hero-content h1 {
+                font-size: 2.2rem;
+                line-height: 1.2;
+            }
+
+            .calendar-hero-content .lead {
+                font-size: 1.1rem;
+            }
+
+            .calendar-hero-description {
+                padding: 24px 20px;
+            }
+        }
+
+        /* Reset styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Roboto', sans-serif;
+            background: #f8fafc;
+        }
+    </style>
+</head>
+<body>
+    <!-- Calendar Hero Section -->
+    <section class="calendar-hero-section">
+        <div class="calendar-hero-content">
+            <h1 class="calendar-fade-in-up">Tunisys Calendar</h1>
+            <p class="lead calendar-fade-in-up calendar-anim-delay-1">
+                Gérez vos événements et plannings avec notre système de calendrier intégré et collaboratif.
+            </p>
+            <div class="calendar-hero-description calendar-fade-in-up calendar-anim-delay-2">
+                <h2>Système de Calendrier Tunisys</h2>
+                <p>
+                    Notre plateforme de calendrier facilite la planification d'événements, la gestion des rendez-vous et la coordination d'équipe avec une interface moderne et intuitive.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add 'loaded' class to all calendar fade-in-up elements
+            const fadeElements = document.querySelectorAll('.calendar-fade-in-up');
+            fadeElements.forEach(element => {
+                element.classList.add('loaded');
+            });
+        });
+    </script>
+</body>
+</html>
+
 <main class="calendar-container">
+
+
+
+
   <!-- Header Section -->
   <header class="calendar-header">
     <h1 class="calendar-title">Tunisys Task Calendar</h1>
@@ -197,197 +415,197 @@
     </div>
   </section>
 
-  <!-- Edit Task Modal -->
-  <div class="modal" [class.open]="isModalOpen">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2 class="modal-title">{{currentTask ? 'Edit Task' : 'New Task'}}</h2>
-        <button class="close-btn" (click)="closeModal()" aria-label="Close Modal">×</button>
+<!-- Edit Task Modal - Updated with click outside functionality -->
+<div class="modal" [class.open]="isModalOpen" (click)="onModalBackdropClick($event)">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 class="modal-title">{{currentTask ? 'Edit Task' : 'New Task'}}</h2>
+      <button class="close-btn" (click)="closeModal()" aria-label="Close Modal">×</button>
+    </div>
+    <form class="modal-body">
+      <div class="form-group">
+        <label class="form-label" for="task-title">Title*</label>
+        <input type="text" id="task-title" class="form-control" [(ngModel)]="taskData.title" name="title" placeholder="Enter task title" required>
       </div>
-      <form class="modal-body">
-        <div class="form-group">
-          <label class="form-label" for="task-title">Title*</label>
-          <input type="text" id="task-title" class="form-control" [(ngModel)]="taskData.title" name="title" placeholder="Enter task title" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="task-description">Description</label>
-          <textarea id="task-description" class="form-control" [(ngModel)]="taskData.description" name="description" placeholder="Enter task description" rows="3"></textarea>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="task-start">Start Time*</label>
-          <input type="datetime-local" id="task-start" class="form-control" [(ngModel)]="taskData.start" name="start" required>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="task-end">End Time</label>
-          <input type="datetime-local" id="task-end" class="form-control" [(ngModel)]="taskData.end" name="end">
-        </div>
-        <div class="form-group checkbox-group">
-          <input type="checkbox" id="task-allday" [(ngModel)]="taskData.allDay" name="allDay">
-          <label class="form-label" for="task-allday">All Day Event</label>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="task-category">Category</label>
-          <select id="task-category" class="form-control" [(ngModel)]="taskData.category" name="category">
-            <option value="Management">Management</option>
-            <option value="Administration">Administration</option>
-            <option value="Human Resources">Human Resources</option>
-            <option value="Development">Development</option>
-            <option value="Review">Review</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="priority-picker">Priority</label>
-          <div class="priority-picker" role="radiogroup" id="priority-picker">
-            <div
-              class="priority-option"
-              [class.selected]="taskData.priority === 'high'"
-              (click)="selectPriority('high')"
-              [style.backgroundColor]="priorityColors.high"
-              tabindex="0"
-              role="radio"
-              [attr.aria-checked]="taskData.priority === 'high' ? 'true' : 'false'"
-              aria-label="Select High Priority"
-            >
-              High
-            </div>
-            <div
-              class="priority-option"
-              [class.selected]="taskData.priority === 'medium'"
-              (click)="selectPriority('medium')"
-              [style.backgroundColor]="priorityColors.medium"
-              tabindex="0"
-              role="radio"
-              [attr.aria-checked]="taskData.priority === 'medium' ? 'true' : 'false'"
-              aria-label="Select Medium Priority"
-            >
-              Medium
-            </div>
-            <div
-              class="priority-option"
-              [class.selected]="taskData.priority === 'low'"
-              (click)="selectPriority('low')"
-              [style.backgroundColor]="priorityColors.low"
-              tabindex="0"
-              role="radio"
-              [attr.aria-checked]="taskData.priority === 'low' ? 'true' : 'false'"
-              aria-label="Select Low Priority"
-            >
-              Low
-            </div>
+      <div class="form-group">
+        <label class="form-label" for="task-description">Description</label>
+        <textarea id="task-description" class="form-control" [(ngModel)]="taskData.description" name="description" placeholder="Enter task description" rows="3"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="task-start">Start Time*</label>
+        <input type="datetime-local" id="task-start" class="form-control" [(ngModel)]="taskData.start" name="start" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="task-end">End Time</label>
+        <input type="datetime-local" id="task-end" class="form-control" [(ngModel)]="taskData.end" name="end">
+      </div>
+      <div class="form-group checkbox-group">
+        <input type="checkbox" id="task-allday" [(ngModel)]="taskData.allDay" name="allDay">
+        <label class="form-label" for="task-allday">All Day Event</label>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="task-category">Category</label>
+        <select id="task-category" class="form-control" [(ngModel)]="taskData.category" name="category">
+          <option value="Management">Management</option>
+          <option value="Administration">Administration</option>
+          <option value="Human Resources">Human Resources</option>
+          <option value="Development">Development</option>
+          <option value="Review">Review</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="priority-picker">Priority</label>
+        <div class="priority-picker" role="radiogroup" id="priority-picker">
+          <div
+            class="priority-option"
+            [class.selected]="taskData.priority === 'high'"
+            (click)="selectPriority('high')"
+            [style.backgroundColor]="priorityColors.high"
+            tabindex="0"
+            role="radio"
+            [attr.aria-checked]="taskData.priority === 'high' ? 'true' : 'false'"
+            aria-label="Select High Priority"
+          >
+            High
+          </div>
+          <div
+            class="priority-option"
+            [class.selected]="taskData.priority === 'medium'"
+            (click)="selectPriority('medium')"
+            [style.backgroundColor]="priorityColors.medium"
+            tabindex="0"
+            role="radio"
+            [attr.aria-checked]="taskData.priority === 'medium' ? 'true' : 'false'"
+            aria-label="Select Medium Priority"
+          >
+            Medium
+          </div>
+          <div
+            class="priority-option"
+            [class.selected]="taskData.priority === 'low'"
+            (click)="selectPriority('low')"
+            [style.backgroundColor]="priorityColors.low"
+            tabindex="0"
+            role="radio"
+            [attr.aria-checked]="taskData.priority === 'low' ? 'true' : 'false'"
+            aria-label="Select Low Priority"
+          >
+            Low
           </div>
         </div>
-        <div class="form-group checkbox-group" *ngIf="currentTask">
-          <input type="checkbox" id="task-completed" [(ngModel)]="taskData.completed" name="completed">
-          <label class="form-label" for="task-completed">Mark as Completed</label>
-        </div>
-        <div class="form-group">
-          <label class="form-label" for="task-visible-to-users">Visible to Users</label>
-          <div class="custom-multiselect">
-            <div class="selected-users" *ngIf="taskData.visibleToUserIds.length > 0">
-              <span *ngFor="let userId of taskData.visibleToUserIds" class="user-tag">
-                {{ getUsernameById(userId) }}
-                <span class="user-role role-{{getUserRoleById(userId).toLowerCase().replace(' ', '_')}}">
-                  {{ getUserRoleById(userId) }}
-                </span>
-                <button class="remove-user" (click)="removeUser(userId)" aria-label="Remove user">×</button>
+      </div>
+      <div class="form-group checkbox-group" *ngIf="currentTask">
+        <input type="checkbox" id="task-completed" [(ngModel)]="taskData.completed" name="completed">
+        <label class="form-label" for="task-completed">Mark as Completed</label>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="task-visible-to-users">Visible to Users</label>
+        <div class="custom-multiselect">
+          <div class="selected-users" *ngIf="taskData.visibleToUserIds.length > 0">
+            <span *ngFor="let userId of taskData.visibleToUserIds" class="user-tag">
+              {{ getUsernameById(userId) }}
+              <span class="user-role role-{{getUserRoleById(userId).toLowerCase().replace(' ', '_')}}">
+                {{ getUserRoleById(userId) }}
               </span>
-            </div>
-            <div class="multiselect-trigger" (click)="toggleUserDropdown()" [class.open]="isUserDropdownOpen">
-              <span *ngIf="taskData.visibleToUserIds.length === 0" class="placeholder">Select users or choose Only creator</span>
-              <span class="chevron"></span>
-            </div>
-            <div class="multiselect-dropdown" *ngIf="isUserDropdownOpen">
-              <label class="multiselect-option">
-                <input
-                  type="checkbox"
-                  [checked]="taskData.visibleToUserIds.length === 0"
-                  (change)="toggleUserSelection('')"
-                >
-                <span class="option-label">Only creator</span>
-              </label>
-              <label class="multiselect-option" *ngFor="let user of users">
-                <input
-                  type="checkbox"
-                  [checked]="taskData.visibleToUserIds.includes(user.userId)"
-                  (change)="toggleUserSelection(user.userId)"
-                >
-                <span class="option-label">{{ user.username }}</span>
-                <span class="user-role role-{{user.role.toLowerCase().replace(' ', '_')}}">{{ user.role }}</span>
-              </label>
-            </div>
+              <button class="remove-user" (click)="removeUser(userId)" aria-label="Remove user">×</button>
+            </span>
+          </div>
+          <div class="multiselect-trigger" (click)="toggleUserDropdown()" [class.open]="isUserDropdownOpen">
+            <span *ngIf="taskData.visibleToUserIds.length === 0" class="placeholder">Select users or choose Only creator</span>
+            <span class="chevron"></span>
+          </div>
+          <div class="multiselect-dropdown" *ngIf="isUserDropdownOpen">
+            <label class="multiselect-option">
+              <input
+                type="checkbox"
+                [checked]="taskData.visibleToUserIds.length === 0"
+                (change)="toggleUserSelection('')"
+              >
+              <span class="option-label">Only creator</span>
+            </label>
+            <label class="multiselect-option" *ngFor="let user of users">
+              <input
+                type="checkbox"
+                [checked]="taskData.visibleToUserIds.includes(user.userId)"
+                (change)="toggleUserSelection(user.userId)"
+              >
+              <span class="option-label">{{ user.username }}</span>
+              <span class="user-role role-{{user.role.toLowerCase().replace(' ', '_')}}">{{ user.role }}</span>
+            </label>
           </div>
         </div>
-      </form>
-      <div class="modal-footer">
-        <button class="btn btn-outline" (click)="closeModal()">Cancel</button>
-        <button class="btn" (click)="saveTask()">Save Task</button>
       </div>
+    </form>
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="closeModal()">Cancel</button>
+      <button class="btn" (click)="saveTask()">Save Task</button>
     </div>
   </div>
+</div>
 
-  <!-- Task Details Modal (Read-Only) -->
-  <div class="modal" [class.open]="isTaskDetailModalOpen">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2 class="modal-title">Task Details</h2>
-        <button class="close-btn" (click)="closeTaskDetailModal()" aria-label="Close Task Details Modal">×</button>
+<!-- Task Details Modal (Read-Only) - Also updated -->
+<div class="modal" [class.open]="isTaskDetailModalOpen" (click)="onModalBackdropClick($event)">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 class="modal-title">Task Details</h2>
+      <button class="close-btn" (click)="closeTaskDetailModal()" aria-label="Close Task Details Modal">×</button>
+    </div>
+    <div class="modal-body" *ngIf="selectedTask">
+      <div class="form-group">
+        <label class="form-label">Title</label>
+        <p class="task-detail-text">{{ selectedTask.title }}</p>
       </div>
-      <div class="modal-body" *ngIf="selectedTask">
-        <div class="form-group">
-          <label class="form-label">Title</label>
-          <p class="task-detail-text">{{ selectedTask.title }}</p>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Description</label>
-          <p class="task-detail-text">{{ selectedTask.description || 'No description' }}</p>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Start Time</label>
-          <p class="task-detail-text">{{ selectedTask.start | date:'medium' }}</p>
-        </div>
-        <div class="form-group">
-          <label class="form-label">End Time</label>
-          <p class="task-detail-text">{{ selectedTask.end ? (selectedTask.end | date:'medium') : 'N/A' }}</p>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Category</label>
-          <p class="task-detail-text">{{ selectedTask.category }}</p>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Priority</label>
-          <p class="task-detail-text">{{ selectedTask.priority | titlecase }}</p>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Status</label>
-          <p class="task-detail-text">{{ selectedTask.completed ? 'Completed' : 'Pending' }}</p>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Creator</label>
-          <p class="task-detail-text">{{ selectedTask.createdBy }} ({{ getUserRoleById(selectedTask.creatorId) }})</p>
-        </div>
+      <div class="form-group">
+        <label class="form-label">Description</label>
+        <p class="task-detail-text">{{ selectedTask.description || 'No description' }}</p>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" (click)="closeTaskDetailModal()">Close</button>
+      <div class="form-group">
+        <label class="form-label">Start Time</label>
+        <p class="task-detail-text">{{ selectedTask.start | date:'medium' }}</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">End Time</label>
+        <p class="task-detail-text">{{ selectedTask.end ? (selectedTask.end | date:'medium') : 'N/A' }}</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Category</label>
+        <p class="task-detail-text">{{ selectedTask.category }}</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Priority</label>
+        <p class="task-detail-text">{{ selectedTask.priority | titlecase }}</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <p class="task-detail-text">{{ selectedTask.completed ? 'Completed' : 'Pending' }}</p>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Creator</label>
+        <p class="task-detail-text">{{ selectedTask.createdBy }} ({{ getUserRoleById(selectedTask.creatorId) }})</p>
       </div>
     </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="closeTaskDetailModal()">Close</button>
+    </div>
   </div>
+</div>
 
-  <!-- Delete Confirmation Modal -->
-  <div class="modal" [class.open]="isDeleteConfirmOpen">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h2 class="modal-title">Confirm Deletion</h2>
-        <button class="close-btn" (click)="closeDeleteConfirm()" aria-label="Close Confirmation">×</button>
-      </div>
-      <div class="modal-body">
-        <p>Are you sure you want to delete this task? This action cannot be undone.</p>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-outline" (click)="closeDeleteConfirm()">Cancel</button>
-        <button class="btn btn-danger" (click)="deleteTask()">Delete</button>
-      </div>
+<!-- Delete Confirmation Modal - Also updated -->
+<div class="modal" [class.open]="isDeleteConfirmOpen" (click)="onModalBackdropClick($event)">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2 class="modal-title">Confirm Deletion</h2>
+      <button class="close-btn" (click)="closeDeleteConfirm()" aria-label="Close Confirmation">×</button>
+    </div>
+    <div class="modal-body">
+      <p>Are you sure you want to delete this task? This action cannot be undone.</p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" (click)="closeDeleteConfirm()">Cancel</button>
+      <button class="btn btn-danger" (click)="deleteTask()">Delete</button>
     </div>
   </div>
+</div>
 
   <!-- Toast Notifications -->
   <div class="toast-container">

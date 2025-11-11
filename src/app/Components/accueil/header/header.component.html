@@ -14,15 +14,15 @@
       <a [routerLink]="['/projets']" routerLinkActive="active" class="nav-item" role="menuitem">Projets</a>
       <!-- Gestion Congé - Hide for ADMIN -->
       <div class="nav-item dropdown" *ngIf="canAccessLeaveManagement()" role="menuitem" aria-haspopup="true">
-        <span class="dropdown-toggle" (click)="toggleDropdown($event)">Gestion Congé</span>
+        <span class="dropdown-toggle" (click)="toggleDropdown($event)">Gestion Congé ▼</span>
         <div class="dropdown-menu" role="menu">
-          <a [routerLink]="['/demande-conge']" role="menuitem">Demande Congé</a>
+          <a *ngIf="user?.role !== 'HR'" [routerLink]="['/demande-conge']" role="menuitem">Demande Congé</a>
           <a [routerLink]="['/consulter-conge']" role="menuitem">Consulter Congé</a>
         </div>
       </div>
       <!-- Document Requests - Hide for HR, SUPER_ADMIN, and ADMIN -->
       <div class="nav-item dropdown" *ngIf="canRequestAttestations()" role="menuitem" aria-haspopup="true">
-        <span class="dropdown-toggle" (click)="toggleDropdown($event)">Documents</span>
+        <span class="dropdown-toggle" (click)="toggleDropdown($event)">Documents ▼</span>
         <div class="dropdown-menu" role="menu">
           <a [routerLink]="['/fiche-paie']" role="menuitem">Demande documents</a>
           
@@ -45,7 +45,7 @@
       <a *ngIf="canShowAdminLink()" [routerLink]="['/project-affectation']" class="nav-item" role="menuitem">Project Affectation</a>
       <!-- Admin Dropdown for SUPER_ADMIN only -->
       <div class="nav-item dropdown" *ngIf="canShowSuperAdminLinks()" role="menuitem" aria-haspopup="true">
-        <span class="dropdown-toggle" (click)="toggleDropdown($event)">Admin</span>
+        <span class="dropdown-toggle" (click)="toggleDropdown($event)">Admin ▼</span>
         <div class="dropdown-menu" role="menu">
           <a [routerLink]="['/manage-users']" role="menuitem">Manage Users</a>
           <a [routerLink]="['/system-settings']" role="menuitem">System Settings</a>
@@ -82,18 +82,17 @@
   <!-- Mobile Menu -->
   <div class="mobile-menu" [ngClass]="{'active': isMenuOpen}" role="navigation" aria-label="Mobile navigation">
     <a [routerLink]="['/accueil']" role="menuitem">Accueil</a>
+    
+    <!-- ADD MISSING PROJETS LINK -->
+    <a [routerLink]="['/projets']" routerLinkActive="active" role="menuitem">Projets</a>
+    
     <!-- Gestion Congé - Hide for ADMIN -->
     <div class="mobile-dropdown" *ngIf="canAccessLeaveManagement()">
       <span (click)="toggleMobileDropdown('conges')" role="button" aria-haspopup="true">Gestion Congé</span>
       <div class="dropdown-content" [ngClass]="{'open': isCongesDropdownOpen}">
-        <a [routerLink]="['/demande-conge']" role="menuitem">Demande Congé</a>
+        <a *ngIf="user?.role !== 'HR'" [routerLink]="['/demande-conge']" role="menuitem">Demande Congé</a>
         <a [routerLink]="['/consulter-conge']" role="menuitem">Consulter Congé</a>
-        <a *ngIf="hasManagerRole()" [routerLink]="['/liste-equipe-conge']" role="menuitem">
-          Liste Équipe
-          <span *ngIf="pendingTeamLeavesCount > 0" class="leave-badge">
-            {{ pendingTeamLeavesCount }}
-          </span>
-        </a>
+        
       </div>
     </div>
     <!-- Documents - Hide for HR, SUPER_ADMIN, and ADMIN -->

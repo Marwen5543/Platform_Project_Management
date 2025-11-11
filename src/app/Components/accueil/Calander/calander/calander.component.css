@@ -915,6 +915,8 @@
   background-color: var(--gray-100);
 }
 
+/* Updated Modal Styles - Remove background and add click-outside functionality */
+
 /* Enhanced Modal Styling for Task Form */
 .modal {
   position: fixed;
@@ -922,8 +924,8 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.7));
-  backdrop-filter: blur(6px);
+  /* Removed the background gradient and backdrop filter */
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -959,6 +961,18 @@
   transform: scale(1);
 }
 
+/* Add a subtle backdrop only behind the modal content if needed */
+.modal-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.1);
+  z-index: 900;
+}
+
+/* Rest of your existing modal styles remain the same */
 .modal-header {
   display: flex;
   justify-content: space-between;
@@ -996,6 +1010,7 @@
   transform: rotate(90deg);
 }
 
+/* Form styles remain the same */
 .form-group {
   margin-bottom: 16px;
   position: relative;

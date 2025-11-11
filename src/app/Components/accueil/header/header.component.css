@@ -144,6 +144,7 @@
   cursor: pointer;
   padding: 0.5rem;
   transition: color var(--transition-speed) ease;
+  position: relative;
 }
 
 .user-info:hover {
@@ -209,6 +210,7 @@
   font-size: 1.5rem;
   cursor: pointer;
   transition: color var(--transition-speed) ease;
+  padding: 0.5rem;
 }
 
 .menu-toggle:hover {
@@ -247,6 +249,12 @@
   position: relative;
   transition: color var(--transition-speed) ease;
   cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+
+.mobile-menu a:last-child,
+.mobile-menu .mobile-dropdown:last-child > span {
+  border-bottom: none;
 }
 
 .mobile-menu a::after,
@@ -273,19 +281,44 @@
 
 .mobile-dropdown .dropdown-content {
   padding-left: 1rem;
+  display: none;
+  background: #f8f9fa;
+}
+
+.mobile-dropdown .dropdown-content.open {
+  display: block;
 }
 
 .mobile-dropdown .dropdown-content a {
   padding: 0.5rem 1rem;
+  font-size: 0.9rem;
+  border-bottom: 1px solid #ddd;
 }
 
 /* Responsive Design */
 @media (max-width: 768px) {
   .modern-header {
-    padding: 0 1rem;
+    /* Use CSS Grid for precise control */
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    padding: 0 0.5rem; /* Reduced padding to push hamburger to edge */
+    gap: 0.5rem;
   }
 
+  /* Hamburger menu positioned at far left */
+  .menu-toggle {
+    display: block;
+    grid-column: 1;
+    justify-self: start;
+    margin: 0; /* Remove any default margins */
+    padding: 0.5rem 0.25rem; /* Minimal padding */
+  }
+
+  /* Logo section centered */
   .header-logo {
+    grid-column: 2;
+    justify-self: center;
     gap: 0.3rem;
   }
 
@@ -297,16 +330,16 @@
     font-size: 1.2rem;
   }
 
+  /* User info on the right */
+  .user-info {
+    grid-column: 3;
+    justify-self: end;
+    font-size: 0.9rem;
+  }
+
+  /* Hide desktop menu */
   .desktop-menu {
     display: none;
-  }
-
-  .menu-toggle {
-    display: block;
-  }
-
-  .user-info {
-    font-size: 0.9rem;
   }
 
   .user-role {
@@ -319,7 +352,34 @@
   }
 
   .profile-dropdown {
-    right: 10px;
+    right: 0.5rem;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 480px) {
+  .modern-header {
+    padding: 0 0.25rem; /* Even less padding for very small screens */
+  }
+  
+  .menu-toggle {
+    padding: 0.5rem 0.1rem; /* Minimal padding to push to absolute edge */
+  }
+  
+  .app-title {
+    font-size: 1rem;
+  }
+  
+  .logo-img {
+    height: 25px;
+  }
+  
+  .user-role {
+    display: none; /* Hide role on very small screens */
+  }
+
+  .user-name {
+    font-size: 0.8rem;
   }
 }
 
@@ -327,7 +387,17 @@
 .notification-badge,
 .document-badge,
 .leave-badge {
-  z-index: 1000; /* Below profile-dropdown */
+  background: var(--primary-red);
+  color: white;
+  border-radius: 50%;
+  font-size: 12px;
+  min-width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 5px;
+  z-index: 1000;
 }
 
 /* MatSnackBar */

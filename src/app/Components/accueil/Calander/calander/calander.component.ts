@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectionStrategy, ChangeDetectorRef, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { CommonModule } from '@angular/common';
 import { PermissionService } from 'src/app/Service/PermissionService';
@@ -829,4 +829,25 @@ export class CalanderComponent implements OnInit, OnDestroy {
     }
     this.cdr.markForCheck();
   }
+
+  onModalBackdropClick(event: MouseEvent): void {
+  // Check if the click was on the modal backdrop (not on the modal content)
+  if (event.target === event.currentTarget) {
+    this.closeModal();
+  }
+}
+
+// If you want to also close on Escape key press, add this method
+@HostListener('document:keydown.escape', ['$event'])
+onEscapeKey(event: KeyboardEvent): void {
+  if (this.isModalOpen) {
+    this.closeModal();
+  }
+  if (this.isTaskDetailModalOpen) {
+    this.closeTaskDetailModal();
+  }
+  if (this.isDeleteConfirmOpen) {
+    this.closeDeleteConfirm();
+  }
+}
 }
