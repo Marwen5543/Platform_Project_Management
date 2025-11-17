@@ -12,72 +12,74 @@ spring:
             name: X-Forwarded-Uri
       routes:
         - id: user-service-route
-          uri: lb://user-management-service # Route to the user service in Eureka
+          uri: lb://user-management-service
           predicates:
-            - Path=/user-service/**      # IF the request starts with /user-service/...
+            - Path=/user-service/**
           filters:
-            - StripPrefix=1              # THEN strip that prefix before forwarding.
+            - StripPrefix=1
 
         - id: leave-management-service
           uri: lb://leave-management-service
           predicates:
             - Path=/api/leaves/**
           filters:
-            - StripPrefix=1  # Changed to strip /api/leaves to match service endpoint
+            - StripPrefix=1
             - AddRequestHeader=X-Service-Name,leave-management
+
         - id: document-management-service
           uri: lb://document-management-service
           predicates:
             - Path=/api/documents/**
           filters:
-            - StripPrefix=1  # Changed to strip /api/documents to match service endpoint
+            - StripPrefix=1
             - AddRequestHeader=X-Service-Name,document-management
-        # Added route for Actuator endpoints to allow direct access
+
         - id: actuator-route
           uri: lb://${spring.application.name}
           predicates:
             - Path=/actuator/**
           filters:
             - StripPrefix=1
+
       default-filters:
         - AddResponseHeader=X-Gateway-Version,1.0.0
+
   security:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/demo}  # 🔥 FIXED: Using `localhost` instead of `keycloak`
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8080/realms/demo}
 
   eureka:
-    client:
-      serviceUrl:
-        defaultZone: ${EUREKA_URL:http://localhost:8761/eureka/}  # ✅ Use localhost
-      fetch-registry: true
-      register-with-eureka: true
     instance:
-      prefer-ip-address: false  # ✅ Ensure it uses hostname instead of IP
-      hostname: localhost  # ✅ Explicitly set hostname
-      instance-id: ${spring.application.name}:localhost:${server.port}  # ✅ Make instance ID predictable
+      prefer-ip-address: false
+      hostname: localhost
+      instance-id: ${spring.application.name}:localhost:${server.port}
       statusPageUrl: http://localhost:${server.port}/actuator/info
       healthCheckUrl: http://localhost:${server.port}/actuator/health
       homePageUrl: http://localhost:${server.port}/
 
+logging:
+  level:
+    org.springframework.cloud.gateway: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.cloud.netflix.eureka: DEBUG
+    reactor.netty: DEBUG
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+  info:
+    env:
+      enabled: true   # makes environment info available
 
-  logging:
-    level:
-      org.springframework.cloud.gateway: DEBUG
-      org.springframework.web: DEBUG
-      org.springframework.cloud.netflix.eureka: DEBUG
-      reactor.netty: DEBUG
-
-  management:
-    endpoints:
-      web:
-        exposure:
-          include: "*"
-    endpoint:
-      health:
-        show-details: always
-    info:
-      env:
-        enabled: true
+info:
+  app:
+    name: ${spring.application.name}
+    description: API Gateway for microservices
+    version: 1.0.0

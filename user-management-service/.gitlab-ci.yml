@@ -1,0 +1,277 @@
+# ===================================================================
+# GITLAB CI FOR USER-MANAGEMENT-SERVICE (Corrected for Microservice Repo)
+# ===================================================================
+default:
+  tags:
+    - docker
+
+stages:
+  - build-and-push-to-nexus
+  - code-analysis
+  - push-and-scan-image
+  - deploy
+  - performance-test
+  - .post
+
+# ==================================================================
+# GLOBAL VARIABLES
+# ===================================================================
+variables:
+  DOCKER_VERSION: "20.10.16"
+  DOCKER_DRIVER: overlay2
+  DOCKER_TLS_CERTDIR: ""
+  TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache"
+  TRIVY_SEVERITY: "HIGH,CRITICAL"
+  TRIVY_IGNORE_UNFIXED: "true"
+  TRIVY_TIMEOUT: "120m"
+  DOCKER_BUILDKIT: 1
+  BUILDKIT_PROGRESS: plain
+  # Set Maven options to use the local .m2 repository
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+  HARBOR_PROJECT: "tunisys"
+  COSIGN_SIGNING_METHOD: "keyless"  # or "private-key"
+  COSIGN_VERSION: "2.2.4"
+
+
+.dind_service: &dind_service
+  services:
+    - name: docker:${DOCKER_VERSION}-dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+# ===================================================================
+# REUSABLE CACHE TEMPLATE FOR MAVEN (*** THIS SECTION IS FIXED ***)
+# ===================================================================
+.maven_cache_template: &maven_cache_template
+  cache:
+    key:
+      files:
+        - "pom.xml" # Use the root pom.xml to generate the cache key
+      prefix: "maven" # All Maven jobs will now share this cache key
+    paths:
+      - .m2/repository/
+    policy: pull-push
+
+# ===================================================================
+# REUSABLE DOCKER BUILD AND SCAN TEMPLATE
+# ===================================================================
+.docker_build_and_scan_template: &docker_build_and_scan_template
+  stage: push-and-scan-image
+  image: docker:${DOCKER_VERSION}
+  services:
+    - name: docker:${DOCKER_VERSION}-dind
+      alias: docker
+      command: ["--insecure-registry=192.168.50.4:30002"]
+  variables:
+    TRIVY_DB_REPOSITORY: "ghcr.io/aquasecurity/trivy-db"
+    DOCKER_HOST: tcp://docker:2376
+    DOCKER_TLS_VERIFY: 0
+  cache:
+    key: "trivy-scan-cache-${CI_JOB_NAME}"
+    paths:
+      - .trivycache/
+    policy: pull-push
+  before_script:
+    - while ! docker info; do sleep 1; done
+    - apk update && apk add --no-cache curl ca-certificates jq
+    - curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.58.0/trivy_0.58.0_Linux-64bit.tar.gz | tar -C /usr/local/bin -xzf - trivy
+    - curl -O -L "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64"
+    - mv cosign-linux-amd64 /usr/local/bin/cosign
+    - chmod +x /usr/local/bin/cosign
+    - cosign version
+    - echo "$HARBOR_PASSWORD" | docker login -u "$HARBOR_USERNAME" --password-stdin "$HARBOR_URL"
+    - mkdir -p $TRIVY_CACHE_DIR
+  script:
+    - docker build -t "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA" -t "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:latest" "$BUILD_CONTEXT"
+    - |
+      trivy image --severity ${TRIVY_SEVERITY} \
+        --cache-dir $TRIVY_CACHE_DIR \
+        --timeout ${TRIVY_TIMEOUT} \
+        --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} \
+        --format json \
+        --output trivy-report.json \
+        "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA"
+    - trivy image --severity ${TRIVY_SEVERITY} --cache-dir $TRIVY_CACHE_DIR --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} --format table "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA" | tee trivy-report.txt
+    - |
+      CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-report.json || echo "0")
+      if [ "$CRITICAL_COUNT" -gt 0 ]; then
+        echo "❌ Security gate FAILED: Found $CRITICAL_COUNT CRITICAL vulnerabilities. Halting pipeline."
+        exit 1
+      else
+        echo "✅ Security gate PASSED: No CRITICAL vulnerabilities found."
+      fi
+    - docker push "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA"
+    - docker push "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:latest"
+    - |
+      if [ "$COSIGN_SIGNING_METHOD" = "keyless" ]; then
+        echo "Using keyless signing (OIDC)..."
+        export COSIGN_EXPERIMENTAL=1
+        cosign sign --yes "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA" || echo "Keyless signing failed"
+        cosign sign --yes "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:latest" || echo "Keyless signing failed"
+      else
+        echo "Using private key signing..."
+        if [ -z "$COSIGN_PRIVATE_KEY" ]; then exit 1; fi
+        echo "$COSIGN_PRIVATE_KEY" > /tmp/cosign.key
+        chmod 600 /tmp/cosign.key
+        IMAGE_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA" || echo "")
+        if [ -n "$IMAGE_DIGEST" ]; then
+          COSIGN_PASSWORD="$COSIGN_PASSWORD" cosign sign --yes --key /tmp/cosign.key "$IMAGE_DIGEST"
+        else
+          COSIGN_PASSWORD="$COSIGN_PASSWORD" cosign sign --yes --key /tmp/cosign.key "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA"
+        fi
+        COSIGN_PASSWORD="$COSIGN_PASSWORD" cosign sign --yes --key /tmp/cosign.key "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:latest"
+        rm -f /tmp/cosign.key
+      fi
+    - |
+      if [ "$COSIGN_SIGNING_METHOD" = "keyless" ]; then
+        echo "Skipping keyless verification in CI environment"
+      else
+        if [ -n "$COSIGN_PUBLIC_KEY" ]; then
+          echo "$COSIGN_PUBLIC_KEY" > /tmp/cosign.pub
+          cosign verify --key /tmp/cosign.pub "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA" || echo "Verification failed"
+          rm -f /tmp/cosign.pub
+        fi
+      fi
+    - cosign tree "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA" || echo "No signatures found"
+  artifacts:
+    paths:
+      - trivy-report.json
+      - trivy-report.txt
+    reports:
+      container_scanning: trivy-report.json
+    when: always
+    expire_in: 1 week
+  allow_failure: false
+
+# --- KUBERNETES DEPLOY TEMPLATE ---
+.deploy_template: &deploy_template
+  stage: deploy
+  image: google/cloud-sdk:latest
+  before_script:
+    - mkdir -p ~/.kube
+    - chmod 700 ~/.kube
+    - cp "$KUBE_CONFIG" ~/.kube/config
+    - chmod 600 ~/.kube/config
+    - kubectl config set-cluster default --insecure-skip-tls-verify=true
+    - kubectl config view --minify
+    - kubectl cluster-info
+    - kubectl get nodes || echo "Warning:Cannot list nodes"
+  script:
+    - echo "Deploying $DEPLOYMENT_NAME to namespace tunisys..."
+    - kubectl get deployment $DEPLOYMENT_NAME -n tunisys || echo "Deployment doesn't exist yet"
+    - kubectl rollout restart deployment $DEPLOYMENT_NAME -n tunisys
+    - kubectl rollout status deployment $DEPLOYMENT_NAME -n tunisys --timeout=300s
+    - echo "Deployment of $DEPLOYMENT_NAME successful!"
+    - kubectl get pods -n tunisys -l app=$DEPLOYMENT_NAME
+
+# ===================================================================
+# JOBS FOR USER-MANAGEMENT-SERVICE
+# ===================================================================
+build-and-push:user-service:
+  stage: build-and-push-to-nexus
+  image: maven:3.8.5-openjdk-17
+  <<: *maven_cache_template
+  script:
+    - cp $SETTINGS_XML ./settings-temp.xml
+    - mvn clean deploy -s ./settings-temp.xml -DskipTests
+  artifacts:
+    paths: ["target/"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+sonar-analysis:user-service:
+  stage: code-analysis
+  image: maven:3.8.5-openjdk-17
+  <<: *maven_cache_template
+  variables: { GIT_DEPTH: 0 }
+  script:
+    - cp $SETTINGS_XML ./settings-temp.xml
+    - mvn clean -s ./settings-temp.xml
+    - |
+      for i in {1..3}; do
+        echo "Sonar analysis attempt $i of 3"
+        mvn verify sonar:sonar -Psonar -s ./settings-temp.xml \
+          -Dsonar.projectKey=com.tunisys:user-management-service \
+          -Dsonar.host.url=$SONAR_HOST_URL \
+          -Dsonar.login=$SONAR_TOKEN \
+          -Dmaven.wagon.http.retryHandler.count=3 \
+          -Dmaven.wagon.httpconnectionManager.ttlSeconds=120 && break || sleep 60
+      done
+  needs: [{job: build-and-push:user-service, artifacts: true}]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+
+integration-test:user-service:
+  stage: code-analysis
+  image: maven:3.8.5-openjdk-17
+  # --- FIX: Combined anchors into a list and used the correct template name ---
+  <<: [*maven_cache_template, *dind_service]
+  script:
+    - cp $SETTINGS_XML ./settings-temp.xml
+    - echo "Running full integration tests with Testcontainers..."
+    # 'verify' will run all tests, including your FullIntegrationTest
+    - mvn verify -s settings-temp.xml
+  needs:
+    # --- FIX: Renamed the job dependency to match the actual job name ---
+    - job: build-and-push:user-service
+      artifacts: true
+    
+
+dependency-scan:user-service:
+  stage: code-analysis
+  image: alpine:latest
+  variables:
+    TRIVY_DB_REPOSITORY: "ghcr.io/aquasecurity/trivy-db"
+    TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache"
+  cache:
+    key: "trivy-scan-cache-dependency-${CI_JOB_NAME}"
+    paths: [".trivycache/"]
+    policy: pull-push
+  before_script:
+    - apk update && apk add --no-cache curl
+    - curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.58.0/trivy_0.58.0_Linux-64bit.tar.gz | tar -C /usr/local/bin -xzf - trivy
+  script:
+    - echo "Scanning filesystem for dependency vulnerabilities in pom.xml..."
+    - trivy fs --severity ${TRIVY_SEVERITY} --ignore-unfixed=${TRIVY_IGNORE_UNFIXED} .
+  needs: ["build-and-push:user-service"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+push-and-scan:user-service:
+  <<: *docker_build_and_scan_template
+  variables:
+    SERVICE_NAME: "user-management-service"
+    BUILD_CONTEXT: "."
+  needs:
+    - job: build-and-push:user-service
+      artifacts: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+deploy:user-service:
+  <<: *deploy_template
+  variables: { DEPLOYMENT_NAME: "user-management-service" }
+  needs: ["push-and-scan:user-service"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+performance-test:user-service:
+  stage: performance-test
+  image: maven:3.8.5-openjdk-17
+  <<: *maven_cache_template
+  needs: ["deploy:user-service"]
+  script:
+    - cp $SETTINGS_XML ./settings-temp.xml
+    - echo "Running performance tests for User Management Service..."
+    # Updated Gatling command for user simulation
+    - |
+      mvn gatling:test -s ./settings-temp.xml \
+        -Dgatling.simulationClass=simulations.ComprehensiveUserTest \
+        -Dtest.environment=remote \
+        -Duse.auth=true \
+        -DAPP_URL=${STAGING_APP_URL}
+  artifacts: { when: always, paths: ["target/gatling/"] }
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'

@@ -1,4 +1,4 @@
-package company.user_management_service.Config;
+package company.user_management_service.config;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -13,6 +13,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Collection;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -25,13 +26,6 @@ public class SecurityConfig {
 
     @Value("${keycloak.resource}")
     private String clientId;
-
-    // NO LONGER NEEDED:
-    // @Value("${keycloak.realm}")
-    // private String realm;
-    //
-    // @Value("${keycloak.auth-server-url}")
-    // private String keycloakServerUrl;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -46,8 +40,6 @@ public class SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .oauth2ResourceServer(oauth2 -> oauth2
-                        // By removing the custom decoder, Spring will now use the one
-                        // configured by your application.properties file.
                         .jwt(jwt -> jwt
                                 .jwtAuthenticationConverter(jwtAuthenticationConverter())
                         )
@@ -55,18 +47,6 @@ public class SecurityConfig {
 
         return http.build();
     }
-
-    //
-    // DELETE THIS ENTIRE METHOD.
-    // Spring Boot will create this bean for you automatically using your properties file.
-    //
-    /*
-    @Bean
-    public JwtDecoder jwtDecoder() {
-        String jwkSetUri = String.format("%s/realms/%s/protocol/openid-connect/certs", keycloakServerUrl, realm);
-        return NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
-    }
-    */
 
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {

@@ -12,6 +12,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 import org.springframework.security.core.GrantedAuthority;
 
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -25,6 +26,19 @@ public class UserService {
     public void createUser(CreateUserRequest request) {
         log.info("Creating user in Keycloak: username={}, email={}", request.getUsername(), request.getEmail());
         try {
+            String hireDateToStore;
+
+            // FIXED: Always ensure we have a valid hireDate
+            if (request.getHireDate() != null && !request.getHireDate().trim().isEmpty()) {
+                hireDateToStore = request.getHireDate().trim();
+                log.info("Using provided hire date: {}", hireDateToStore);
+            } else {
+                // Auto-generate today's date when hireDate is not provided
+                hireDateToStore = LocalDate.now().toString(); // Format: "YYYY-MM-DD"
+                log.info("Auto-generating hire date: {}", hireDateToStore);
+            }
+
+            // Create user with proper hireDate
             keycloakService.createUser(
                     request.getUsername(),
                     request.getEmail(),
@@ -34,17 +48,21 @@ public class UserService {
                     request.getLastName(),
                     request.getPhone(),
                     request.getAddress(),
-                    request.getHireDate() != null ? request.getHireDate().toString() : null,
+                    hireDateToStore, // This should never be null or empty now
                     request.getDepartmentId(),
                     request.getManagerId(),
                     request.getPosition()
             );
-            log.info("User successfully created in Keycloak: {}", request.getUsername());
+
+            log.info("User successfully created in Keycloak: {} with hireDate: {}",
+                    request.getUsername(), hireDateToStore);
+
         } catch (Exception e) {
             log.error("Error during user creation in Keycloak: {}", e.getMessage());
             throw new RuntimeException("Failed to create user in Keycloak: " + e.getMessage(), e);
         }
     }
+
 
     public LoginResponse login(LoginRequest request) {
         log.info("Processing login request for username: {}", request.getUsername());
@@ -98,7 +116,12 @@ public class UserService {
         dto.setLastName(getStringOrNull(userDetails, "lastName"));
         dto.setPhone(getStringOrNull(userDetails, "phone"));
         dto.setAddress(getStringOrNull(userDetails, "address"));
-        dto.setHireDate(getStringOrNull(userDetails, "hireDate"));
+
+        // FIXED: Better hireDate handling
+        String hireDate = getStringOrNull(userDetails, "hireDate");
+        dto.setHireDate(hireDate);
+        log.debug("Set hireDate in DTO: {} for user: {}", hireDate, dto.getUsername());
+
         dto.setDepartmentId(getLongOrNull(userDetails, "departmentId"));
         dto.setManagerId(getLongOrNull(userDetails, "managerId"));
         dto.setPosition(getStringOrNull(userDetails, "position"));
@@ -114,10 +137,12 @@ public class UserService {
         @SuppressWarnings("unchecked")
         List<String> roles = (List<String>) userDetails.getOrDefault("roles", Collections.emptyList());
         log.debug("Roles for user {}: {}", dto.getUsername(), roles);
+
         @SuppressWarnings("unchecked")
         List<String> projectTitles = userDetails.containsKey("projectTitles") ?
                 (List<String>) userDetails.get("projectTitles") : new ArrayList<>();
         dto.setProjectTitles(projectTitles);
+
         UserDTO.UserRole mappedRole = null;
         for (String role : roles) {
             try {
@@ -139,9 +164,26 @@ public class UserService {
         return dto;
     }
 
+    // UserService.java
+
     private String getStringOrNull(Map<String, Object> map, String key) {
         Object value = map.get(key);
-        return value != null ? value.toString() : null;
+
+        // Special handling for hireDate - don't return null for empty strings
+        if ("hireDate".equals(key)) {
+            if (value == null) {
+                return null;
+            }
+            String stringValue = value.toString().trim();
+            // For hireDate, return the value even if it's an empty string (let calling code handle it)
+            return stringValue.isEmpty() ? null : stringValue;
+        }
+
+        // For other fields, return null if value is null or empty
+        if (value == null || value.toString().trim().isEmpty()) {
+            return null;
+        }
+        return value.toString().trim();
     }
 
     private Long getLongOrNull(Map<String, Object> map, String key) {
@@ -487,6 +529,18 @@ public class UserService {
         } catch (Exception e) {
             log.error("Error assigning project '{}' for userId {}: {}", projectTitle, userId, e.getMessage(), e);
             throw new RuntimeException("Failed to assign project: " + e.getMessage(), e);
+        }
+    }
+
+
+    public void migrateExistingUsersHireDate() {
+        log.info("Initiating hireDate migration for existing users");
+        try {
+            keycloakService.migrateExistingUsersWithHireDate();
+            log.info("HireDate migration completed successfully");
+        } catch (Exception e) {
+            log.error("HireDate migration failed: {}", e.getMessage());
+            throw new RuntimeException("Failed to migrate user hireDates", e);
         }
     }
 }

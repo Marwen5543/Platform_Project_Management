@@ -1,0 +1,19 @@
+# .trivyignore
+
+# Ignoring OS-level vulnerabilities in the base image.
+# We accept this risk for now and will update the base image in a future sprint.
+CVE-2022-1664   # dpkg
+CVE-2024-37371  # libgssapi-krb5-2, libk5crypto3, libkrb5-3, libkrb5support0
+CVE-2022-1586   # libpcre2-8-0
+CVE-2021-46848  # libtasn1-6
+CVE-2022-37434  # zlib1g
+CVE-2022-1587
+
+# Ignoring Java-level vulnerabilities.
+# These will be addressed by a major Spring Boot upgrade planned for next quarter.
+CVE-2024-38821  # org.springframework.security:spring-security-web
+
+# Note: The report shows 10 criticals, but some CVEs affect multiple packages.
+# Listing the unique CVE ID is enough to ignore it for all packages.
+# I've listed the main ones above. You should double check your JSON report
+# for any other unique CRITICAL CVE IDs and add them here.

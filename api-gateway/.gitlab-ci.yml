@@ -1,0 +1,196 @@
+# ===================================================================
+# GITLAB CI PIPELINE FOR THE API GATEWAY (Corrected Syntax)
+# ===================================================================
+default:
+  tags:
+    - docker
+
+stages:
+  - build-and-test
+  - code-analysis
+  - push-and-scan-image
+  - deploy-to-staging
+  - e2e-test
+  - deploy-to-prod
+
+# ==================================================================
+# GLOBAL VARIABLES
+# ===================================================================
+variables:
+  DOCKER_VERSION: "20.10.16"
+  MAVEN_OPTS: "-Dmaven.repo.local=.m2/repository"
+  HARBOR_PROJECT: "tunisys"
+  SERVICE_NAME: "api-gateway"
+  COSIGN_SIGNING_METHOD: "private-key"
+  COSIGN_VERSION: "2.2.4"
+
+# ===================================================================
+# REUSABLE TEMPLATES
+# ===================================================================
+.maven_cache_template: &maven_cache_template
+  cache:
+    key: { files: ["pom.xml"], prefix: "maven" }
+    paths: [".m2/repository/"]
+    policy: pull-push
+
+# --- FIX: Corrected the 'script' section to use valid multi-line syntax ---
+# --- FIX: Added --no-cache to build and prune to before_script ---
+.docker_build_and_scan_template: &docker_build_and_scan_template
+  stage: push-and-scan-image
+  image: docker:${DOCKER_VERSION}
+  services:
+    - name: docker:${DOCKER_VERSION}-dind
+      alias: docker
+      command: ["--insecure-registry=192.168.50.4:30002"]
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_TLS_CERTDIR: ""
+    TRIVY_TIMEOUT: "30m" # We can reduce the timeout now
+    TRIVY_CACHE_DIR: "$CI_PROJECT_DIR/.trivycache"
+  
+  # --- ADD THIS CACHE BLOCK ---
+  cache:
+    # Use a consistent key so all jobs using this template share the same cache
+    key: "trivy-v2-db-cache"
+    # Specify the directory to cache
+    paths:
+      - .trivycache/
+    # Pull the cache at the start, push it back at the end
+    policy: pull-push
+  before_script:
+    - while ! docker info; do sleep 1; done
+    # Clean up old images and caches on the runner to ensure a fresh start
+    - echo "Cleaning up Docker system..."
+    - docker system prune -af
+    - apk update && apk add --no-cache curl ca-certificates jq
+    - curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.58.0/trivy_0.58.0_Linux-64bit.tar.gz | tar -C /usr/local/bin -xzf - trivy
+    - curl -O -L "https://github.com/sigstore/cosign/releases/download/v${COSIGN_VERSION}/cosign-linux-amd64" && mv cosign-linux-amd64 /usr/local/bin/cosign && chmod +x /usr/local/bin/cosign
+    - echo "$HARBOR_PASSWORD" | docker login -u "$HARBOR_USERNAME" --password-stdin "$HARBOR_URL"
+  script:
+    # Add the --no-cache flag to force a rebuild from the Dockerfile
+    - echo "Building fresh Docker image, ignoring cache..."
+    - docker build --no-cache -t "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA" -t "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:latest" .
+    - echo "Starting Trivy scan..."
+    - trivy image --severity HIGH,CRITICAL --ignore-unfixed=true --timeout ${TRIVY_TIMEOUT} --format json --output trivy-report.json "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA"
+    - trivy image --severity HIGH,CRITICAL --ignore-unfixed=true --timeout ${TRIVY_TIMEOUT} --format table "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA" | tee trivy-report.txt
+    - |
+      CRITICAL_COUNT=$(jq '[.Results[]?.Vulnerabilities[]? | select(.Severity == "CRITICAL")] | length' trivy-report.json || echo "0")
+      if [ "$CRITICAL_COUNT" -gt 0 ]; then
+        echo "❌ Security gate FAILED: Found $CRITICAL_COUNT CRITICAL vulnerabilities."
+        exit 1
+      fi
+    - docker push "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA"
+    - docker push "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:latest"
+    - |
+      echo "🔐 Signing container images with Cosign private key..."
+      if [ -z "$COSIGN_PRIVATE_KEY" ]; then
+        echo "❌ ERROR: COSIGN_PRIVATE_KEY variable is not set."
+        exit 1
+      fi
+      echo "$COSIGN_PRIVATE_KEY" > /tmp/cosign.key && chmod 600 /tmp/cosign.key
+      COSIGN_PASSWORD="$COSIGN_PASSWORD" cosign sign --yes --key /tmp/cosign.key "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:$CI_COMMIT_SHORT_SHA"
+      COSIGN_PASSWORD="$COSIGN_PASSWORD" cosign sign --yes --key /tmp/cosign.key "$HARBOR_URL/$HARBOR_PROJECT/$SERVICE_NAME:latest"
+      rm -f /tmp/cosign.key
+      echo "✅ Signing complete."
+  artifacts:
+    paths: [trivy-report.json, trivy-report.txt]
+    reports: { container_scanning: trivy-report.json }
+
+.deploy_template: &deploy_template
+  image: { name: bitnami/kubectl:latest, entrypoint: [""] }
+  before_script:
+    - export KUBECONFIG="$CI_PROJECT_DIR/.kube/config"
+    - mkdir -p "$CI_PROJECT_DIR/.kube" && chmod 700 "$CI_PROJECT_DIR/.kube"
+    - cp "$KUBE_CONFIG" $KUBECONFIG && chmod 600 $KUBECONFIG
+    - kubectl config set-cluster default --insecure-skip-tls-verify=true
+    - kubectl cluster-info
+  script:
+    - echo "Deploying $DEPLOYMENT_NAME to namespace tunisys..."
+    - kubectl rollout restart deployment $DEPLOYMENT_NAME -n tunisys
+    - kubectl rollout status deployment $DEPLOYMENT_NAME -n tunisys --timeout=300s
+    - echo "✅ Deployment of $DEPLOYMENT_NAME successful!"
+
+# ===================================================================
+# JOBS FOR THE API GATEWAY PIPELINE
+# ===================================================================
+
+build-and-test:
+  stage: build-and-test
+  image: maven:3.8.5-openjdk-17
+  <<: *maven_cache_template
+  script:
+    - echo "Building JAR and running unit & integration tests (e.g., route logic)..."
+    - mvn clean verify
+  artifacts:
+    paths:
+      - target/*.jar
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+sonar-analysis:
+  stage: code-analysis
+  image: maven:3.8.5-openjdk-17
+  <<: *maven_cache_template
+  variables: { GIT_DEPTH: 0 }
+  script:
+    - mvn verify sonar:sonar -Dsonar.projectKey=com.tunisys:api-gateway -Dsonar.host.url=$SONAR_HOST_URL -Dsonar.login=$SONAR_TOKEN
+  needs: ["build-and-test"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+dependency-scan:
+  stage: code-analysis
+  image: alpine:latest
+  script:
+    - apk add --no-cache curl && curl -sfL https://github.com/aquasecurity/trivy/releases/download/v0.58.0/trivy_0.58.0_Linux-64bit.tar.gz | tar -C /usr/local/bin -xzf - trivy
+    - trivy fs --severity HIGH,CRITICAL --ignore-unfixed=true .
+  needs: ["build-and-test"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+push-and-scan-image:
+  <<: *docker_build_and_scan_template
+  needs:
+    - job: build-and-test
+      artifacts: true
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+deploy-to-staging:
+  stage: deploy-to-staging
+  <<: *deploy_template
+  variables:
+    DEPLOYMENT_NAME: "api-gateway"
+  environment:
+    name: staging
+    url: http://192.168.50.4:30081
+  needs: ["push-and-scan-image"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+e2e-test:
+  stage: e2e-test
+  image: maven:3.8.5-openjdk-17
+  variables:
+    GATEWAY_URL: http://192.168.50.4:30081
+  script:
+    - echo "Running End-to-End tests against the live Staging Gateway at $GATEWAY_URL"
+    - git clone https://gitlab-ci-token:${CI_JOB_TOKEN}@gitlab.com/marwen.mamlouk/e2e-tests.git
+    - cd e2e-tests
+    - mvn gatling:test -Dgatling.simulationClass=com.yourcompany.e2e.GatewaySecuritySimulation -DAPP_URL=${GATEWAY_URL}
+  needs: ["deploy-to-staging"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+deploy-to-prod:
+  stage: deploy-to-prod
+  <<: *deploy_template
+  variables:
+    DEPLOYMENT_NAME: "api-gateway"
+  environment:
+    name: production
+    url: http://production-gateway.your-company.com #<-- UPDATE THIS URL
+  needs: ["e2e-test"]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual

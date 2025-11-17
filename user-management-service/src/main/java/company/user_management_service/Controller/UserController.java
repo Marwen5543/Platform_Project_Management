@@ -20,9 +20,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import java.time.LocalDate;
+import java.util.*;
 
 @RestController
 @RequestMapping("/api/users")
@@ -314,6 +313,154 @@ public class UserController {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
             }
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(null);
+        }
+    }
+
+    @PostMapping("/migrate-hiredates")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<String> migrateUserHireDates() {
+        try {
+            log.info("Migration endpoint called by user: {}", SecurityContextHolder.getContext().getAuthentication().getName());
+            userService.migrateExistingUsersHireDate();
+            return ResponseEntity.ok("HireDate migration completed successfully");
+        } catch (Exception e) {
+            log.error("Migration endpoint failed: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Migration failed: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/test-hiredate/{username}")
+    @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('ADMIN')")
+    public ResponseEntity<Map<String, Object>> testUserHireDate(@PathVariable String username) {
+        try {
+            log.info("Testing hireDate for username: {}", username);
+
+            // Get raw user details from Keycloak via UserService
+            Map<String, Object> userDetails = userService.getUserFullDetails(username);
+
+            // Also get the UserDTO for comparison
+            UserDTO userDto = userService.getUserByUsername(username);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("username", username);
+            response.put("hireDate_from_details", userDetails.get("hireDate"));
+            response.put("hireDate_from_dto", userDto.getHireDate());
+            response.put("hireDateType_details", userDetails.get("hireDate") != null ?
+                    userDetails.get("hireDate").getClass().getSimpleName() : "null");
+            response.put("hireDateType_dto", userDto.getHireDate() != null ?
+                    userDto.getHireDate().getClass().getSimpleName() : "null");
+            response.put("allUserDetails", userDetails);
+            response.put("userDTO", userDto);
+
+            log.info("Test result for {}: details_hireDate = {}, dto_hireDate = {}",
+                    username, userDetails.get("hireDate"), userDto.getHireDate());
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Test failed for username {}: {}", username, e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            errorResponse.put("username", username);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    @PostMapping("/fix-user-hiredate/{username}")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> fixUserHireDate(@PathVariable String username) {
+        try {
+            log.info("Fixing hireDate for username: {}", username);
+
+            // Get current user details
+            UserDTO currentUser = userService.getUserByUsername(username);
+
+            // Check if hireDate is missing or null
+            if (currentUser.getHireDate() == null || currentUser.getHireDate().trim().isEmpty()) {
+                // Set hireDate to today's date
+                String todaysDate = LocalDate.now().toString();
+
+                // Update the user profile with today's date
+                UserDTO updateRequest = new UserDTO();
+                updateRequest.setHireDate(todaysDate);
+
+                UserDTO updatedUser = userService.updateProfile(currentUser.getUserId(), updateRequest);
+
+                Map<String, Object> response = new HashMap<>();
+                response.put("message", "HireDate fixed successfully");
+                response.put("username", username);
+                response.put("oldHireDate", currentUser.getHireDate());
+                response.put("newHireDate", updatedUser.getHireDate());
+                response.put("updatedUser", updatedUser);
+
+                log.info("Fixed hireDate for user {}: {} -> {}", username,
+                        currentUser.getHireDate(), updatedUser.getHireDate());
+
+                return ResponseEntity.ok(response);
+            } else {
+                Map<String, Object> response = new HashMap<>();
+                response.put("message", "User already has a valid hireDate");
+                response.put("username", username);
+                response.put("currentHireDate", currentUser.getHireDate());
+                response.put("user", currentUser);
+
+                return ResponseEntity.ok(response);
+            }
+
+        } catch (Exception e) {
+            log.error("Failed to fix hireDate for username {}: {}", username, e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            errorResponse.put("username", username);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    @GetMapping("/debug-all-users-hiredates")
+    @PreAuthorize("hasRole('SUPER_ADMIN')")
+    public ResponseEntity<Map<String, Object>> debugAllUsersHireDates() {
+        try {
+            log.info("Debugging hireDate for all users");
+
+            List<UserDTO> allUsers = userService.getAllUsers();
+
+            Map<String, Object> response = new HashMap<>();
+            List<Map<String, Object>> userSummaries = new ArrayList<>();
+
+            int usersWithHireDate = 0;
+            int usersWithoutHireDate = 0;
+
+            for (UserDTO user : allUsers) {
+                Map<String, Object> userSummary = new HashMap<>();
+                userSummary.put("username", user.getUsername());
+                userSummary.put("userId", user.getUserId());
+                userSummary.put("hireDate", user.getHireDate());
+                userSummary.put("hasValidHireDate", user.getHireDate() != null && !user.getHireDate().trim().isEmpty());
+
+                if (user.getHireDate() != null && !user.getHireDate().trim().isEmpty()) {
+                    usersWithHireDate++;
+                } else {
+                    usersWithoutHireDate++;
+                }
+
+                userSummaries.add(userSummary);
+            }
+
+            response.put("totalUsers", allUsers.size());
+            response.put("usersWithHireDate", usersWithHireDate);
+            response.put("usersWithoutHireDate", usersWithoutHireDate);
+            response.put("users", userSummaries);
+
+            log.info("Debug complete: {}/{} users have valid hireDates",
+                    usersWithHireDate, allUsers.size());
+
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Failed to debug all users hireDates: {}", e.getMessage());
+            Map<String, Object> errorResponse = new HashMap<>();
+            errorResponse.put("error", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }
 

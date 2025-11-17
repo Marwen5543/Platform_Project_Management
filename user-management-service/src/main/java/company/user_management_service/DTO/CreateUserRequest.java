@@ -30,7 +30,7 @@ public class CreateUserRequest {
     private String phone;
 
     private String address;
-    private Date hireDate;
+    private String hireDate;
     private Long departmentId;
     private Long managerId;
     private String position;

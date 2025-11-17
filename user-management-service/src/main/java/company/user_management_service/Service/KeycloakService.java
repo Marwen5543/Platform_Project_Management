@@ -16,7 +16,8 @@ import org.springframework.stereotype.Service;
 import jakarta.ws.rs.core.Response;
 import java.util.*;
 import java.util.stream.Collectors;
-
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 @Slf4j
 @Service
 public class KeycloakService {
@@ -175,13 +176,25 @@ public class KeycloakService {
             Map<String, List<String>> attributes = new HashMap<>();
             attributes.put("phone", Collections.singletonList(phone != null ? phone : ""));
             attributes.put("address", Collections.singletonList(address != null ? address : ""));
-            attributes.put("hireDate", Collections.singletonList(hireDate != null ? hireDate : ""));
+
+            // CRITICAL FIX: Ensure hireDate is never null or empty
+            String finalHireDate;
+            if (hireDate != null && !hireDate.trim().isEmpty()) {
+                finalHireDate = hireDate.trim();
+            } else {
+                finalHireDate = LocalDate.now().toString(); // Auto-generate if not provided
+            }
+
+            attributes.put("hireDate", Collections.singletonList(finalHireDate));
+            log.info("Setting hireDate attribute to: '{}' for user: {}", finalHireDate, username);
+
             attributes.put("departmentId", Collections.singletonList(departmentId != null ? departmentId.toString() : ""));
             attributes.put("managerId", Collections.singletonList(managerId != null ? managerId.toString() : ""));
             attributes.put("position", Collections.singletonList(position != null ? position : ""));
             attributes.put("status", Collections.singletonList("ACTIVE"));
             attributes.put("forcePasswordReset", Collections.singletonList("true"));
-            attributes.put("projectTitles", Collections.emptyList()); // Initialize projectTitles
+            attributes.put("projectTitles", Collections.emptyList());
+
             user.setAttributes(attributes);
 
             Response response = usersResource.create(user);
@@ -193,6 +206,7 @@ public class KeycloakService {
                 if (locationHeader != null) {
                     String[] parts = locationHeader.split("/");
                     userId = parts[parts.length - 1];
+                    log.info("User created successfully with ID: {}", userId);
                 }
             } else if (status == Response.Status.CONFLICT.getStatusCode()) {
                 List<UserRepresentation> foundUsers = usersResource.search(username, true);
@@ -206,17 +220,41 @@ public class KeycloakService {
                 throw new RuntimeException("Failed to obtain user ID from Keycloak user creation");
             }
 
+            // Set password
             CredentialRepresentation passwordCred = new CredentialRepresentation();
             passwordCred.setType(CredentialRepresentation.PASSWORD);
             passwordCred.setValue(password);
             passwordCred.setTemporary(false);
             keycloak.realm(realm).users().get(userId).resetPassword(passwordCred);
 
+            // Assign role
             UserResource userResource = usersResource.get(userId);
             RoleRepresentation roleRep = keycloak.realm(realm).roles().get(role != null ? role : "EMPLOYEE").toRepresentation();
             userResource.roles().realmLevel().add(Collections.singletonList(roleRep));
 
-            log.info("User created in Keycloak: {}", username);
+            // CRITICAL: Verify the hireDate was set correctly
+            UserRepresentation createdUser = userResource.toRepresentation();
+            Map<String, List<String>> createdAttributes = createdUser.getAttributes();
+
+            if (createdAttributes != null && createdAttributes.containsKey("hireDate")) {
+                List<String> hireDateList = createdAttributes.get("hireDate");
+                if (hireDateList != null && !hireDateList.isEmpty()) {
+                    String storedHireDate = hireDateList.get(0);
+                    log.info("SUCCESS: Verified hireDate attribute for user {}: '{}'", username, storedHireDate);
+
+                    // Additional verification
+                    if (storedHireDate == null || storedHireDate.trim().isEmpty()) {
+                        log.error("CRITICAL: hireDate was stored as empty/null for user: {}", username);
+                    }
+                } else {
+                    log.error("CRITICAL: hireDate list is empty for user: {}", username);
+                }
+            } else {
+                log.error("CRITICAL: hireDate attribute not found after user creation for: {}", username);
+            }
+
+            log.info("User created in Keycloak: {} with final hireDate: {}", username, finalHireDate);
+
         } catch (Exception e) {
             log.error("Error creating user in Keycloak: {}", e.getMessage());
             throw new RuntimeException("Error creating user in Keycloak", e);
@@ -330,6 +368,7 @@ public class KeycloakService {
             UserRepresentation user = users.get(0);
             UserResource userResource = usersResource.get(user.getId());
             Map<String, Object> userDetails = new HashMap<>();
+
             userDetails.put("userId", user.getId());
             userDetails.put("username", user.getUsername());
             userDetails.put("email", user.getEmail());
@@ -338,25 +377,43 @@ public class KeycloakService {
 
             Map<String, List<String>> attributes = user.getAttributes();
             if (attributes != null) {
-                userDetails.put("phone", attributes.getOrDefault("phone", Collections.singletonList("")).get(0));
-                userDetails.put("address", attributes.getOrDefault("address", Collections.singletonList("")).get(0));
-                userDetails.put("hireDate", attributes.getOrDefault("hireDate", Collections.singletonList("")).get(0));
-                userDetails.put("departmentId", attributes.getOrDefault("departmentId", Collections.singletonList("")).get(0));
-                userDetails.put("managerId", attributes.getOrDefault("managerId", Collections.singletonList("")).get(0));
-                userDetails.put("position", attributes.getOrDefault("position", Collections.singletonList("")).get(0));
-                userDetails.put("status", attributes.getOrDefault("status", Collections.singletonList("ACTIVE")).get(0));
-                userDetails.put("forcePasswordReset", attributes.getOrDefault("forcePasswordReset", Collections.singletonList("true")).get(0));
+                userDetails.put("phone", getAttributeValue(attributes, "phone", ""));
+                userDetails.put("address", getAttributeValue(attributes, "address", ""));
+
+                // FIXED: Better hireDate handling
+                String hireDate = getAttributeValue(attributes, "hireDate", null);
+                if (hireDate == null || hireDate.trim().isEmpty()) {
+                    log.warn("User {} has missing/empty hireDate, using current date", username);
+                    hireDate = LocalDate.now().toString();
+                    // Optionally update the user with the default hireDate
+                    updateUserHireDate(user.getId(), hireDate);
+                }
+                userDetails.put("hireDate", hireDate);
+                log.debug("Retrieved hireDate for user {}: '{}'", username, hireDate);
+
+                userDetails.put("departmentId", getAttributeValue(attributes, "departmentId", ""));
+                userDetails.put("managerId", getAttributeValue(attributes, "managerId", ""));
+                userDetails.put("position", getAttributeValue(attributes, "position", ""));
+                userDetails.put("status", getAttributeValue(attributes, "status", "ACTIVE"));
+                userDetails.put("forcePasswordReset", getAttributeValue(attributes, "forcePasswordReset", "true"));
                 userDetails.put("projectTitles", attributes.getOrDefault("projectTitles", Collections.emptyList()));
+
             } else {
+                log.warn("No attributes found for user: {}, initializing defaults", username);
+                String defaultHireDate = LocalDate.now().toString();
+
                 userDetails.put("phone", "");
                 userDetails.put("address", "");
-                userDetails.put("hireDate", "");
+                userDetails.put("hireDate", defaultHireDate);
                 userDetails.put("departmentId", "");
                 userDetails.put("managerId", "");
                 userDetails.put("position", "");
                 userDetails.put("status", "ACTIVE");
                 userDetails.put("forcePasswordReset", "true");
                 userDetails.put("projectTitles", Collections.emptyList());
+
+                // Create default attributes for this user
+                updateUserHireDate(user.getId(), defaultHireDate);
             }
 
             List<RoleRepresentation> realmRoles = userResource.roles().realmLevel().listEffective();
@@ -368,11 +425,41 @@ public class KeycloakService {
             userDetails.put("role", primaryRole);
             userDetails.put("roles", roleNames);
 
-            log.debug("Fetched user details for {}: roles={}, projectTitles={}", username, roleNames, userDetails.get("projectTitles"));
+            log.debug("Fetched user details for {}: roles={}, hireDate='{}', projectTitles={}",
+                    username, roleNames, userDetails.get("hireDate"), userDetails.get("projectTitles"));
             return userDetails;
+
         } catch (Exception e) {
             log.error("Failed to fetch user details from Keycloak for user {}: {}", username, e.getMessage());
             throw new RuntimeException("Failed to fetch user details from Keycloak", e);
+        }
+    }
+
+    private String getAttributeValue(Map<String, List<String>> attributes, String key, String defaultValue) {
+        List<String> values = attributes.get(key);
+        if (values == null || values.isEmpty()) {
+            return defaultValue;
+        }
+        String value = values.get(0);
+        return (value != null && !value.trim().isEmpty()) ? value.trim() : defaultValue;
+    }
+
+    // Helper method to update hireDate for a user
+    private void updateUserHireDate(String userId, String hireDate) {
+        try {
+            UserResource userResource = keycloak.realm(realm).users().get(userId);
+            UserRepresentation user = userResource.toRepresentation();
+
+            Map<String, List<String>> attributes = user.getAttributes() != null ?
+                    new HashMap<>(user.getAttributes()) : new HashMap<>();
+
+            attributes.put("hireDate", Collections.singletonList(hireDate));
+            user.setAttributes(attributes);
+            userResource.update(user);
+
+            log.info("Updated hireDate to '{}' for userId: {}", hireDate, userId);
+        } catch (Exception e) {
+            log.error("Failed to update hireDate for userId {}: {}", userId, e.getMessage());
         }
     }
 
@@ -392,7 +479,13 @@ public class KeycloakService {
             if (attributes != null) {
                 userDetails.put("phone", attributes.getOrDefault("phone", Collections.singletonList("")).get(0));
                 userDetails.put("address", attributes.getOrDefault("address", Collections.singletonList("")).get(0));
-                userDetails.put("hireDate", attributes.getOrDefault("hireDate", Collections.singletonList("")).get(0));
+
+                // FIXED: Proper hireDate handling
+                List<String> hireDateList = attributes.getOrDefault("hireDate", Collections.singletonList(""));
+                String hireDate = hireDateList.isEmpty() ? "" : hireDateList.get(0);
+                userDetails.put("hireDate", (hireDate != null && !hireDate.trim().isEmpty()) ? hireDate : null);
+                log.debug("Retrieved hireDate for userId {}: {}", userId, hireDate);
+
                 userDetails.put("departmentId", attributes.getOrDefault("departmentId", Collections.singletonList("")).get(0));
                 userDetails.put("managerId", attributes.getOrDefault("managerId", Collections.singletonList("")).get(0));
                 userDetails.put("position", attributes.getOrDefault("position", Collections.singletonList("")).get(0));
@@ -400,9 +493,10 @@ public class KeycloakService {
                 userDetails.put("forcePasswordReset", attributes.getOrDefault("forcePasswordReset", Collections.singletonList("true")).get(0));
                 userDetails.put("projectTitles", attributes.getOrDefault("projectTitles", Collections.emptyList()));
             } else {
+                log.warn("No attributes found for userId: {}", userId);
                 userDetails.put("phone", "");
                 userDetails.put("address", "");
-                userDetails.put("hireDate", "");
+                userDetails.put("hireDate", null);
                 userDetails.put("departmentId", "");
                 userDetails.put("managerId", "");
                 userDetails.put("position", "");
@@ -420,7 +514,8 @@ public class KeycloakService {
             userDetails.put("role", primaryRole);
             userDetails.put("roles", roleNames);
 
-            log.debug("Fetched user details by ID {}: roles={}, projectTitles={}", userId, roleNames, userDetails.get("projectTitles"));
+            log.debug("Fetched user details by ID {}: roles={}, hireDate={}, projectTitles={}",
+                    userId, roleNames, userDetails.get("hireDate"), userDetails.get("projectTitles"));
             return userDetails;
         } catch (Exception e) {
             log.error("Failed to fetch user details from Keycloak for user ID {}: {}", userId, e.getMessage());
@@ -453,7 +548,12 @@ public class KeycloakService {
                 if (attributes != null) {
                     userDetails.put("phone", attributes.getOrDefault("phone", Collections.singletonList("")).get(0));
                     userDetails.put("address", attributes.getOrDefault("address", Collections.singletonList("")).get(0));
-                    userDetails.put("hireDate", attributes.getOrDefault("hireDate", Collections.singletonList("")).get(0));
+
+                    // FIXED: Proper hireDate handling
+                    List<String> hireDateList = attributes.getOrDefault("hireDate", Collections.singletonList(""));
+                    String hireDate = hireDateList.isEmpty() ? "" : hireDateList.get(0);
+                    userDetails.put("hireDate", (hireDate != null && !hireDate.trim().isEmpty()) ? hireDate : null);
+
                     userDetails.put("departmentId", attributes.getOrDefault("departmentId", Collections.singletonList("")).get(0));
                     userDetails.put("managerId", attributes.getOrDefault("managerId", Collections.singletonList("")).get(0));
                     userDetails.put("position", attributes.getOrDefault("position", Collections.singletonList("")).get(0));
@@ -463,7 +563,7 @@ public class KeycloakService {
                 } else {
                     userDetails.put("phone", "");
                     userDetails.put("address", "");
-                    userDetails.put("hireDate", "");
+                    userDetails.put("hireDate", null);
                     userDetails.put("departmentId", "");
                     userDetails.put("managerId", "");
                     userDetails.put("position", "");
@@ -478,8 +578,8 @@ public class KeycloakService {
                         .filter(Objects::nonNull)
                         .collect(Collectors.toList());
 
-                log.debug("User {} (ID: {}) effective roles: {}, projectTitles: {}",
-                        user.getUsername(), user.getId(), roleNames, userDetails.get("projectTitles"));
+                log.debug("User {} (ID: {}) effective roles: {}, hireDate: {}, projectTitles: {}",
+                        user.getUsername(), user.getId(), roleNames, userDetails.get("hireDate"), userDetails.get("projectTitles"));
 
                 String primaryRole = roleNames.isEmpty() ? "EMPLOYEE" : roleNames.get(0);
                 userDetails.put("role", primaryRole);
@@ -495,6 +595,112 @@ public class KeycloakService {
             throw new RuntimeException("Failed to fetch all users from Keycloak", e);
         }
     }
+
+    // Add this temporary debug method to your KeycloakService class
+    public void debugUserAttributes(String username) {
+        try {
+            UsersResource usersResource = keycloak.realm(realm).users();
+            List<UserRepresentation> users = usersResource.search(username, true);
+            if (users.isEmpty()) {
+                log.error("DEBUG: User not found: {}", username);
+                return;
+            }
+
+            UserRepresentation user = users.get(0);
+            log.info("DEBUG: User ID: {}", user.getId());
+            log.info("DEBUG: Username: {}", user.getUsername());
+
+            Map<String, List<String>> attributes = user.getAttributes();
+            if (attributes == null) {
+                log.error("DEBUG: No attributes found for user: {}", username);
+                return;
+            }
+
+            log.info("DEBUG: All attributes for user {}:", username);
+            attributes.forEach((key, value) -> {
+                log.info("  {} = {} (type: {}, size: {})", key, value,
+                        value != null ? value.getClass().getSimpleName() : "null",
+                        value != null ? value.size() : "null");
+            });
+
+            // Specific hireDate debugging
+            if (attributes.containsKey("hireDate")) {
+                List<String> hireDateList = attributes.get("hireDate");
+                log.info("DEBUG: hireDate attribute exists");
+                log.info("  hireDate list: {}", hireDateList);
+                log.info("  hireDate list size: {}", hireDateList != null ? hireDateList.size() : "null");
+                if (hireDateList != null && !hireDateList.isEmpty()) {
+                    String hireDateValue = hireDateList.get(0);
+                    log.info("  hireDate value: '{}'", hireDateValue);
+                    log.info("  hireDate value is null: {}", hireDateValue == null);
+                    log.info("  hireDate value is empty: {}", hireDateValue != null ? hireDateValue.isEmpty() : "N/A");
+                    log.info("  hireDate value trimmed is empty: {}", hireDateValue != null ? hireDateValue.trim().isEmpty() : "N/A");
+                }
+            } else {
+                log.error("DEBUG: hireDate attribute NOT found in attributes map");
+            }
+
+        } catch (Exception e) {
+            log.error("DEBUG: Error during attribute debugging: {}", e.getMessage(), e);
+        }
+    }
+
+    public void migrateExistingUsersWithHireDate() {
+        try {
+            log.info("Starting migration: Adding hireDate to existing users without this attribute");
+            UsersResource usersResource = keycloak.realm(realm).users();
+            List<UserRepresentation> users = usersResource.list();
+
+            int updatedCount = 0;
+            int alreadyHasHireDateCount = 0;
+            String defaultHireDate = LocalDate.now().toString();
+
+            for (UserRepresentation user : users) {
+                try {
+                    Map<String, List<String>> attributes = user.getAttributes();
+                    boolean needsUpdate = false;
+
+                    if (attributes == null) {
+                        attributes = new HashMap<>();
+                        needsUpdate = true;
+                    } else {
+                        String currentHireDate = getAttributeValue(attributes, "hireDate", null);
+                        if (currentHireDate == null) {
+                            needsUpdate = true;
+                        }
+                    }
+
+                    if (needsUpdate) {
+                        attributes.put("hireDate", Collections.singletonList(defaultHireDate));
+                        user.setAttributes(attributes);
+
+                        UserResource userResource = usersResource.get(user.getId());
+                        userResource.update(user);
+
+                        log.info("Migration: Added hireDate '{}' to user: {} ({})",
+                                defaultHireDate, user.getUsername(), user.getId());
+                        updatedCount++;
+                    } else {
+                        alreadyHasHireDateCount++;
+                        log.debug("Migration: User {} already has hireDate", user.getUsername());
+                    }
+
+                } catch (Exception e) {
+                    log.error("Migration: Failed to update user {} ({}): {}",
+                            user.getUsername(), user.getId(), e.getMessage());
+                }
+            }
+
+            log.info("Migration completed: {} users updated with hireDate, {} users already had hireDate",
+                    updatedCount, alreadyHasHireDateCount);
+
+        } catch (Exception e) {
+            log.error("Migration failed: Error during hireDate migration: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to migrate existing users with hireDate", e);
+        }
+    }
+
+
 
     public void updateUserAttributes(String userId, UserDTO updateRequest) {
         try {

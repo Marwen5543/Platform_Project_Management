@@ -50,11 +50,10 @@ public class DocumentService {
         request.setEmployeeId(userId);
         request.setDocumentType(dto.getDocumentType());
         request.setMonthYear(dto.getMonthYear());
-        request.setStatus(DocumentStatus.PENDING_APPROVAL); // Set to PENDING_APPROVAL
+        request.setStatus(DocumentStatus.PENDING_APPROVAL);
         request.setCreatedAt(LocalDateTime.now());
         request = repository.save(request);
 
-        // Notify HR (placeholder for notification logic)
         notifyHr(request);
 
         return request;
@@ -140,37 +139,91 @@ public class DocumentService {
         return jwt.getSubject();
     }
 
-
     @CircuitBreaker(name = "userService", fallbackMethod = "getUserFallback")
     private UserDTO getUserWithFallback(String userId) {
         log.info("Fetching user details for userId: {}", userId);
-        return userClient.getUserById(userId);
+        try {
+            return userClient.getUserById(userId);
+        } catch (Exception e) {
+            log.error("Error calling user service for userId: {}, error: {}", userId, e.getMessage());
+            throw e; // Re-throw to trigger circuit breaker
+        }
     }
 
-    private UserDTO getUserFallback(String userId, Throwable t) {
-        log.warn("Falling back for user {}: {}", userId, t.getMessage());
-        return new UserDTO(userId, "Unknown", "User", "");
+    private UserDTO getUserFallback(String userId, Exception ex) {
+        log.warn("Circuit breaker fallback triggered for user {}: {}", userId, ex.getMessage());
+        return new UserDTO(userId, "Unknown", "User", "unknown_user_" + userId);
     }
 
     private void notifyHr(DocumentRequest request) {
-        // Placeholder for HR notification logic
         log.info("Notifying HR about new document request: {}", request.getId());
     }
 
-
+    // Primary method - now with working error handling
     @PreAuthorize("hasRole('HR')")
     public List<DocumentRequest> getPendingDocumentRequests() {
         log.info("Fetching pending document requests for HR");
         List<DocumentRequest> requests = repository.findByStatus(DocumentStatus.PENDING_APPROVAL);
+
         for (DocumentRequest request : requests) {
-            try {
-                UserDTO user = userClient.getUserById(request.getEmployeeId());
-                request.setUsername(user.getUsername() != null ? user.getUsername() : "Unknown User");
-            } catch (Exception e) {
-                log.error("Failed to fetch username for employeeId: {}", request.getEmployeeId(), e);
-                request.setUsername("Unknown User");
-            }
+            String username = getUsernameWithFallback(request.getEmployeeId());
+            request.setUsername(username);
         }
+
         return requests;
+    }
+
+    private String getUsernameWithFallback(String employeeId) {
+        try {
+            UserDTO user = getUserWithFallback(employeeId);
+            if (user != null) {
+                if (user.getUsername() != null && !user.getUsername().isEmpty()) {
+                    return user.getUsername();
+                } else if (user.getFirstName() != null || user.getLastName() != null) {
+                    String firstName = user.getFirstName() != null ? user.getFirstName() : "";
+                    String lastName = user.getLastName() != null ? user.getLastName() : "";
+                    String fullName = (firstName + " " + lastName).trim();
+                    return fullName.isEmpty() ? "Unknown User" : fullName;
+                }
+            }
+        } catch (Exception e) {
+            log.error("Failed to fetch user details for employeeId: {}, using fallback", employeeId, e);
+        }
+        return "Unknown User";
+    }
+
+    // Alternative approach: Direct call with manual fallback (bypasses circuit breaker issues)
+    @PreAuthorize("hasRole('HR')")
+    public List<DocumentRequest> getPendingDocumentRequestsSimple() {
+        log.info("Fetching pending document requests for HR (simple version)");
+        List<DocumentRequest> requests = repository.findByStatus(DocumentStatus.PENDING_APPROVAL);
+
+        for (DocumentRequest request : requests) {
+            String username = getUsernameDirectly(request.getEmployeeId());
+            request.setUsername(username);
+        }
+
+        return requests;
+    }
+
+    private String getUsernameDirectly(String employeeId) {
+        try {
+            log.debug("Fetching user details directly for userId: {}", employeeId);
+            UserDTO user = userClient.getUserById(employeeId);
+
+            if (user != null) {
+                if (user.getUsername() != null && !user.getUsername().isEmpty()) {
+                    return user.getUsername();
+                } else if (user.getFirstName() != null || user.getLastName() != null) {
+                    String firstName = user.getFirstName() != null ? user.getFirstName() : "";
+                    String lastName = user.getLastName() != null ? user.getLastName() : "";
+                    String fullName = (firstName + " " + lastName).trim();
+                    return fullName.isEmpty() ? "Unknown User" : fullName;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to fetch user details for employeeId: {}, using fallback: {}", employeeId, e.getMessage());
+        }
+        return "Unknown User";
     }
 }

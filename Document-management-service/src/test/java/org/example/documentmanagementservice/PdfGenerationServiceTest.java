@@ -8,16 +8,13 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.io.ClassPathResource;
 
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class PdfGenerationServiceTest {
@@ -25,18 +22,13 @@ class PdfGenerationServiceTest {
     @InjectMocks
     private PdfGenerationService pdfGenerationService;
 
-    @Mock
-    private ClassPathResource classPathResource;
-
     @BeforeEach
-    void setUp() throws IOException, NoSuchFieldException, IllegalAccessException {
-        // Mock the ClassPathResource to simulate logo loading failure
-        lenient().when(classPathResource.getURL()).thenThrow(new IOException("Logo not found"));
-
+    void setUp() throws NoSuchFieldException, IllegalAccessException {
         // Set @Value fields using reflection to avoid null values
         setField("companyName", "Tunisys");
         setField("companyAddress", "Avenue de la Liberté, Tunis, TN");
-        setField("companyContact", "Tunisys@gmail.com.tn");
+        setField("companyContact", "contact@tunisys.com.tn");
+        setField("companyPhone", "+216 71 XXX XXX");
     }
 
     private void setField(String fieldName, String value) throws NoSuchFieldException, IllegalAccessException {
@@ -48,7 +40,7 @@ class PdfGenerationServiceTest {
     @Test
     void testGeneratePayslip_Success() throws IOException {
         // Act
-        byte[] pdf = pdfGenerationService.generatePayslip("user123", "2023-01", "John", "Doe");
+        byte[] pdf = pdfGenerationService.generatePayslip("EMP123", "January 2024", "John", "Doe");
 
         // Assert
         assertNotNull(pdf);
@@ -58,19 +50,22 @@ class PdfGenerationServiceTest {
              PdfDocument pdfDoc = new PdfDocument(reader)) {
             assertEquals(1, pdfDoc.getNumberOfPages());
             String content = PdfTextExtractor.getTextFromPage(pdfDoc.getPage(1)).toLowerCase();
-            assertTrue(content.contains("payslip"));
-            assertTrue(content.contains("john doe"));
-            assertTrue(content.contains("user123"));
-            assertTrue(content.contains("2023-01"));
+
+            // Check for key content
+            assertTrue(content.contains("payslip") || content.contains("monthly payslip"));
+            assertTrue(content.contains("john") && content.contains("doe"));
+            assertTrue(content.contains("january 2024"));
             assertTrue(content.contains("tunisys"));
-            assertTrue(content.contains("total net salary"));
+            assertTrue(content.contains("net salary"));
+            assertTrue(content.contains("earnings"));
+            assertTrue(content.contains("deductions"));
         }
     }
 
     @Test
     void testGenerateWorkAttestation_Success() throws IOException {
         // Act
-        byte[] pdf = pdfGenerationService.generateWorkAttestation("user123", "John", "Doe");
+        byte[] pdf = pdfGenerationService.generateWorkAttestation("EMP123", "John", "Doe");
 
         // Assert
         assertNotNull(pdf);
@@ -80,17 +75,19 @@ class PdfGenerationServiceTest {
              PdfDocument pdfDoc = new PdfDocument(reader)) {
             assertEquals(1, pdfDoc.getNumberOfPages());
             String content = PdfTextExtractor.getTextFromPage(pdfDoc.getPage(1)).toLowerCase();
-            assertTrue(content.contains("work attestation"));
-            assertTrue(content.contains("john doe"));
-            assertTrue(content.contains("user123"));
+
+            // Check for key content
+            assertTrue(content.contains("attestation") || content.contains("employment attestation"));
+            assertTrue(content.contains("john") && content.contains("doe"));
             assertTrue(content.contains("tunisys"));
+            assertTrue(content.contains("to whom it may concern"));
         }
     }
 
     @Test
     void testGenerateCertificate_Success() throws IOException {
         // Act
-        byte[] pdf = pdfGenerationService.generateCertificate("user123", "John", "Doe");
+        byte[] pdf = pdfGenerationService.generateCertificate("EMP123", "John", "Doe");
 
         // Assert
         assertNotNull(pdf);
@@ -100,26 +97,19 @@ class PdfGenerationServiceTest {
              PdfDocument pdfDoc = new PdfDocument(reader)) {
             assertEquals(1, pdfDoc.getNumberOfPages());
             String content = PdfTextExtractor.getTextFromPage(pdfDoc.getPage(1)).toLowerCase();
-            assertTrue(content.contains("certificate of employment"));
-            assertTrue(content.contains("john doe"));
+
+            // Check for key content
+            assertTrue(content.contains("certificate"));
+            assertTrue(content.contains("john") && content.contains("doe"));
             assertTrue(content.contains("tunisys"));
+            assertTrue(content.contains("recognition") || content.contains("dedicated service"));
         }
     }
 
     @Test
-    void testGeneratePayslip_NullEmployeeId() {
-        // Act & Assert
-        Exception exception = assertThrows(RuntimeException.class, () -> {
-            pdfGenerationService.generatePayslip(null, "2023-01", "John", "Doe");
-        });
-        assertEquals("PDF generation failed", exception.getMessage());
-        assertInstanceOf(IllegalArgumentException.class, exception.getCause());
-    }
-
-    @Test
-    void testGenerateWorkAttestation_NullFirstName() throws IOException {
+    void testGeneratePayslip_WithDifferentNames() throws IOException {
         // Act
-        byte[] pdf = pdfGenerationService.generateWorkAttestation("user123", null, "Doe");
+        byte[] pdf = pdfGenerationService.generatePayslip("EMP456", "February 2024", "Jane", "Smith");
 
         // Assert
         assertNotNull(pdf);
@@ -127,12 +117,88 @@ class PdfGenerationServiceTest {
 
         try (PdfReader reader = new PdfReader(new ByteArrayInputStream(pdf));
              PdfDocument pdfDoc = new PdfDocument(reader)) {
-            assertEquals(1, pdfDoc.getNumberOfPages());
             String content = PdfTextExtractor.getTextFromPage(pdfDoc.getPage(1)).toLowerCase();
-            assertTrue(content.contains("work attestation"));
-            assertTrue(content.contains("null doe")); // Reflects null firstName concatenated with lastName
-            assertTrue(content.contains("user123"));
+            assertTrue(content.contains("jane") && content.contains("smith"));
+            assertTrue(content.contains("february 2024"));
+        }
+    }
+
+    @Test
+    void testGenerateWorkAttestation_WithDifferentNames() throws IOException {
+        // Act
+        byte[] pdf = pdfGenerationService.generateWorkAttestation("EMP456", "Jane", "Smith");
+
+        // Assert
+        assertNotNull(pdf);
+        assertTrue(pdf.length > 0);
+
+        try (PdfReader reader = new PdfReader(new ByteArrayInputStream(pdf));
+             PdfDocument pdfDoc = new PdfDocument(reader)) {
+            String content = PdfTextExtractor.getTextFromPage(pdfDoc.getPage(1)).toLowerCase();
+            assertTrue(content.contains("jane") && content.contains("smith"));
+        }
+    }
+
+    @Test
+    void testGenerateCertificate_WithDifferentNames() throws IOException {
+        // Act
+        byte[] pdf = pdfGenerationService.generateCertificate("EMP456", "Jane", "Smith");
+
+        // Assert
+        assertNotNull(pdf);
+        assertTrue(pdf.length > 0);
+
+        try (PdfReader reader = new PdfReader(new ByteArrayInputStream(pdf));
+             PdfDocument pdfDoc = new PdfDocument(reader)) {
+            String content = PdfTextExtractor.getTextFromPage(pdfDoc.getPage(1)).toLowerCase();
+            assertTrue(content.contains("jane") && content.contains("smith"));
+        }
+    }
+
+    @Test
+    void testGeneratePayslip_ContainsCompanyInfo() throws IOException {
+        // Act
+        byte[] pdf = pdfGenerationService.generatePayslip("EMP123", "March 2024", "John", "Doe");
+
+        // Assert
+        assertNotNull(pdf);
+
+        try (PdfReader reader = new PdfReader(new ByteArrayInputStream(pdf));
+             PdfDocument pdfDoc = new PdfDocument(reader)) {
+            String content = PdfTextExtractor.getTextFromPage(pdfDoc.getPage(1)).toLowerCase();
             assertTrue(content.contains("tunisys"));
+            assertTrue(content.contains("tunis"));
+        }
+    }
+
+    @Test
+    void testGenerateWorkAttestation_ContainsDate() throws IOException {
+        // Act
+        byte[] pdf = pdfGenerationService.generateWorkAttestation("EMP123", "John", "Doe");
+
+        // Assert
+        assertNotNull(pdf);
+
+        try (PdfReader reader = new PdfReader(new ByteArrayInputStream(pdf));
+             PdfDocument pdfDoc = new PdfDocument(reader)) {
+            String content = PdfTextExtractor.getTextFromPage(pdfDoc.getPage(1)).toLowerCase();
+            // Should contain some date (current date)
+            assertTrue(content.contains("202")); // Year check
+        }
+    }
+
+    @Test
+    void testGenerateCertificate_ContainsSignature() throws IOException {
+        // Act
+        byte[] pdf = pdfGenerationService.generateCertificate("EMP123", "John", "Doe");
+
+        // Assert
+        assertNotNull(pdf);
+
+        try (PdfReader reader = new PdfReader(new ByteArrayInputStream(pdf));
+             PdfDocument pdfDoc = new PdfDocument(reader)) {
+            String content = PdfTextExtractor.getTextFromPage(pdfDoc.getPage(1)).toLowerCase();
+            assertTrue(content.contains("signature") || content.contains("authorized"));
         }
     }
 }

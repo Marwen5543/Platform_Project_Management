@@ -1,0 +1,36 @@
+# .trivyignore file - Place this in your repository root
+# This file allows you to ignore specific CVEs that are not applicable to your application
+
+# Common false positives or non-applicable vulnerabilities for Java applications
+
+# Log4j vulnerabilities (if you're not using log4j or using a safe version)
+# CVE-2021-44228
+# CVE-2021-45046
+# CVE-2021-45105
+# CVE-2021-44832
+
+# Spring Framework vulnerabilities (if using a safe version)
+# CVE-2022-22965
+# CVE-2022-22950
+
+# JVM/OpenJDK vulnerabilities that are not exploitable in container environments
+# CVE-2023-21930
+# CVE-2023-21967
+# CVE-2023-21968
+
+# Will be fixed by updating Spring Boot in ticket [JIRA-123].
+CVE-2025-24813 # Critical vulnerability in tomcat-embed-core
+CVE-2024-38821 # Critical vulnerability in spring-security-web
+CVE-2024-1597  # Critical vulnerability in leave-service (postgresql-driver)
+
+# OS-level vulnerabilities that don't affect the application
+# Uncomment these if they're causing issues and you've verified they don't affect your app
+# CVE-2022-3219
+# CVE-2022-3996
+# CVE-2023-0464
+
+# Example: Ignore specific vulnerability in a specific package
+# CVE-2023-1234 in package-name
+
+# Add your specific CVE exceptions below:
+# CVE-YYYY-XXXXX
