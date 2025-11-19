@@ -1,32 +1,37 @@
 # Use a slim OpenJDK 17 base image for a smaller footprint
-FROM openjdk:17-jdk-slim
+FROM eclipse-temurin:17-jdk-jammy
+# More reliable than openjdk:17-jdk-slim
 
-# Install curl for health checks (not included in slim images)
-RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
+# Install curl for health checks (remove after if not needed)
+RUN apt-get update && \
+    apt-get install -y curl && \
+    rm -rf /var/lib/apt/lists/*
 
-# Create a non-root user for security
-RUN useradd -m appuser
+# Create a non-root user and group for security
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 # Set working directory
 WORKDIR /app
 
-# Copy the built JAR file
-COPY target/user-management-service-1.0.0.jar app.jar
+# Copy the JAR file (use a consistent name)
+COPY target/user-management-service-*.jar app.jar
 
-# Expose the port specified in the application.properties (default 8085)
-EXPOSE ${SERVER_PORT:-8085}
+# Expose the port (best practice, but doesn't actually publish it)
+EXPOSE 8085
 
-# Set environment variables
-ENV SPRING_PROFILES_ACTIVE=docker
-ENV KEYCLOAK_REALM=Tunisys
-ENV KEYCLOAK_RESOURCE=demo-rest-api
-ENV KEYCLOAK_CREDENTIALS_SECRET=6ZWEg9yWkbERGGJK0ju0AKaqgTn7S0wI
+# Set environment variables (use default values for flexibility)
+ENV SPRING_PROFILES_ACTIVE=docker \
+    SERVER_PORT=8085 \
+    KEYCLOAK_REALM=Tunisys \
+    KEYCLOAK_RESOURCE=demo-rest-api \
+    KEYCLOAK_CREDENTIALS_SECRET=6ZWEg9yWkbERGGJK0ju0AKaqgTn7S0wI
 
-HEALTHCHECK --interval=30s --timeout=3s --start-period=60s --retries=3 \
-  CMD curl -f http://localhost:${SERVER_PORT:-8085}/actuator/health || exit 1
+# Health check (ensure Keycloak is reachable)
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:${SERVER_PORT:-8085}/actuator/health || exit 1
 
-# Run as the non-root user
+# Run as non-root user
 USER appuser
 
-# Specify the command to run the application with optimized JVM options
-ENTRYPOINT ["java", "-Xms256m", "-Xmx512m", "-jar", "app.jar"]
+# Optimized JVM startup
+ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-Xms256m", "-Xmx512m", "-jar", "app.jar"]

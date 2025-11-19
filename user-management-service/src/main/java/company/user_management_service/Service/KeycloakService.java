@@ -32,8 +32,42 @@ public class KeycloakService {
 
     @Value("${keycloak.credentials.secret}")
     private String clientSecret;
-
+    @Value("${keycloak.provisioning.enabled:false}") // Add this new property, default to false
+    private boolean provisioningEnabled;
     private Keycloak keycloak;
+
+    /*@PostConstruct
+    public void init() {
+        try {
+            if (provisioningEnabled) {
+                // This is the old code, for the developer's local machine ONLY
+                log.warn("Keycloak provisioning is ENABLED. This should not be used in production.");
+                keycloak = KeycloakBuilder.builder()
+                        .serverUrl(authServerUrl)
+                        .realm("master")
+                        .username("admin")
+                        .password("admin")
+                        .clientId("admin-cli")
+                        .build();
+                // ... (keep the realmExists, createRealm logic here) ...
+
+            } else {
+                // This is the new, correct code for Kubernetes/Production
+                log.info("Keycloak provisioning is DISABLED. Initializing standard admin client.");
+                keycloak = KeycloakBuilder.builder()
+                        .serverUrl(authServerUrl)
+                        .realm(realm)
+                        .grantType("client_credentials")
+                        .clientId(clientId)
+                        .clientSecret(clientSecret)
+                        .build();
+            }
+            log.info("Keycloak client initialized successfully.");
+        } catch (Exception e) {
+            log.error("Keycloak initialization failed: {}", e.getMessage());
+            throw new RuntimeException("Keycloak configuration error", e);
+        }
+    }*/
 
     @PostConstruct
     public void init() {
@@ -56,7 +90,6 @@ public class KeycloakService {
             throw new RuntimeException("Keycloak configuration error", e);
         }
     }
-
     private boolean realmExists() {
         return keycloak.realms().findAll().stream()
                 .anyMatch(r -> r.getRealm().equals(realm));
