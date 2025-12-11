@@ -140,7 +140,7 @@ I am **Marwen Mamlouk**, a Software Engineer graduating from **ESPRIT** with dis
 
 I engineered this project to demonstrate a production-ready approach to **Microservices Architecture**, focusing on resilience, security, and automation. I am currently open to new opportunities where I can apply my skills in building scalable software factories.
 
-*   📫 **Contact:** [LinkedIn](https://www.linkedin.com/in/marwen-mamlouk/) | [Email](mailto:marwen.mamlouk@esprit.tn)
+*   📫 **Contact:** [LinkedIn](https://www.linkedin.com/in/marwen-mamlouk-223077273/) | [Email](mailto:marwen.mamlouk@esprit.tn)
 
 ---
 *© 2025 Tunisys PFE Project - Marwen Mamlouk*
