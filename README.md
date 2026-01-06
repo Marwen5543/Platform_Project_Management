@@ -209,8 +209,8 @@ This provides:
 
 1. Clone the repository:
    ```bash
-   git clone <REPOSITORY_URL>
-   cd <REPOSITORY_NAME>
+   git clone "https://github.com/Marwen5543/Platform_Project_Management.git"
+   cd Platform_Project_Management
 Launch the automated provisioning:
 code
 Bash
